@@ -5,19 +5,21 @@ use std::env;
 
 #[derive(Debug)]
 pub struct Config {
-    github_client_id: String,
-    github_client_secret: String,
+    pub github_client_id: String,
+    pub github_client_secret: String,
+    pub github_user_agent: String,
 }
 
-const GITHUB_CLIENT_ID: &'static str = "GITHUB_CLIENT_ID";
-const GITHUB_CLIENT_SECRET: &'static str = "GITHUB_CLIENT_SECRET";
+const GITHUB_ID: &'static str = "GITHUB_CLIENT_ID";
+const GITHUB_SECRET: &'static str = "GITHUB_CLIENT_SECRET";
+const GITHUB_UA: &'static str = "GITHUB_USER_AGENT";
 
 // this is complex, but we'll shortly need a lot more config items
 // so checking them automagically seems like a nice solution
 pub fn init() -> Result<Config, Vec<&'static str>> {
 
     let mut variables: BTreeMap<&'static str, Result<String, _>> = BTreeMap::new();
-    let keys = vec![GITHUB_CLIENT_ID, GITHUB_CLIENT_SECRET];
+    let keys = vec![GITHUB_ID, GITHUB_SECRET, GITHUB_UA];
 
     for var in keys.into_iter() {
         variables.insert(var, env::var(var));
@@ -26,12 +28,14 @@ pub fn init() -> Result<Config, Vec<&'static str>> {
     let all_found = variables.iter().all(|(_, v)| v.is_ok());
     if all_found {
 
-        let gh_id = variables.remove(GITHUB_CLIENT_ID).unwrap().unwrap();
-        let gh_secret = variables.remove(GITHUB_CLIENT_SECRET).unwrap().unwrap();
+        let gh_id = variables.remove(GITHUB_ID).unwrap().unwrap();
+        let gh_secret = variables.remove(GITHUB_SECRET).unwrap().unwrap();
+        let gh_ua = variables.remove(GITHUB_UA).unwrap().unwrap();
 
         Ok(Config {
             github_client_id: gh_id,
             github_client_secret: gh_secret,
+            github_user_agent: gh_ua,
         })
 
     } else {

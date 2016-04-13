@@ -4,3 +4,5 @@ version = "0.1.0"
 authors = ["Adam Perry <adam.n.perry@gmail.com>"]
 
 [dependencies]
+chrono = "0.2.21"
+hyper = "0.8.0"
