@@ -1,0 +1,4 @@
+[root]
+name = "rust-dashboard"
+version = "0.1.0"
+
