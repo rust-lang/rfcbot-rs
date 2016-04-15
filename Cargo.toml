@@ -4,5 +4,18 @@ version = "0.1.0"
 authors = ["Adam Perry <adam.n.perry@gmail.com>"]
 
 [dependencies]
-chrono = "0.2.21"
+chrono = {version = "0.2.21", features = ["serde"] }
 hyper = "0.8.0"
+serde = "0.7.0"
+serde_json = "0.7.0"
+serde_macros = "0.7.0"
+
+[dependencies.diesel]
+version = "0.6.0"
+default-features = false
+features = ["postgres", "chrono"]
+
+[dependencies.diesel_codegen]
+version = "0.6.0"
+default-features = false
+features = ["nightly", "postgres"]
