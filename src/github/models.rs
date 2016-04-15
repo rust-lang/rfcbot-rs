@@ -1,3 +1,5 @@
+// Copyright 2016 Adam Perry. Dual-licensed MIT and Apache 2.0 (see LICENSE files for details).
+
 use std::collections::BTreeMap;
 use std::convert::Into;
 use std::u32;

@@ -3,6 +3,15 @@
 use std::collections::BTreeMap;
 use std::env;
 
+lazy_static! {
+    pub static ref CONFIG: Config = {
+        match init() {
+            Ok(c) => c,
+            Err(missing) => panic!("Unable to load environment variables: {:?}", missing),
+        }
+    };
+}
+
 #[derive(Debug)]
 pub struct Config {
     pub github_client_id: String,

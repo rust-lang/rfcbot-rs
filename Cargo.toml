@@ -5,7 +5,9 @@ authors = ["Adam Perry <adam.n.perry@gmail.com>"]
 
 [dependencies]
 chrono = {version = "0.2.21", features = ["serde"] }
+clap = "2.2.5"
 hyper = "0.8.0"
+lazy_static = "0.2.0"
 serde = "0.7.0"
 serde_json = "0.7.0"
 serde_macros = "0.7.0"

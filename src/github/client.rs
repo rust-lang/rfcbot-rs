@@ -1,3 +1,5 @@
+// Copyright 2016 Adam Perry. Dual-licensed MIT and Apache 2.0 (see LICENSE files for details).
+
 use std::collections::BTreeMap;
 use std::io::Read;
 use std::u32;
@@ -39,18 +41,18 @@ pub struct Client {
 }
 
 impl Client {
-    pub fn from(c: &Config) -> GitHubResult<Self> {
+    pub fn from(c: &Config) -> Self {
         let mut client = hyper::Client::new();
         client.set_redirect_policy(RedirectPolicy::FollowAll);
 
-        Ok(Client {
+        Client {
             id: c.github_client_id.clone(),
             secret: c.github_client_secret.clone(),
             ua: c.github_user_agent.clone(),
             client: client,
             rate_limit: u32::MAX,
             rate_limit_timeout: UTC::now(),
-        })
+        }
     }
 
     pub fn issues_since(&self, start: DateTime<UTC>) -> GitHubResult<Vec<IssueFromJson>> {
@@ -108,7 +110,9 @@ impl Client {
         Ok(models)
     }
 
-    pub fn fetch_pull_request(&self, pr_info: &PullRequestUrls) -> GitHubResult<PullRequestFromJson> {
+    pub fn fetch_pull_request(&self,
+                              pr_info: &PullRequestUrls)
+                              -> GitHubResult<PullRequestFromJson> {
         let url = pr_info.get("url");
 
         if let Some(url) = url {

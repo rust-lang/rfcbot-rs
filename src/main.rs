@@ -4,10 +4,13 @@
 #![plugin(diesel_codegen, serde_macros)]
 
 extern crate chrono;
+extern crate clap;
 #[macro_use]
 extern crate diesel;
 #[macro_use]
 extern crate hyper;
+#[macro_use]
+extern crate lazy_static;
 extern crate serde;
 extern crate serde_json;
 
@@ -15,48 +18,33 @@ mod config;
 mod domain;
 mod github;
 
-use chrono::{TimeZone, UTC};
+use chrono::{DateTime, TimeZone, UTC};
 
 fn main() {
-    let cfg = match config::init() {
-        Ok(cfg) => cfg,
-        Err(missing) => {
-            panic!("Unable to load environment variables: {:?}", missing);
-        }
-    };
+    fn make_date_time(date_str: &str) -> Result<DateTime<UTC>, chrono::ParseError> {
+        UTC.datetime_from_str(&format!("{} 00:00:00", date_str), "%Y-%m-%d %H:%M:%S")
+    }
 
-    let gh = github::client::Client::from(&cfg).unwrap();
+    let matches = clap::App::new(env!("CARGO_PKG_NAME"))
+                      .version(env!("CARGO_PKG_VERSION"))
+                      .author(env!("CARGO_PKG_AUTHORS"))
+                      .about(env!("CARGO_PKG_DESCRIPTION"))
+                      .subcommand(clap::SubCommand::with_name("bootstrap")
+                                      .about("bootstraps the database")
+                                      .arg(clap::Arg::with_name("since")
+                                               .index(1)
+                                               .required(true)
+                                               .help("Date in YYYY-MM-DD format.")
+                                               .validator(|d| {
+                                                   make_date_time(&d)
+                                                      .map(|_| ())
+                                                      .map_err(|e| format!("Date must be in YYYY-MM-DD format ({:?})", e))
+                                               })))
+                      .get_matches();
 
-    let start_datetime = UTC.ymd(2016, 4, 15).and_hms(0, 0, 0);
+    if let Some(matches) = matches.subcommand_matches("bootstrap") {
+        let start = make_date_time(matches.value_of("since").unwrap()).unwrap();
 
-    println!("fetching all rust-lang/rust issues and comments since {}", start_datetime);
-    let issues = gh.issues_since(start_datetime);
-    let comments = gh.comments_since(start_datetime);
-
-    if let (Ok(issues), Ok(comments)) = (issues, comments) {
-        let mut prs = vec![];
-        for issue in &issues {
-            if let Some(ref pr_info) = issue.pull_request {
-                match gh.fetch_pull_request(pr_info) {
-                    Ok(pr) => prs.push(pr),
-                    Err(why) => {
-                        println!("ERROR fetching PR info: {:?}", why);
-                        break;
-                    },
-                }
-            }
-        }
-
-        println!("num pull requests updated since {}: {:#?}", &start_datetime, prs.len());
-
-        println!("num issues updated since {}: {:?}",
-                 &start_datetime,
-                 issues.len());
-        println!("num comments updated since {}: {:?}",
-                 &start_datetime,
-                 comments.len());
-    } else {
-        println!("ERROR retrieving issues and comments. You should probably add more error \
-                  output.");
+        println!("{:?}", github::ingest_since(start).map(|()| "Ingestion succesful."));
     }
 }
