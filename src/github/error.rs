@@ -12,6 +12,7 @@ pub enum GitHubError {
     Hyper(hyper::error::Error),
     Io(io::Error),
     Serde(serde_json::error::Error),
+    Misc,
 }
 
 impl From<hyper::error::Error> for GitHubError {

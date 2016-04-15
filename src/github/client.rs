@@ -10,8 +10,8 @@ use serde::Deserialize;
 use serde_json;
 
 use config::Config;
-use github::error::GitHubResult;
-use github::models::{CommentFromJson, IssueFromJson};
+use github::error::{GitHubError, GitHubResult};
+use github::models::{CommentFromJson, IssueFromJson, PullRequestFromJson, PullRequestUrls};
 
 pub const BASE_URL: &'static str = "https://api.github.com";
 pub const REPO_OWNER: &'static str = "rust-lang";
@@ -56,7 +56,7 @@ impl Client {
     pub fn issues_since(&self, start: DateTime<UTC>) -> GitHubResult<Vec<IssueFromJson>> {
 
         let url = format!("{}/repos/{}/{}/issues", BASE_URL, REPO_OWNER, REPO);
-        let mut params = BTreeMap::new();
+        let mut params = ParameterMap::new();
 
         params.insert("state", "all".to_string());
         params.insert("since", format!("{:?}", start));
@@ -70,7 +70,7 @@ impl Client {
 
     pub fn comments_since(&self, start: DateTime<UTC>) -> GitHubResult<Vec<CommentFromJson>> {
         let url = format!("{}/repos/{}/{}/issues/comments", BASE_URL, REPO_OWNER, REPO);
-        let mut params = BTreeMap::new();
+        let mut params = ParameterMap::new();
 
         params.insert("sort", "created".to_string());
         params.insert("direction", "asc".to_string());
@@ -106,6 +106,20 @@ impl Client {
         }
 
         Ok(models)
+    }
+
+    pub fn fetch_pull_request(&self, pr_info: &PullRequestUrls) -> GitHubResult<PullRequestFromJson> {
+        let url = pr_info.get("url");
+
+        if let Some(url) = url {
+            let mut res = try!(self.request(url, true, None));
+            let mut buf = String::new();
+            try!(res.read_to_string(&mut buf));
+
+            Ok(try!(serde_json::from_str::<PullRequestFromJson>(&buf)))
+        } else {
+            Err(GitHubError::Misc)
+        }
     }
 
     fn next_page(h: &Headers) -> Option<String> {

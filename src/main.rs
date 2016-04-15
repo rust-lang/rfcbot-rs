@@ -34,6 +34,21 @@ fn main() {
     let comments = gh.comments_since(start_datetime);
 
     if let (Ok(issues), Ok(comments)) = (issues, comments) {
+        let mut prs = vec![];
+        for issue in &issues {
+            if let Some(ref pr_info) = issue.pull_request {
+                match gh.fetch_pull_request(pr_info) {
+                    Ok(pr) => prs.push(pr),
+                    Err(why) => {
+                        println!("ERROR fetching PR info: {:?}", why);
+                        break;
+                    },
+                }
+            }
+        }
+
+        println!("num pull requests updated since {}: {:#?}", &start_datetime, prs.len());
+
         println!("num issues updated since {}: {:?}",
                  &start_datetime,
                  issues.len());

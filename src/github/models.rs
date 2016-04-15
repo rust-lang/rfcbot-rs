@@ -7,12 +7,6 @@ use chrono::{DateTime, UTC};
 use domain::github::{Issue, IssueComment, IssueLabel, Milestone, User};
 
 #[derive(Debug, Deserialize)]
-pub struct LabelFromJson {
-    name: String,
-    color: String,
-}
-
-#[derive(Debug, Deserialize)]
 pub struct MilestoneFromJson {
     pub id: u32,
     pub number: u32,
@@ -51,6 +45,14 @@ impl Into<Milestone> for MilestoneFromJson {
 }
 
 #[derive(Debug, Deserialize)]
+pub struct LabelFromJson {
+    name: String,
+    color: String,
+}
+
+pub type PullRequestUrls = BTreeMap<String, String>;
+
+#[derive(Debug, Deserialize)]
 pub struct IssueFromJson {
     pub number: u32,
     pub user: User,
@@ -62,15 +64,16 @@ pub struct IssueFromJson {
     pub milestone: Option<MilestoneFromJson>,
     pub locked: bool,
     pub comments: u32,
-    pub pull_request: Option<BTreeMap<String, String>>,
+    pub pull_request: Option<PullRequestUrls>,
     pub closed_at: Option<DateTime<UTC>>,
     pub created_at: DateTime<UTC>,
     pub updated_at: DateTime<UTC>,
     pub comments_url: String,
 }
 
-impl IssueFromJson {
-    pub fn into_labels(&self) -> Vec<IssueLabel> {
+impl Into<(Issue, Option<Milestone>, Vec<IssueLabel>)> for IssueFromJson {
+    fn into(self) -> (Issue, Option<Milestone>, Vec<IssueLabel>) {
+
         let mut labels = vec![];
 
         if let Some(ref labels_from_json) = self.labels {
@@ -83,28 +86,30 @@ impl IssueFromJson {
             }
         }
 
-        labels
-    }
-}
+        let milestone_id = match self.milestone {
+            Some(ref m) => Some(m.number),
+            None => None,
+        };
 
-impl Into<Issue> for IssueFromJson {
-    fn into(self) -> Issue {
-        Issue {
+        let issue = Issue {
             number: self.number,
-            fk_milestone: self.milestone.map(|m| m.number),
+            fk_milestone: milestone_id,
             fk_user: self.user.id,
             fk_assignee: self.assignee.map(|a| a.id),
             open: match &*self.state {
                 "open" => true,
                 _ => false,
             },
+            is_pull_request: self.pull_request.is_some(),
             title: self.title,
             body: self.body.unwrap_or("".to_string()),
             locked: self.locked,
             closed_at: self.closed_at.map(|t| t.naive_utc()),
             created_at: self.created_at.naive_utc(),
             updated_at: self.updated_at.naive_utc(),
-        }
+        };
+
+        (issue, self.milestone.map(|m| m.into()), labels)
     }
 }
 
@@ -145,29 +150,14 @@ impl Into<IssueComment> for CommentFromJson {
 }
 
 #[derive(Debug, Deserialize)]
-pub struct ReviewCommentFromJson {
-    id: u32,
-    diff_hunk: String,
-    path: String,
-    position: u32,
-    original_position: u32,
-    commit_id: String,
-    original_commit_id: String,
-    user: User,
-    body: String,
-    created_at: DateTime<UTC>,
-    updated_at: DateTime<UTC>,
-}
-
-#[derive(Debug, Deserialize)]
 pub struct PullRequestFromJson {
     number: u32,
     review_comments_url: String,
     state: String,
     title: String,
-    body: String,
-    assignee: User,
-    milestone: MilestoneFromJson,
+    body: Option<String>,
+    assignee: Option<User>,
+    milestone: Option<MilestoneFromJson>,
     locked: bool,
     created_at: DateTime<UTC>,
     updated_at: DateTime<UTC>,

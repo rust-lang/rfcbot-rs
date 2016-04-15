@@ -38,6 +38,7 @@ pub struct Issue {
     pub fk_user: u32,
     pub fk_assignee: Option<u32>,
     pub open: bool,
+    pub is_pull_request: bool,
     pub title: String,
     pub body: String,
     pub locked: bool,
