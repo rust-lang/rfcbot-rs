@@ -1,32 +1,30 @@
 // Copyright 2016 Adam Perry. Dual-licensed MIT and Apache 2.0 (see LICENSE files for details).
 
-use std::u32;
-
 use chrono::NaiveDateTime;
 
 #[derive(Debug, Deserialize)]
-pub struct User {
-    pub id: u32,
+pub struct GitHubUser {
+    pub id: i32,
     pub login: String,
 }
 
 #[derive(Debug, Queryable)]
 pub struct IssueLabel {
-    pub fk_issue: u32,
+    pub fk_issue: i32,
     pub label: String,
     pub color: String,
 }
 
 #[derive(Debug, Queryable)]
 pub struct Milestone {
-    pub id: u32,
-    pub number: u32,
+    pub id: i32,
+    pub number: i32,
     pub open: bool,
     pub title: String,
     pub description: Option<String>,
-    pub creator: User,
-    pub open_issues: u32,
-    pub closed_issues: u32,
+    pub fk_creator: i32,
+    pub open_issues: i32,
+    pub closed_issues: i32,
     pub created_at: NaiveDateTime,
     pub updated_at: NaiveDateTime,
     pub closed_at: Option<NaiveDateTime>,
@@ -35,10 +33,10 @@ pub struct Milestone {
 
 #[derive(Debug, Queryable)]
 pub struct Issue {
-    pub number: u32,
-    pub fk_milestone: Option<u32>,
-    pub fk_user: u32,
-    pub fk_assignee: Option<u32>,
+    pub number: i32,
+    pub fk_milestone: Option<i32>,
+    pub fk_user: i32,
+    pub fk_assignee: Option<i32>,
     pub open: bool,
     pub is_pull_request: bool,
     pub title: String,
@@ -51,9 +49,9 @@ pub struct Issue {
 
 #[derive(Debug, Queryable)]
 pub struct IssueComment {
-    pub id: u32,
-    pub fk_issue: u32,
-    pub fk_user: u32,
+    pub id: i32,
+    pub fk_issue: i32,
+    pub fk_user: i32,
     pub body: String,
     pub created_at: NaiveDateTime,
     pub updated_at: NaiveDateTime,

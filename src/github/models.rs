@@ -2,22 +2,22 @@
 
 use std::collections::BTreeMap;
 use std::convert::Into;
-use std::u32;
+use std::i32;
 
 use chrono::{DateTime, UTC};
 
-use domain::github::{Issue, IssueComment, IssueLabel, Milestone, User};
+use domain::github::{Issue, IssueComment, IssueLabel, Milestone, GitHubUser};
 
 #[derive(Debug, Deserialize)]
 pub struct MilestoneFromJson {
-    pub id: u32,
-    pub number: u32,
+    pub id: i32,
+    pub number: i32,
     pub state: String,
     pub title: String,
     pub description: Option<String>,
-    pub creator: User,
-    pub open_issues: u32,
-    pub closed_issues: u32,
+    pub creator: GitHubUser,
+    pub open_issues: i32,
+    pub closed_issues: i32,
     pub created_at: DateTime<UTC>,
     pub updated_at: DateTime<UTC>,
     pub closed_at: Option<DateTime<UTC>>,
@@ -35,7 +35,7 @@ impl Into<Milestone> for MilestoneFromJson {
             },
             title: self.title,
             description: self.description,
-            creator: self.creator,
+            fk_creator: self.creator.id,
             open_issues: self.open_issues,
             closed_issues: self.closed_issues,
             created_at: self.created_at.naive_utc(),
@@ -56,16 +56,16 @@ pub type PullRequestUrls = BTreeMap<String, String>;
 
 #[derive(Debug, Deserialize)]
 pub struct IssueFromJson {
-    pub number: u32,
-    pub user: User,
-    pub assignee: Option<User>,
+    pub number: i32,
+    pub user: GitHubUser,
+    pub assignee: Option<GitHubUser>,
     pub state: String,
     pub title: String,
     pub body: Option<String>,
     pub labels: Option<Vec<LabelFromJson>>,
     pub milestone: Option<MilestoneFromJson>,
     pub locked: bool,
-    pub comments: u32,
+    pub comments: i32,
     pub pull_request: Option<PullRequestUrls>,
     pub closed_at: Option<DateTime<UTC>>,
     pub created_at: DateTime<UTC>,
@@ -117,10 +117,10 @@ impl Into<(Issue, Option<Milestone>, Vec<IssueLabel>)> for IssueFromJson {
 
 #[derive(Debug, Deserialize)]
 pub struct CommentFromJson {
-    pub id: u32,
+    pub id: i32,
     pub html_url: String,
     pub body: String,
-    pub user: User,
+    pub user: GitHubUser,
     pub created_at: DateTime<UTC>,
     pub updated_at: DateTime<UTC>,
 }
@@ -130,13 +130,13 @@ impl Into<IssueComment> for CommentFromJson {
         let issue_id = self.html_url
                            .split('#')
                            .next()
-                           .map(|r| r.split('/').last().map(|n| n.parse::<u32>()));
+                           .map(|r| r.split('/').last().map(|n| n.parse::<i32>()));
 
         let issue_id = match issue_id {
             Some(Some(Ok(n))) => n,
             _ => {
                 // TODO log failed parsing
-                u32::MAX
+                i32::MAX
             }
         };
 
@@ -153,20 +153,20 @@ impl Into<IssueComment> for CommentFromJson {
 
 #[derive(Debug, Deserialize)]
 pub struct PullRequestFromJson {
-    number: u32,
+    number: i32,
     review_comments_url: String,
     state: String,
     title: String,
     body: Option<String>,
-    assignee: Option<User>,
+    assignee: Option<GitHubUser>,
     milestone: Option<MilestoneFromJson>,
     locked: bool,
     created_at: DateTime<UTC>,
     updated_at: DateTime<UTC>,
     closed_at: Option<DateTime<UTC>>,
     merged_at: Option<DateTime<UTC>>,
-    commits: u32,
-    additions: u32,
-    deletions: u32,
-    changed_files: u32,
+    commits: i32,
+    additions: i32,
+    deletions: i32,
+    changed_files: i32,
 }
