@@ -6,10 +6,11 @@ Nothing to see here yet. Move along.
 
 ### Environment variables
 
-* `DATABASE_URL` needs to point to a postgres database
-* `GITHUB_CLIENT_ID` needs to be your GitHub app's OAuth client ID
-* `GITHUB_CLIENT_SECRET` needs to be your GitHub app's OAuth client secret
-* `GITHUB_USER_AGENT` needs to be the UA string to send to GitHub (they request that you send your GitHub username or the app name you registered for the client ID)
+* `DATABASE_URL`: postgres database URL
+* `DATABASE_POOL_SIZE`: number of connections to maintain in the pool
+* `GITHUB_CLIENT_ID`: your GitHub app's OAuth client ID
+* `GITHUB_CLIENT_SECRET`: your GitHub app's OAuth client secret
+* `GITHUB_USER_AGENT`: the UA string to send to GitHub (they request that you send your GitHub username or the app name you registered for the client ID)
 
 ## License
 

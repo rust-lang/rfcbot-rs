@@ -2,7 +2,7 @@
 
 use chrono::NaiveDateTime;
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Queryable)]
 pub struct GitHubUser {
     pub id: i32,
     pub login: String,
