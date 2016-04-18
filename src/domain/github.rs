@@ -1,8 +1,13 @@
 // Copyright 2016 Adam Perry. Dual-licensed MIT and Apache 2.0 (see LICENSE files for details).
 
 use chrono::NaiveDateTime;
+use diesel::{ExpressionMethods, FilterDsl, LoadDsl, Queryable, SaveChangesDsl, Table};
 
-#[derive(Debug, Deserialize, Queryable)]
+use super::schema::*;
+
+#[derive(Clone, Debug, Deserialize, Eq, Ord, PartialEq, PartialOrd, Queryable)]
+#[insertable_into(githubuser)]
+#[changeset_for(githubuser)]
 pub struct GitHubUser {
     pub id: i32,
     pub login: String,
@@ -15,7 +20,9 @@ pub struct IssueLabel {
     pub color: String,
 }
 
-#[derive(Debug, Queryable)]
+#[derive(Clone, Debug, Deserialize, Eq, Ord, PartialEq, PartialOrd, Queryable)]
+#[insertable_into(milestone)]
+#[changeset_for(milestone, treat_none_as_null="true")]
 pub struct Milestone {
     pub id: i32,
     pub number: i32,
@@ -31,7 +38,9 @@ pub struct Milestone {
     pub due_on: Option<NaiveDateTime>,
 }
 
-#[derive(Debug, Queryable)]
+#[derive(Clone, Debug, Deserialize, Eq, Ord, PartialEq, PartialOrd, Queryable)]
+#[insertable_into(issue)]
+#[changeset_for(issue, treat_none_as_null="true")]
 pub struct Issue {
     pub number: i32,
     pub fk_milestone: Option<i32>,
@@ -47,7 +56,9 @@ pub struct Issue {
     pub updated_at: NaiveDateTime,
 }
 
-#[derive(Debug, Queryable)]
+#[derive(Clone, Debug, Deserialize, Eq, Ord, PartialEq, PartialOrd, Queryable)]
+#[insertable_into(issuecomment)]
+#[changeset_for(issuecomment, treat_none_as_null="true")]
 pub struct IssueComment {
     pub id: i32,
     pub fk_issue: i32,

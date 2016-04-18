@@ -4,7 +4,9 @@ use std;
 use std::convert::From;
 use std::io;
 
+use diesel;
 use hyper;
+use r2d2;
 use serde_json;
 
 pub type GitHubResult<T> = std::result::Result<T, GitHubError>;
@@ -14,6 +16,8 @@ pub enum GitHubError {
     Hyper(hyper::error::Error),
     Io(io::Error),
     Serde(serde_json::error::Error),
+    R2d2Timeout(r2d2::GetTimeout),
+    DieselError(diesel::result::Error),
     Misc,
 }
 
@@ -32,5 +36,17 @@ impl From<io::Error> for GitHubError {
 impl From<serde_json::error::Error> for GitHubError {
     fn from(e: serde_json::error::Error) -> Self {
         GitHubError::Serde(e)
+    }
+}
+
+impl From<r2d2::GetTimeout> for GitHubError {
+    fn from(e: r2d2::GetTimeout) -> Self {
+        GitHubError::R2d2Timeout(e)
+    }
+}
+
+impl From<diesel::result::Error> for GitHubError {
+    fn from(e: diesel::result::Error) -> Self {
+        GitHubError::DieselError(e)
     }
 }

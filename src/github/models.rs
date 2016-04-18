@@ -8,7 +8,7 @@ use chrono::{DateTime, UTC};
 
 use domain::github::{Issue, IssueComment, IssueLabel, Milestone, GitHubUser};
 
-#[derive(Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize)]
 pub struct MilestoneFromJson {
     pub id: i32,
     pub number: i32,
@@ -153,20 +153,20 @@ impl Into<IssueComment> for CommentFromJson {
 
 #[derive(Debug, Deserialize)]
 pub struct PullRequestFromJson {
-    number: i32,
-    review_comments_url: String,
-    state: String,
-    title: String,
-    body: Option<String>,
-    assignee: Option<GitHubUser>,
-    milestone: Option<MilestoneFromJson>,
-    locked: bool,
-    created_at: DateTime<UTC>,
-    updated_at: DateTime<UTC>,
-    closed_at: Option<DateTime<UTC>>,
-    merged_at: Option<DateTime<UTC>>,
-    commits: i32,
-    additions: i32,
-    deletions: i32,
-    changed_files: i32,
+    pub number: i32,
+    pub review_comments_url: String,
+    pub state: String,
+    pub title: String,
+    pub body: Option<String>,
+    pub assignee: Option<GitHubUser>,
+    pub milestone: Option<MilestoneFromJson>,
+    pub locked: bool,
+    pub created_at: DateTime<UTC>,
+    pub updated_at: DateTime<UTC>,
+    pub closed_at: Option<DateTime<UTC>>,
+    pub merged_at: Option<DateTime<UTC>>,
+    pub commits: i32,
+    pub additions: i32,
+    pub deletions: i32,
+    pub changed_files: i32,
 }

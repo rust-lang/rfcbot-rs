@@ -52,7 +52,7 @@ fn main() {
         // OK to unwrap, this has already been validated by clap
         let start = make_date_time(args.value_of("since").unwrap()).unwrap();
 
-        println!("{:?}",
+        println!("{:#?}",
                  github::ingest_since(start).map(|()| "Ingestion succesful."));
     } else {
         use domain::schema::githubuser::dsl::*;
