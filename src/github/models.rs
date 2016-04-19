@@ -89,7 +89,7 @@ impl Into<(Issue, Option<Milestone>, Vec<IssueLabel>)> for IssueFromJson {
         }
 
         let milestone_id = match self.milestone {
-            Some(ref m) => Some(m.number),
+            Some(ref m) => Some(m.id),
             None => None,
         };
 
