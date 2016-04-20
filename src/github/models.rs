@@ -33,8 +33,8 @@ impl Into<Milestone> for MilestoneFromJson {
                 "open" => true,
                 _ => false,
             },
-            title: self.title,
-            description: self.description,
+            title: self.title.replace(0x00 as char, ""),
+            description: self.description.map(|s| s.replace(0x00 as char, "")),
             fk_creator: self.creator.id,
             open_issues: self.open_issues,
             closed_issues: self.closed_issues,
@@ -82,8 +82,8 @@ impl Into<(Issue, Option<Milestone>, Vec<IssueLabel>)> for IssueFromJson {
             for l in labels_from_json {
                 labels.push(IssueLabel {
                     fk_issue: self.number,
-                    label: l.name.clone(),
-                    color: l.color.clone(),
+                    label: l.name.replace(0x00 as char, ""),
+                    color: l.color.replace(0x00 as char, ""),
                 });
             }
         }
@@ -103,8 +103,8 @@ impl Into<(Issue, Option<Milestone>, Vec<IssueLabel>)> for IssueFromJson {
                 _ => false,
             },
             is_pull_request: self.pull_request.is_some(),
-            title: self.title,
-            body: self.body.unwrap_or("".to_string()),
+            title: self.title.replace(0x00 as char, ""),
+            body: self.body.unwrap_or("".to_string()).replace(0x00 as char, ""),
             locked: self.locked,
             closed_at: self.closed_at.map(|t| t.naive_utc()),
             created_at: self.created_at.naive_utc(),
@@ -144,7 +144,7 @@ impl Into<IssueComment> for CommentFromJson {
             id: self.id,
             fk_issue: issue_id,
             fk_user: self.user.id,
-            body: self.body,
+            body: self.body.replace(0x00 as char, ""),
             created_at: self.created_at.naive_utc(),
             updated_at: self.updated_at.naive_utc(),
         }

@@ -1,6 +1,8 @@
 // Copyright 2016 Adam Perry. Dual-licensed MIT and Apache 2.0 (see LICENSE files for details).
 
 use std::collections::BTreeSet;
+use std::thread::sleep;
+use std::time::Duration;
 
 use chrono::{DateTime, UTC};
 use diesel::prelude::*;
@@ -8,7 +10,7 @@ use diesel;
 
 use config::CONFIG;
 use domain::github::*;
-use github::{Client, GitHubResult};
+use github::{Client, GitHubResult, PullRequestFromJson};
 use domain::schema::*;
 use DB_POOL;
 
@@ -23,8 +25,9 @@ pub fn ingest_since(start: DateTime<UTC>) -> GitHubResult<()> {
     let issues = try!(GH.issues_since(start));
     let comments = try!(GH.comments_since(start));
 
-    let mut prs = vec![];
-    for issue in &issues {
+    let mut prs: Vec<PullRequestFromJson> = vec![];
+    /*for issue in &issues {
+        sleep(Duration::from_millis(github::client::DELAY));
         if let Some(ref pr_info) = issue.pull_request {
             match GH.fetch_pull_request(pr_info) {
                 Ok(pr) => prs.push(pr),
@@ -38,7 +41,7 @@ pub fn ingest_since(start: DateTime<UTC>) -> GitHubResult<()> {
 
     println!("num pull requests updated since {}: {:#?}",
              &start,
-             prs.len());
+             prs.len());*/
 
     println!("num issues updated since {}: {:?}", &start, issues.len());
     println!("num comments updated since {}: {:?}",

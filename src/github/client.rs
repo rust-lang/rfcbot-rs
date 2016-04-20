@@ -2,6 +2,8 @@
 
 use std::collections::BTreeMap;
 use std::io::Read;
+use std::thread::sleep;
+use std::time::Duration;
 use std::u32;
 
 use chrono::{DateTime, UTC};
@@ -18,6 +20,8 @@ use github::models::{CommentFromJson, IssueFromJson, PullRequestFromJson, PullRe
 pub const BASE_URL: &'static str = "https://api.github.com";
 pub const REPO_OWNER: &'static str = "rust-lang";
 pub const REPO: &'static str = "rust";
+
+pub const DELAY: u64 = 300;
 
 type ParameterMap = BTreeMap<&'static str, String>;
 
@@ -96,6 +100,8 @@ impl Client {
 
         let mut next_url = Self::next_page(&res.headers);
         while next_url.is_some() {
+            // TODO figure out a better rate limit
+            sleep(Duration::from_millis(DELAY));
             let url = next_url.unwrap();
             let mut next_res = try!(self.request(&url, false, None));
 
@@ -159,11 +165,14 @@ impl Client {
             String::from(url)
         };
 
+        println!("{}\n\n", &url);
+
         self.client
             .get(&url)
             .header(UA(self.ua.clone()))
             .header(TZ("UTC".to_string()))
             .header(Accept("application/vnd.github.v3".to_string()))
+            .header(hyper::header::Connection::close())
             .send()
     }
 
