@@ -14,7 +14,7 @@ use serde::Deserialize;
 use serde_json;
 
 use config::Config;
-use github::error::{GitHubError, GitHubResult};
+use error::{DashError, DashResult};
 use github::models::{CommentFromJson, IssueFromJson, PullRequestFromJson, PullRequestUrls};
 
 pub const BASE_URL: &'static str = "https://api.github.com";
@@ -59,7 +59,7 @@ impl Client {
         }
     }
 
-    pub fn issues_since(&self, start: DateTime<UTC>) -> GitHubResult<Vec<IssueFromJson>> {
+    pub fn issues_since(&self, start: DateTime<UTC>) -> DashResult<Vec<IssueFromJson>> {
 
         let url = format!("{}/repos/{}/{}/issues", BASE_URL, REPO_OWNER, REPO);
         let mut params = ParameterMap::new();
@@ -74,7 +74,7 @@ impl Client {
         self.models_since(&url, &params)
     }
 
-    pub fn comments_since(&self, start: DateTime<UTC>) -> GitHubResult<Vec<CommentFromJson>> {
+    pub fn comments_since(&self, start: DateTime<UTC>) -> DashResult<Vec<CommentFromJson>> {
         let url = format!("{}/repos/{}/{}/issues/comments", BASE_URL, REPO_OWNER, REPO);
         let mut params = ParameterMap::new();
 
@@ -89,7 +89,7 @@ impl Client {
     fn models_since<M: Deserialize>(&self,
                                     start_url: &str,
                                     params: &ParameterMap)
-                                    -> GitHubResult<Vec<M>> {
+                                    -> DashResult<Vec<M>> {
         let mut res = try!(self.request(start_url, true, Some(&params)));
 
         // let's try deserializing!
@@ -116,9 +116,7 @@ impl Client {
         Ok(models)
     }
 
-    pub fn fetch_pull_request(&self,
-                              pr_info: &PullRequestUrls)
-                              -> GitHubResult<PullRequestFromJson> {
+    pub fn fetch_pull_request(&self, pr_info: &PullRequestUrls) -> DashResult<PullRequestFromJson> {
         let url = pr_info.get("url");
 
         if let Some(url) = url {
@@ -128,7 +126,7 @@ impl Client {
 
             Ok(try!(serde_json::from_str::<PullRequestFromJson>(&buf)))
         } else {
-            Err(GitHubError::Misc)
+            Err(DashError::Misc)
         }
     }
 

@@ -19,7 +19,9 @@ extern crate serde_json;
 
 mod config;
 mod domain;
+mod error;
 mod github;
+mod releases;
 
 use chrono::{DateTime, TimeZone, UTC};
 use clap::{App, Arg, ArgMatches, SubCommand};
@@ -52,8 +54,21 @@ fn main() {
         // OK to unwrap, this has already been validated by clap
         let start = make_date_time(args.value_of("since").unwrap()).unwrap();
 
-        println!("{:#?}",
-                 github::ingest_since(start).map(|()| "Ingestion succesful."));
+        let source = args.value_of("source").unwrap();
+
+        match source {
+            "github" => {
+                println!("{:#?}",
+                         github::ingest_since(start).map(|()| "Ingestion succesful."))
+            }
+
+            "release-channel" => {
+                println!("{:#?}",
+                         releases::ingest_releases_since(start).map(|()| "Ingestion successful."));
+            }
+
+            _ => println!("ERROR: invalid scraping source specified."),
+        }
     } else {
         use domain::schema::githubuser::dsl::*;
         let users: Vec<domain::github::GitHubUser> = githubuser.load(&*DB_POOL.get().unwrap())
@@ -69,8 +84,12 @@ fn make_date_time(date_str: &str) -> Result<DateTime<UTC>, chrono::ParseError> {
 fn init_cli<'a>() -> ArgMatches<'a> {
     let bootstrap = SubCommand::with_name("bootstrap")
                         .about("bootstraps the database")
-                        .arg(Arg::with_name("since")
+                        .arg(Arg::with_name("source")
                                  .index(1)
+                                 .required(true)
+                                 .help("Data source to scrape ('all' for all)."))
+                        .arg(Arg::with_name("since")
+                                 .index(2)
                                  .required(true)
                                  .help("Date in YYYY-MM-DD format.")
                                  .validator(|d| {

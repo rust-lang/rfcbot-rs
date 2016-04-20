@@ -25,7 +25,12 @@ That should then have whichever database you've specified ready to receive data.
 
 ## Bootstrapping
 
-This doesn't *fully* work yet, but run `cargo run --release -- bootstrap YYYY-MM-DD` to populate the database with all relevant data since YYYY-MM-DD.
+This doesn't *fully* work yet, but run `cargo run --release -- bootstrap SOURCE YYYY-MM-DD` to populate the database with all relevant data since YYYY-MM-DD.
+
+Substitute `SOURCE` in that example with one of:
+
+* `github`
+* `release-channel`
 
 ## License
 
