@@ -6,7 +6,7 @@ use std::i32;
 
 use chrono::{DateTime, UTC};
 
-use domain::github::{Issue, IssueComment, IssueLabel, Milestone, GitHubUser};
+use domain::github::{Issue, IssueComment, IssueLabel, Milestone, PullRequest, GitHubUser};
 
 #[derive(Clone, Debug, Deserialize)]
 pub struct MilestoneFromJson {
@@ -169,4 +169,26 @@ pub struct PullRequestFromJson {
     pub additions: i32,
     pub deletions: i32,
     pub changed_files: i32,
+}
+
+impl Into<PullRequest> for PullRequestFromJson {
+    fn into(self) -> PullRequest {
+        PullRequest {
+            number: self.number,
+            state: self.state.replace(0x00 as char, ""),
+            title: self.title.replace(0x00 as char, ""),
+            body: self.body.map(|s| s.replace(0x00 as char, "")),
+            fk_assignee: self.assignee.map(|a| a.id),
+            fk_milestone: self.milestone.map(|m| m.id),
+            locked: self.locked,
+            created_at: self.created_at.naive_utc(),
+            updated_at: self.updated_at.naive_utc(),
+            closed_at: self.closed_at.map(|t| t.naive_utc()),
+            merged_at: self.merged_at.map(|t| t.naive_utc()),
+            commits: self.commits,
+            additions: self.additions,
+            deletions: self.deletions,
+            changed_files: self.changed_files,
+        }
+    }
 }

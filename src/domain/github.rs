@@ -67,3 +67,24 @@ pub struct IssueComment {
     pub created_at: NaiveDateTime,
     pub updated_at: NaiveDateTime,
 }
+
+#[derive(Clone, Debug, Deserialize, Eq, Ord, PartialEq, PartialOrd, Queryable)]
+#[insertable_into(pullrequest)]
+#[changeset_for(pullrequest, treat_none_as_null="true")]
+pub struct PullRequest {
+    pub number: i32,
+    pub state: String,
+    pub title: String,
+    pub body: Option<String>,
+    pub fk_assignee: Option<i32>,
+    pub fk_milestone: Option<i32>,
+    pub locked: bool,
+    pub created_at: NaiveDateTime,
+    pub updated_at: NaiveDateTime,
+    pub closed_at: Option<NaiveDateTime>,
+    pub merged_at: Option<NaiveDateTime>,
+    pub commits: i32,
+    pub additions: i32,
+    pub deletions: i32,
+    pub changed_files: i32,
+}

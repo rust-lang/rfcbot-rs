@@ -26,8 +26,8 @@ pub fn ingest_since(start: DateTime<UTC>) -> GitHubResult<()> {
     let comments = try!(GH.comments_since(start));
 
     let mut prs: Vec<PullRequestFromJson> = vec![];
-    /*for issue in &issues {
-        sleep(Duration::from_millis(github::client::DELAY));
+    for issue in &issues {
+        //sleep(Duration::from_millis(github::client::DELAY));
         if let Some(ref pr_info) = issue.pull_request {
             match GH.fetch_pull_request(pr_info) {
                 Ok(pr) => prs.push(pr),
@@ -41,7 +41,7 @@ pub fn ingest_since(start: DateTime<UTC>) -> GitHubResult<()> {
 
     println!("num pull requests updated since {}: {:#?}",
              &start,
-             prs.len());*/
+             prs.len());
 
     println!("num issues updated since {}: {:?}", &start, issues.len());
     println!("num comments updated since {}: {:?}",
@@ -92,7 +92,8 @@ pub fn ingest_since(start: DateTime<UTC>) -> GitHubResult<()> {
         let (issue, milestone, _) = issue.into();
 
         if let Some(milestone) = milestone {
-            if milestone::table.find(milestone.id).get_result::<Milestone>(&*conn).is_ok() {
+            let exists = milestone::table.find(milestone.id).get_result::<Milestone>(&*conn).is_ok();
+            if exists {
                 try!(diesel::update(milestone::table.find(milestone.id))
                          .set(&milestone)
                          .execute(&*conn));
@@ -101,7 +102,8 @@ pub fn ingest_since(start: DateTime<UTC>) -> GitHubResult<()> {
             }
         }
 
-        if issue::table.find(issue.number).get_result::<Issue>(&*conn).is_ok() {
+        let exists = issue::table.find(issue.number).get_result::<Issue>(&*conn).is_ok();
+        if exists {
             try!(diesel::update(issue::table.find(issue.number)).set(&issue).execute(&*conn));
         } else {
             try!(diesel::insert(&issue).into(issue::table).execute(&*conn));
@@ -121,7 +123,17 @@ pub fn ingest_since(start: DateTime<UTC>) -> GitHubResult<()> {
         }
     }
 
-    // TODO insert the pull requests (and maybe review comments?)
+    for pr in prs {
+        let pr: PullRequest = pr.into();
+
+        let exists = pullrequest::table.find(pr.number).get_result::<PullRequest>(&*conn).is_ok();
+
+        if exists {
+            try!(diesel::update(pullrequest::table.find(pr.number)).set(&pr).execute(&*conn));
+        } else {
+            try!(diesel::insert(&pr).into(pullrequest::table).execute(&*conn));
+        }
+    }
 
     Ok(())
 }
