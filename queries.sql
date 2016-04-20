@@ -77,3 +77,24 @@ SELECT
 FROM issue i
 WHERE i.closed_at IS NULL
 ORDER BY i.created_at ASC
+
+# number of open P-high issues
+SELECT
+  i.number,
+  i.labels
+FROM issue i
+WHERE
+  NOT i.open AND
+  'P-high' = ANY (i.labels)
+
+# number of regression issues
+SELECT
+  i.number,
+  i.labels
+FROM issue i
+WHERE
+  NOT i.open AND
+  'regression-from-stable-to-beta' = ANY (i.labels) OR
+  'regression-from-stable-to-nightly' = ANY (i.labels) OR
+  'regression-from-stable-to-stable' = ANY (i.labels)
+  

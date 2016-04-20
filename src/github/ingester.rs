@@ -1,8 +1,6 @@
 // Copyright 2016 Adam Perry. Dual-licensed MIT and Apache 2.0 (see LICENSE files for details).
 
 use std::collections::BTreeSet;
-use std::thread::sleep;
-use std::time::Duration;
 
 use chrono::{DateTime, UTC};
 use diesel::prelude::*;
@@ -89,7 +87,7 @@ pub fn ingest_since(start: DateTime<UTC>) -> GitHubResult<()> {
 
     // insert the issues, milestones, and labels
     for issue in issues {
-        let (issue, milestone, _) = issue.into();
+        let (issue, milestone) = issue.into();
 
         if let Some(milestone) = milestone {
             let exists = milestone::table.find(milestone.id).get_result::<Milestone>(&*conn).is_ok();
@@ -108,8 +106,6 @@ pub fn ingest_since(start: DateTime<UTC>) -> GitHubResult<()> {
         } else {
             try!(diesel::insert(&issue).into(issue::table).execute(&*conn));
         }
-
-        // TODO check and insert the issue labels
     }
 
     // insert the comments

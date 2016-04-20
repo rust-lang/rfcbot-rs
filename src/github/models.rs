@@ -6,7 +6,7 @@ use std::i32;
 
 use chrono::{DateTime, UTC};
 
-use domain::github::{Issue, IssueComment, IssueLabel, Milestone, PullRequest, GitHubUser};
+use domain::github::{Issue, IssueComment, Milestone, PullRequest, GitHubUser};
 
 #[derive(Clone, Debug, Deserialize)]
 pub struct MilestoneFromJson {
@@ -73,21 +73,8 @@ pub struct IssueFromJson {
     pub comments_url: String,
 }
 
-impl Into<(Issue, Option<Milestone>, Vec<IssueLabel>)> for IssueFromJson {
-    fn into(self) -> (Issue, Option<Milestone>, Vec<IssueLabel>) {
-
-        let mut labels = vec![];
-
-        if let Some(ref labels_from_json) = self.labels {
-            for l in labels_from_json {
-                labels.push(IssueLabel {
-                    fk_issue: self.number,
-                    label: l.name.replace(0x00 as char, ""),
-                    color: l.color.replace(0x00 as char, ""),
-                });
-            }
-        }
-
+impl Into<(Issue, Option<Milestone>)> for IssueFromJson {
+    fn into(self) -> (Issue, Option<Milestone>) {
         let milestone_id = match self.milestone {
             Some(ref m) => Some(m.id),
             None => None,
@@ -109,9 +96,13 @@ impl Into<(Issue, Option<Milestone>, Vec<IssueLabel>)> for IssueFromJson {
             closed_at: self.closed_at.map(|t| t.naive_utc()),
             created_at: self.created_at.naive_utc(),
             updated_at: self.updated_at.naive_utc(),
+            labels: match self.labels {
+                Some(json_labels) => json_labels.into_iter().map(|l| l.name).collect(),
+                None => vec![],
+            },
         };
 
-        (issue, self.milestone.map(|m| m.into()), labels)
+        (issue, self.milestone.map(|m| m.into()))
     }
 }
 

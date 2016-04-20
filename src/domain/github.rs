@@ -13,13 +13,6 @@ pub struct GitHubUser {
     pub login: String,
 }
 
-#[derive(Debug, Queryable)]
-pub struct IssueLabel {
-    pub fk_issue: i32,
-    pub label: String,
-    pub color: String,
-}
-
 #[derive(Clone, Debug, Deserialize, Eq, Ord, PartialEq, PartialOrd, Queryable)]
 #[insertable_into(milestone)]
 #[changeset_for(milestone, treat_none_as_null="true")]
@@ -54,6 +47,7 @@ pub struct Issue {
     pub closed_at: Option<NaiveDateTime>,
     pub created_at: NaiveDateTime,
     pub updated_at: NaiveDateTime,
+    pub labels: Vec<String>,
 }
 
 #[derive(Clone, Debug, Deserialize, Eq, Ord, PartialEq, PartialOrd, Queryable)]
