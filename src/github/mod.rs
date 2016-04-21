@@ -10,7 +10,6 @@ use chrono::{DateTime, UTC};
 use diesel::prelude::*;
 use diesel;
 
-use config::CONFIG;
 use domain::github::*;
 use domain::schema::*;
 use error::DashResult;
@@ -20,7 +19,7 @@ use self::client::Client;
 use self::models::PullRequestFromJson;
 
 lazy_static! {
-    static ref GH: Client = Client::from(&*CONFIG);
+    static ref GH: Client = Client::new();
 }
 
 pub fn ingest_since(start: DateTime<UTC>) -> DashResult<()> {

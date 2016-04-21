@@ -13,7 +13,7 @@ use hyper::header::Headers;
 use serde::Deserialize;
 use serde_json;
 
-use config::Config;
+use config::CONFIG;
 use error::{DashError, DashResult};
 use github::models::{CommentFromJson, IssueFromJson, PullRequestFromJson, PullRequestUrls};
 
@@ -25,6 +25,7 @@ pub const DELAY: u64 = 300;
 
 type ParameterMap = BTreeMap<&'static str, String>;
 
+header! { (Auth, "Authorization") => [String] }
 header! { (UA, "User-Agent") => [String] }
 header! { (TZ, "Time-Zone") => [String] }
 header! { (Accept, "Accept") => [String] }
@@ -36,8 +37,7 @@ const PER_PAGE: u32 = 100;
 
 #[derive(Debug)]
 pub struct Client {
-    id: String,
-    secret: String,
+    token: String,
     ua: String,
     client: hyper::Client,
     rate_limit: u32,
@@ -45,14 +45,13 @@ pub struct Client {
 }
 
 impl Client {
-    pub fn from(c: &Config) -> Self {
+    pub fn new() -> Self {
         let mut client = hyper::Client::new();
         client.set_redirect_policy(RedirectPolicy::FollowAll);
 
         Client {
-            id: c.github_client_id.clone(),
-            secret: c.github_client_secret.clone(),
-            ua: c.github_user_agent.clone(),
+            token: CONFIG.github_access_token.clone(),
+            ua: CONFIG.github_user_agent.clone(),
             client: client,
             rate_limit: u32::MAX,
             rate_limit_timeout: UTC::now(),
@@ -90,7 +89,7 @@ impl Client {
                                     start_url: &str,
                                     params: &ParameterMap)
                                     -> DashResult<Vec<M>> {
-        let mut res = try!(self.request(start_url, true, Some(&params)));
+        let mut res = try!(self.request(start_url, Some(&params)));
 
         // let's try deserializing!
         let mut buf = String::new();
@@ -103,7 +102,7 @@ impl Client {
             // TODO figure out a better rate limit
             sleep(Duration::from_millis(DELAY));
             let url = next_url.unwrap();
-            let mut next_res = try!(self.request(&url, false, None));
+            let mut next_res = try!(self.request(&url, None));
 
             buf.clear();
             try!(next_res.read_to_string(&mut buf));
@@ -120,7 +119,7 @@ impl Client {
         let url = pr_info.get("url");
 
         if let Some(url) = url {
-            let mut res = try!(self.request(url, true, None));
+            let mut res = try!(self.request(url, None));
             let mut buf = String::new();
             try!(res.read_to_string(&mut buf));
 
@@ -152,48 +151,34 @@ impl Client {
 
     fn request<'a>(&self,
                    url: &'a str,
-                   add_auth: bool,
                    params: Option<&ParameterMap>)
                    -> Result<Response, hyper::error::Error> {
 
-        let query_params = self.query_params(add_auth, params);
-        let url = if query_params.len() > 0 {
-            format!("{}?{}", url, query_params)
-        } else {
-            String::from(url)
+        let qp_string = match params {
+            Some(p) => {
+                let mut qp = String::from("?");
+                for (k, v) in p.iter() {
+                    if qp.len() > 1 {
+                        qp.push('&');
+                    }
+                    qp.push_str(&format!("{}={}", k, v));
+                }
+                qp
+            }
+            None => "".to_string(),
         };
+
+        let url = format!("{}{}", url, qp_string);
 
         println!("{}\n\n", &url);
 
         self.client
             .get(&url)
+            .header(Auth(format!("token {}", &self.token)))
             .header(UA(self.ua.clone()))
             .header(TZ("UTC".to_string()))
             .header(Accept("application/vnd.github.v3".to_string()))
             .header(hyper::header::Connection::close())
             .send()
-    }
-
-    fn query_params(&self, add_auth: bool, extras: Option<&ParameterMap>) -> String {
-
-        let mut qp = if add_auth {
-            format!("client_id={}&client_secret={}", self.id, self.secret)
-        } else {
-            String::new()
-        };
-
-        match extras {
-            Some(e) => {
-                for (k, v) in e.iter() {
-                    if qp.len() > 0 {
-                        qp.push('&');
-                    }
-                    qp.push_str(&format!("{}={}", k, v));
-                }
-            }
-            None => (),
-        }
-
-        qp
     }
 }

@@ -16,15 +16,13 @@ lazy_static! {
 pub struct Config {
     pub db_url: String,
     pub db_pool_size: u32,
-    pub github_client_id: String,
-    pub github_client_secret: String,
+    pub github_access_token: String,
     pub github_user_agent: String,
 }
 
 const DB_URL: &'static str = "DATABASE_URL";
 const DB_POOL_SIZE: &'static str = "DATABASE_POOL_SIZE";
-const GITHUB_ID: &'static str = "GITHUB_CLIENT_ID";
-const GITHUB_SECRET: &'static str = "GITHUB_CLIENT_SECRET";
+const GITHUB_TOKEN: &'static str = "GITHUB_ACCESS_TOKEN";
 const GITHUB_UA: &'static str = "GITHUB_USER_AGENT";
 
 // this is complex, but we'll shortly need a lot more config items
@@ -32,7 +30,7 @@ const GITHUB_UA: &'static str = "GITHUB_USER_AGENT";
 pub fn init() -> Result<Config, Vec<&'static str>> {
 
     let mut vars: BTreeMap<&'static str, Result<String, _>> = BTreeMap::new();
-    let keys = vec![DB_URL, DB_POOL_SIZE, GITHUB_ID, GITHUB_SECRET, GITHUB_UA];
+    let keys = vec![DB_URL, DB_POOL_SIZE, GITHUB_TOKEN, GITHUB_UA];
 
     for var in keys.into_iter() {
         vars.insert(var, env::var(var));
@@ -51,15 +49,13 @@ pub fn init() -> Result<Config, Vec<&'static str>> {
             Err(_) => return Err(vec![DB_POOL_SIZE]),
         };
 
-        let gh_id = vars.remove(GITHUB_ID).unwrap();
-        let gh_secret = vars.remove(GITHUB_SECRET).unwrap();
+        let gh_token = vars.remove(GITHUB_TOKEN).unwrap();
         let gh_ua = vars.remove(GITHUB_UA).unwrap();
 
         Ok(Config {
             db_url: db_url,
             db_pool_size: db_pool_size,
-            github_client_id: gh_id,
-            github_client_secret: gh_secret,
+            github_access_token: gh_token,
             github_user_agent: gh_ua,
         })
 
