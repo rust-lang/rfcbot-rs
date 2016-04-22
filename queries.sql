@@ -97,4 +97,45 @@ WHERE
   'regression-from-stable-to-beta' = ANY (i.labels) OR
   'regression-from-stable-to-nightly' = ANY (i.labels) OR
   'regression-from-stable-to-stable' = ANY (i.labels)
-  
+
+# build-bot specific failures in last 2 days
+SELECT
+  regexp_replace(
+    replace(ic.body, ':broken_heart: Test failed - [', ''),
+    '\]\(.+', '') as failed_bot,
+  COUNT(*)
+FROM issuecomment ic, githubuser u
+WHERE
+  ic.created_at > CURRENT_DATE - INTERVAL '2 days' AND
+  u.login = 'bors' AND
+  u.id = ic.fk_user AND
+  ic.body LIKE '%Test failed - %' AND
+  ic.fk_issue IN (SELECT pr.number
+	FROM issuecomment ic, pullrequest pr
+	WHERE
+	  ic.body LIKE '%@bors%retry%' AND
+	  pr.number = ic.fk_issue)
+GROUP BY failed_bot
+ORDER BY COUNT(*) DESC
+
+# windows builtbot failures in last 7 days
+SELECT
+  regexp_replace(
+    replace(ic.body, ':broken_heart: Test failed - [', ''),
+    '\]\(.+', '') as failed_bot,
+  'https://github.com/rust-lang/rust/pull/' || ic.fk_issue as pr_url,
+  regexp_replace(
+    replace(ic.body, ':broken_heart: Test failed - [', ''),
+    '.+\]\(', '') as log_url
+FROM issuecomment ic, githubuser u
+WHERE
+  ic.created_at > CURRENT_DATE - INTERVAL '1 week' AND
+  u.login = 'bors' AND
+  u.id = ic.fk_user AND
+  ic.body LIKE '%Test failed - %' AND
+  ic.fk_issue IN (SELECT pr.number
+	FROM issuecomment ic, pullrequest pr
+	WHERE
+	  ic.body LIKE '%@bors%retry%' AND
+	  pr.number = ic.fk_issue)
+ORDER BY failed_bot
