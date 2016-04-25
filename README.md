@@ -34,8 +34,10 @@ This doesn't *fully* work yet, but run `cargo run --release -- bootstrap SOURCE 
 Substitute `SOURCE` in that example with one of:
 
 * `github`
-* `release-channel`
+* `releases`
 * `buildbot`
+
+The date can also be replaced by `all`, which will scrape all data available since 2015-05-15 (Rust's 1.0 launch).
 
 ## License
 

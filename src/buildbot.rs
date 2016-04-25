@@ -21,25 +21,33 @@ struct BuildFromJson {
 
 impl Into<Build> for BuildFromJson {
     fn into(self) -> Build {
-        Build {
-            number: self.number,
-            builder_name: self.builderName,
-            successful: match self.results {
-                Some(r) => r == 0,
-                None => false,
-            },
-            message: {
-                let mut buf = String::new();
-                for s in self.text {
-                    if buf.len() > 0 { buf = buf + " "; }
-                    buf = buf + &s;
-                }
-                buf
-            },
-            duration_secs: match self.times {
+        let successful = match self.results {
+            Some(r) => r == 0,
+            None => false,
+        };
+
+        let duration = if successful {
+            match self.times {
                 (Some(start), Some(end)) => Some((end - start) as i32),
                 _ => None,
             }
+        } else { None };
+
+        let concat_msg = {
+            let mut buf = String::new();
+            for s in self.text {
+                if buf.len() > 0 { buf = buf + " "; }
+                buf = buf + &s;
+            }
+            buf
+        };
+
+        Build {
+            number: self.number,
+            builder_name: self.builderName,
+            successful: successful,
+            message: concat_msg,
+            duration_secs: duration
         }
     }
 }

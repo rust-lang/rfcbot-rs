@@ -98,7 +98,7 @@ fn main() {
                       github::ingest_since(start).map(|()| "Ingestion succesful."))
             }
 
-            "release-channel" => {
+            "releases" => {
                 info!("Bootstrapping release channel data since {}.", start);
                 info!("{:#?}",
                       releases::ingest_releases_since(start).map(|()| "Ingestion successful."));
