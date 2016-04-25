@@ -8,10 +8,13 @@ extern crate clap;
 #[macro_use]
 extern crate diesel;
 extern crate dotenv;
+extern crate env_logger;
 #[macro_use]
 extern crate hyper;
 #[macro_use]
 extern crate lazy_static;
+#[macro_use]
+extern crate log;
 extern crate r2d2;
 extern crate r2d2_diesel;
 extern crate serde;
@@ -23,10 +26,12 @@ mod error;
 mod github;
 mod releases;
 
-use chrono::{DateTime, TimeZone, UTC};
+use chrono::{DateTime, Local, TimeZone, UTC};
 use clap::{App, Arg, ArgMatches, SubCommand};
 use diesel::prelude::*;
 use diesel::pg::PgConnection;
+use env_logger::LogBuilder;
+use log::LogRecord;
 use r2d2::Pool;
 use r2d2_diesel::ConnectionManager;
 
@@ -35,45 +40,73 @@ use config::CONFIG;
 // initialize the database connection pool
 lazy_static! {
     pub static ref DB_POOL: Pool<ConnectionManager<PgConnection>> = {
+        info!("Initializing database connection pool.");
 
         let config = r2d2::Config::builder()
                          .pool_size(CONFIG.db_pool_size)
                          .build();
 
         let manager = ConnectionManager::<PgConnection>::new(CONFIG.db_url.clone());
-        Pool::new(config, manager).expect("Failed to create database connection pool.")
+        match Pool::new(config, manager) {
+            Ok(p) => {
+                info!("DB connection pool established.");
+                p
+            },
+            Err(why) => {
+                error!("Failed to establish DB connection pool: {}", why);
+                panic!("Error creating connection pool.");
+            }
+        }
     };
 }
 
 fn main() {
+    // init environment variables, CLI, and logging
     dotenv::dotenv().ok();
-
     let args = init_cli();
+
+    LogBuilder::new()
+        .format(|rec: &LogRecord| {
+            let loc = rec.location();
+            format!("[{} {}:{} {}] {}",
+                    rec.level(),
+                    loc.module_path(),
+                    loc.line(),
+                    Local::now().format("%Y-%m-%d %H:%M:%S"),
+                    rec.args())
+        })
+        .parse(&std::env::var("RUST_LOG").unwrap_or("info".to_string()))
+        .init()
+        .unwrap();
+
+    debug!("Logging initialized.");
+    let _ = CONFIG.check();
+    let _ = DB_POOL.get().expect("Unable to test connection pool.");
 
     if let Some(args) = args.subcommand_matches("bootstrap") {
         // OK to unwrap, this has already been validated by clap
-        let start = make_date_time(args.value_of("since").unwrap()).unwrap();
+        let start = make_date_time(args.value_of("since").unwrap())
+                        .unwrap_or(UTC.ymd(2015, 5, 15).and_hms(0, 0, 0));
 
         let source = args.value_of("source").unwrap();
 
         match source {
             "github" => {
-                println!("{:#?}",
-                         github::ingest_since(start).map(|()| "Ingestion succesful."))
+                info!("Bootstrapping GitHub data since {}", start);
+                info!("{:#?}",
+                      github::ingest_since(start).map(|()| "Ingestion succesful."))
             }
 
             "release-channel" => {
-                println!("{:#?}",
-                         releases::ingest_releases_since(start).map(|()| "Ingestion successful."));
+                info!("Bootstrapping release channel data since {}.", start);
+                info!("{:#?}",
+                      releases::ingest_releases_since(start).map(|()| "Ingestion successful."));
             }
 
-            _ => println!("ERROR: invalid scraping source specified."),
+            _ => error!("Invalid scraping source specified."),
         }
     } else {
-        use domain::schema::githubuser::dsl::*;
-        let users: Vec<domain::github::GitHubUser> = githubuser.load(&*DB_POOL.get().unwrap())
-                                                               .unwrap();
-        println!("{:?}", users);
+        unimplemented!();
     }
 }
 
@@ -93,11 +126,18 @@ fn init_cli<'a>() -> ArgMatches<'a> {
                                  .required(true)
                                  .help("Date in YYYY-MM-DD format.")
                                  .validator(|d| {
-                                     make_date_time(&d)
-                                         .map(|_| ())
-                                         .map_err(|e| {
-                                             format!("Date must be in YYYY-MM-DD format ({:?})", e)
-                                         })
+                                     match &*d {
+                                         "all" => Ok(()),
+                                         _ => {
+                                             make_date_time(&d)
+                                                 .map(|_| ())
+                                                 .map_err(|e| {
+                                                     format!("Date must be in YYYY-MM-DD format \
+                                                              ({:?})",
+                                                             e)
+                                                 })
+                                         }
+                                     }
                                  }));
 
     App::new(env!("CARGO_PKG_NAME"))

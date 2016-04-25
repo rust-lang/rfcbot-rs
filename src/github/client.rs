@@ -170,7 +170,7 @@ impl Client {
 
         let url = format!("{}{}", url, qp_string);
 
-        println!("{}\n\n", &url);
+        debug!("GETing: {}", &url);
 
         self.client
             .get(&url)

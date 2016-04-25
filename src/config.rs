@@ -6,8 +6,14 @@ use std::env;
 lazy_static! {
     pub static ref CONFIG: Config = {
         match init() {
-            Ok(c) => c,
-            Err(missing) => panic!("Unable to load environment variables: {:?}", missing),
+            Ok(c) => {
+                info!("Configuration parsed from environment variables.");
+                c
+            },
+            Err(missing) => {
+                error!("Unable to load environment variables {:?}", missing);
+                panic!("Unable to load environment variables {:?}", missing);
+            },
         }
     };
 }
@@ -18,6 +24,13 @@ pub struct Config {
     pub db_pool_size: u32,
     pub github_access_token: String,
     pub github_user_agent: String,
+}
+
+impl Config {
+    pub fn check(&self) -> bool {
+        self.db_url.len() > 0 && self.github_access_token.len() > 0 &&
+        self.github_user_agent.len() > 0
+    }
 }
 
 const DB_URL: &'static str = "DATABASE_URL";

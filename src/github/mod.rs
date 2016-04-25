@@ -24,8 +24,8 @@ lazy_static! {
 
 pub fn ingest_since(start: DateTime<UTC>) -> DashResult<()> {
     // TODO check rate limit before going ahead
-    println!("fetching all rust-lang/rust issues and comments since {}",
-             start);
+    info!("fetching all rust-lang/rust issues and comments since {}",
+          start);
     let issues = try!(GH.issues_since(start));
     let comments = try!(GH.comments_since(start));
 
@@ -36,23 +36,23 @@ pub fn ingest_since(start: DateTime<UTC>) -> DashResult<()> {
             match GH.fetch_pull_request(pr_info) {
                 Ok(pr) => prs.push(pr),
                 Err(why) => {
-                    println!("ERROR fetching PR info: {:?}", why);
+                    error!("ERROR fetching PR info: {:?}", why);
                     break;
                 }
             }
         }
     }
 
-    println!("num pull requests updated since {}: {:#?}",
-             &start,
-             prs.len());
+    info!("num pull requests updated since {}: {:#?}",
+          &start,
+          prs.len());
 
-    println!("num issues updated since {}: {:?}", &start, issues.len());
-    println!("num comments updated since {}: {:?}",
-             &start,
-             comments.len());
+    info!("num issues updated since {}: {:?}", &start, issues.len());
+    info!("num comments updated since {}: {:?}",
+          &start,
+          comments.len());
 
-    println!("let's insert some stuff in the database");
+    info!("let's insert some stuff in the database");
 
     let conn = try!(DB_POOL.get());
 
