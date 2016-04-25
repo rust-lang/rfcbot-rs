@@ -20,6 +20,7 @@ extern crate r2d2_diesel;
 extern crate serde;
 extern crate serde_json;
 
+mod buildbot;
 mod config;
 mod domain;
 mod error;
@@ -101,6 +102,12 @@ fn main() {
                 info!("Bootstrapping release channel data since {}.", start);
                 info!("{:#?}",
                       releases::ingest_releases_since(start).map(|()| "Ingestion successful."));
+            }
+
+            "buildbot" => {
+                info!("Bootstrapping buildbot data.");
+                info!("{:#?}",
+                      buildbot::ingest().map(|()| "Ingestion successful."));
             }
 
             _ => error!("Invalid scraping source specified."),

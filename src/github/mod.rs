@@ -10,10 +10,10 @@ use chrono::{DateTime, UTC};
 use diesel::prelude::*;
 use diesel;
 
+use DB_POOL;
 use domain::github::*;
 use domain::schema::*;
 use error::DashResult;
-use DB_POOL;
 
 use self::client::Client;
 use self::models::PullRequestFromJson;

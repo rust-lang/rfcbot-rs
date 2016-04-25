@@ -21,7 +21,7 @@ cargo install diesel_cli
 diesel migration run
 ```
 
-That should then have whichever database you've specified ready to receive data. Then you can run some of the bootstrapping commands (see below). Alternatively, you can use `bootstrap.sql` to get a nice starting point for the database (note that this isn't maintained regularly).
+That should have the database you've specified ready to receive data. Then you can run some of the bootstrapping commands (see below). Alternatively, you can use `bootstrap.sql` to get a nice starting point for the database (note that this isn't maintained regularly).
 
 ```bash
 psql -d $DB_NAME_HERE -f bootstrap.sql
@@ -35,6 +35,7 @@ Substitute `SOURCE` in that example with one of:
 
 * `github`
 * `release-channel`
+* `buildbot`
 
 ## License
 

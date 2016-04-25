@@ -139,3 +139,12 @@ WHERE
 	  ic.body LIKE '%@bors%retry%' AND
 	  pr.number = ic.fk_issue)
 ORDER BY failed_bot
+
+# 'auto-*' buildbot completion times
+SELECT b.builder_name, AVG(b.duration_secs) / 60 as duration_minutes
+FROM build b
+WHERE
+  b.successful AND
+  b.builder_name LIKE 'auto-%'
+GROUP BY b.builder_name
+ORDER BY AVG(b.duration_secs) DESC
