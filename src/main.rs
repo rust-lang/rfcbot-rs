@@ -26,6 +26,7 @@ mod domain;
 mod error;
 mod github;
 mod releases;
+mod reports;
 
 use chrono::{DateTime, Local, TimeZone, UTC};
 use clap::{App, Arg, ArgMatches, SubCommand};
@@ -113,7 +114,7 @@ fn main() {
             _ => error!("Invalid scraping source specified."),
         }
     } else {
-        unimplemented!();
+        info!("testing reports:\n{:#?}", reports::summary());
     }
 }
 

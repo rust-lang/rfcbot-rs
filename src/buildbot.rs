@@ -31,12 +31,16 @@ impl Into<Build> for BuildFromJson {
                 (Some(start), Some(end)) => Some((end - start) as i32),
                 _ => None,
             }
-        } else { None };
+        } else {
+            None
+        };
 
         let concat_msg = {
             let mut buf = String::new();
             for s in self.text {
-                if buf.len() > 0 { buf = buf + " "; }
+                if buf.len() > 0 {
+                    buf = buf + " ";
+                }
                 buf = buf + &s;
             }
             buf
@@ -47,7 +51,7 @@ impl Into<Build> for BuildFromJson {
             builder_name: self.builderName,
             successful: successful,
             message: concat_msg,
-            duration_secs: duration
+            duration_secs: duration,
         }
     }
 }
@@ -68,7 +72,8 @@ pub fn ingest() -> DashResult<()> {
                                    .collect();
 
     for builder in &builders {
-        let url = format!("http://buildbot.rust-lang.org/json/builders/{}/builds/_all", builder);
+        let url = format!("http://buildbot.rust-lang.org/json/builders/{}/builds/_all",
+                          builder);
         debug!("GETing {}", &url);
 
         let mut resp = try!(c.get(&url).send());
@@ -80,16 +85,17 @@ pub fn ingest() -> DashResult<()> {
 
         let builds = builds.into_iter()
                            .filter(|&(_, ref b)| b.results.is_some())
-                           .map(|(_, b)| b.into()).collect::<Vec<Build>>();
+                           .map(|(_, b)| b.into())
+                           .collect::<Vec<Build>>();
 
         debug!("Inserting/updating records in database.");
         for b in builds {
             use diesel::prelude::*;
             use domain::schema::build::dsl::*;
             let pk = build.filter(number.eq(b.number).and(builder_name.eq(&b.builder_name)))
-                            .first::<(i32, i32, String, bool, String, Option<i32>)>(&*conn)
-                            .map(|f| f.0)
-                            .ok();
+                          .first::<(i32, i32, String, bool, String, Option<i32>)>(&*conn)
+                          .map(|f| f.0)
+                          .ok();
 
             if let Some(pk) = pk {
                 try!(diesel::update(build.find(pk)).set(&b).execute(&*conn));
