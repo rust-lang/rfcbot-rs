@@ -4,6 +4,15 @@ Nothing to see here yet. Move along.
 
 ## Configuration
 
+### Rust Version
+
+Not guaranteed to be updated regularly, but last time I remembered to update this, the dashboard compiled with:
+
+```bash
+$ rustc --version
+rustc 1.10.0-nightly (c2aaad4e2 2016-04-19)
+```
+
 ### Environment variables
 
 * `DATABASE_URL`: postgres database URL
