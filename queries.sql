@@ -34,18 +34,15 @@ WHERE
 GROUP BY iso_closed_week
 ORDER BY iso_closed_week DESC
 
+# age of still-open PRs
+SELECT
+  AVG(EXTRACT(EPOCH FROM (now() - created_at))) / (60 * 60 * 24)
+FROM pullrequest
+WHERE closed_at IS NULL
+
 ###############################################
 # everything below this line is unimplemented
 ###############################################
-
-# age of still-open PRs
-SELECT
-  pr.number,
-  pr.created_at,
-  (EXTRACT(EPOCH FROM (now() - pr.created_at)) / 60) as minutes_open
-FROM pullrequest pr
-WHERE pr.closed_at IS NULL
-ORDER BY pr.created_at ASC
 
 # number of '@bors: retry' per PR
 SELECT ic.fk_issue, COUNT(ic.*)

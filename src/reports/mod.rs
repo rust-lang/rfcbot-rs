@@ -17,6 +17,7 @@ pub struct DashSummary {
     prs_merged_per_day: BTreeMap<NaiveDate, i64>,
     prs_num_closed_per_week: BTreeMap<NaiveDate, i64>,
     prs_days_open_before_close: BTreeMap<NaiveDate, f64>,
+    prs_current_open_age_days: f64,
 }
 
 pub fn summary() -> DashResult<DashSummary> {
@@ -25,7 +26,7 @@ pub fn summary() -> DashResult<DashSummary> {
     let until = UTC::now().naive_utc();
     let since = until - Duration::days(90);
 
-    let pr_open_time = try!(prs_open_time(since, until, &conn));
+    let pr_open_time = try!(prs_open_time_before_close(since, until, &conn));
 
     Ok(DashSummary {
         prs_opened_per_day: try!(prs_opened_per_day(since, until, &conn)),
@@ -33,6 +34,7 @@ pub fn summary() -> DashResult<DashSummary> {
         prs_merged_per_day: try!(prs_merged_per_day(since, until, &conn)),
         prs_num_closed_per_week: pr_open_time.0,
         prs_days_open_before_close: pr_open_time.1,
+        prs_current_open_age_days: try!(open_prs_avg_days_old(&conn)),
     })
 }
 
@@ -80,10 +82,11 @@ fn prs_merged_per_day(since: NaiveDateTime,
            .collect())
 }
 
-fn prs_open_time(since: NaiveDateTime,
-                 until: NaiveDateTime,
-                 conn: &PgConnection)
-                 -> DashResult<(BTreeMap<NaiveDate, i64>, BTreeMap<NaiveDate, f64>)> {
+fn prs_open_time_before_close
+    (since: NaiveDateTime,
+     until: NaiveDateTime,
+     conn: &PgConnection)
+     -> DashResult<(BTreeMap<NaiveDate, i64>, BTreeMap<NaiveDate, f64>)> {
 
     let w = sql::<Text>("iso_closed_week");
     let triples = try!(pullrequest.select(sql::<(BigInt, Double, Text)>("\
@@ -113,4 +116,11 @@ fn prs_open_time(since: NaiveDateTime,
     }
 
     Ok((num_closed_map, days_open_map))
+}
+
+fn open_prs_avg_days_old(conn: &PgConnection) -> DashResult<f64> {
+    Ok(try!(pullrequest.select(sql::<Double>("AVG(EXTRACT(EPOCH FROM (now() - created_at))) / \
+                                              (60 * 60 * 24)"))
+                       .filter(closed_at.is_null())
+                       .first(conn)))
 }
