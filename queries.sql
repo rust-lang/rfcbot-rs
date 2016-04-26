@@ -18,16 +18,25 @@ WHERE pr.merged_at IS NOT NULL
 GROUP BY d
 ORDER BY d DESC
 
-# Time PRs are open before closing (NEEDS WORK AND CLARIFICATION)
+# Time PRs are open before closing, grouped by the week in which they were closed
 SELECT
-  pr.number,
-  pr.closed_at,
-  (EXTRACT(EPOCH FROM (pr.closed_at - pr.created_at))) as minutes_open
-FROM pullrequest pr
+  COUNT(*),
+  AVG(EXTRACT(EPOCH FROM closed_at) -
+    EXTRACT(EPOCH FROM created_at))
+    / (60 * 60 * 24),
+  EXTRACT(ISOYEAR FROM closed_at)::text || '-' ||
+    EXTRACT(WEEK FROM closed_at)::text || '-6' AS iso_closed_week
+FROM pullrequest
 WHERE
-  pr.closed_at IS NOT NULL AND
-  pr.created_at IS NOT NULL
-ORDER BY pr.closed_at desc
+  closed_at IS NOT NULL AND
+  closed_at >= NOW() - INTERVAL '90 days' AND
+  closed_at <= NOW()
+GROUP BY iso_closed_week
+ORDER BY iso_closed_week DESC
+
+###############################################
+# everything below this line is unimplemented
+###############################################
 
 # age of still-open PRs
 SELECT
