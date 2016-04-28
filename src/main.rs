@@ -27,6 +27,7 @@ mod error;
 mod github;
 mod releases;
 mod reports;
+mod scraper;
 
 use chrono::{DateTime, Local, TimeZone, UTC};
 use clap::{App, Arg, ArgMatches, SubCommand};
@@ -38,29 +39,6 @@ use r2d2::Pool;
 use r2d2_diesel::ConnectionManager;
 
 use config::CONFIG;
-
-// initialize the database connection pool
-lazy_static! {
-    pub static ref DB_POOL: Pool<ConnectionManager<PgConnection>> = {
-        info!("Initializing database connection pool.");
-
-        let config = r2d2::Config::builder()
-                         .pool_size(CONFIG.db_pool_size)
-                         .build();
-
-        let manager = ConnectionManager::<PgConnection>::new(CONFIG.db_url.clone());
-        match Pool::new(config, manager) {
-            Ok(p) => {
-                info!("DB connection pool established.");
-                p
-            },
-            Err(why) => {
-                error!("Failed to establish DB connection pool: {}", why);
-                panic!("Error creating connection pool.");
-            }
-        }
-    };
-}
 
 fn main() {
     // init environment variables, CLI, and logging
@@ -85,7 +63,14 @@ fn main() {
     let _ = CONFIG.check();
     let _ = DB_POOL.get().expect("Unable to test connection pool.");
 
-    if let Some(args) = args.subcommand_matches("bootstrap") {
+
+    if let Some(_) = args.subcommand_matches("scrape") {
+
+        // this will block on joining never-ending threads
+        // need to come up with a better way to do this...
+        scraper::start_scraping();
+
+    } else if let Some(args) = args.subcommand_matches("bootstrap") {
         // OK to unwrap, this has already been validated by clap
         let start = make_date_time(args.value_of("since").unwrap())
                         .unwrap_or(UTC.ymd(2015, 5, 15).and_hms(0, 0, 0));
@@ -123,6 +108,8 @@ fn make_date_time(date_str: &str) -> Result<DateTime<UTC>, chrono::ParseError> {
 }
 
 fn init_cli<'a>() -> ArgMatches<'a> {
+    let scrape = SubCommand::with_name("scrape").about("scrapes any updated data");
+
     let bootstrap = SubCommand::with_name("bootstrap")
                         .about("bootstraps the database")
                         .arg(Arg::with_name("source")
@@ -153,5 +140,29 @@ fn init_cli<'a>() -> ArgMatches<'a> {
         .author(env!("CARGO_PKG_AUTHORS"))
         .about(env!("CARGO_PKG_DESCRIPTION"))
         .subcommand(bootstrap)
+        .subcommand(scrape)
         .get_matches()
+}
+
+// initialize the database connection pool
+lazy_static! {
+    pub static ref DB_POOL: Pool<ConnectionManager<PgConnection>> = {
+        info!("Initializing database connection pool.");
+
+        let config = r2d2::Config::builder()
+                         .pool_size(CONFIG.db_pool_size)
+                         .build();
+
+        let manager = ConnectionManager::<PgConnection>::new(CONFIG.db_url.clone());
+        match Pool::new(config, manager) {
+            Ok(p) => {
+                info!("DB connection pool established.");
+                p
+            },
+            Err(why) => {
+                error!("Failed to establish DB connection pool: {}", why);
+                panic!("Error creating connection pool.");
+            }
+        }
+    };
 }

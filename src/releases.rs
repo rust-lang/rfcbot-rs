@@ -1,6 +1,7 @@
 use chrono::{Datelike, DateTime, NaiveDate, UTC};
 use diesel;
-use diesel::{ExecuteDsl, FindDsl};
+use diesel::expression::dsl::*;
+use diesel::prelude::*;
 use hyper::client::Client;
 use hyper::status::StatusCode;
 
@@ -10,6 +11,19 @@ use error::DashResult;
 
 lazy_static! {
     static ref CLIENT: Client = Client::new();
+}
+
+pub fn most_recent_update() -> DashResult<DateTime<UTC>> {
+    info!("finding most recent nightly release updates");
+
+    let conn = try!(DB_POOL.get());
+
+    let most_recent: NaiveDate = {
+        use domain::schema::release::dsl::*;
+        try!(release.select(max(date)).filter(released).first(&*conn))
+    };
+
+    Ok(DateTime::from_utc(most_recent.and_hms(0, 0, 0), UTC))
 }
 
 fn get_release_for_date(d: NaiveDate) -> DashResult<Release> {

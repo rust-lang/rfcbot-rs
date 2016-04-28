@@ -5,8 +5,10 @@ pub mod client;
 pub mod models;
 
 use std::collections::BTreeSet;
+use std::cmp;
 
-use chrono::{DateTime, UTC};
+use chrono::{DateTime, NaiveDateTime, UTC};
+use diesel::expression::dsl::*;
 use diesel::prelude::*;
 use diesel;
 
@@ -22,8 +24,32 @@ lazy_static! {
     static ref GH: Client = Client::new();
 }
 
+pub fn most_recent_update() -> DashResult<DateTime<UTC>> {
+    info!("finding most recent github updates");
+
+    let conn = try!(DB_POOL.get());
+
+    let issues_updated: NaiveDateTime = {
+        use domain::schema::issue::dsl::*;
+        try!(issue.select(max(updated_at)).first(&*conn))
+    };
+
+    let prs_updated: NaiveDateTime = {
+        use domain::schema::pullrequest::dsl::*;
+        try!(pullrequest.select(max(updated_at)).first(&*conn))
+    };
+
+    let comments_updated: NaiveDateTime = {
+        use domain::schema::issuecomment::dsl::*;
+        try!(issuecomment.select(max(updated_at)).first(&*conn))
+    };
+
+    let most_recent = cmp::min(issues_updated, cmp::min(prs_updated, comments_updated));
+
+    Ok(DateTime::from_utc(most_recent, UTC))
+}
+
 pub fn ingest_since(start: DateTime<UTC>) -> DashResult<()> {
-    // TODO check rate limit before going ahead
     info!("fetching all rust-lang/rust issues and comments since {}",
           start);
     let issues = try!(GH.issues_since(start));
@@ -43,16 +69,16 @@ pub fn ingest_since(start: DateTime<UTC>) -> DashResult<()> {
         }
     }
 
-    info!("num pull requests updated since {}: {:#?}",
-          &start,
-          prs.len());
+    debug!("num pull requests updated since {}: {:#?}",
+           &start,
+           prs.len());
 
-    info!("num issues updated since {}: {:?}", &start, issues.len());
-    info!("num comments updated since {}: {:?}",
-          &start,
-          comments.len());
+    debug!("num issues updated since {}: {:?}", &start, issues.len());
+    debug!("num comments updated since {}: {:?}",
+           &start,
+           comments.len());
 
-    info!("let's insert some stuff in the database");
+    debug!("let's insert some stuff in the database");
 
     let conn = try!(DB_POOL.get());
 

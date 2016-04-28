@@ -71,6 +71,7 @@ impl Into<Build> for BuildFromJson {
 }
 
 pub fn ingest() -> DashResult<()> {
+    info!("Ingesting buildbot data.");
     let conn = try!(DB_POOL.get());
     let c = Client::new();
 
@@ -120,5 +121,6 @@ pub fn ingest() -> DashResult<()> {
         }
     }
 
+    info!("Buildbot ingestion successful.");
     Ok(())
 }

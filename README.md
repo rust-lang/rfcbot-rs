@@ -20,6 +20,9 @@ rustc 1.10.0-nightly (c2aaad4e2 2016-04-19)
 * `GITHUB_ACCESS_TOKEN`: your access token from GitHub. See [this page](https://help.github.com/articles/creating-an-access-token-for-command-line-use/) for more information. You shouldn't need to check any of the boxes for granting scopes when creating it.
 * `GITHUB_USER_AGENT`: the UA string to send to GitHub (they request that you send your GitHub username or the app name you registered for the client ID)
 * `RUST_LOG`: the logging configuration for [env_logger](https://crates.io/crates/env_logger). If you're unfamiliar, you can read about it in the documentation linked on crates.io. If it's not defined, logging will default to `info!()` and above.
+* `GITHUB_SCRAPE_INTERVAL`: time (in minutes) to wait in between GitHub scrapes
+* `RELEASES_SCRAPE_INTERVAL`: time (in minutes) to wait in between nightly release scrapes
+* `BUILDBOT_SCRAPE_INTERVAL`: time (in minutes) to wait in between buildbot scrapes
 
 ## Database
 
@@ -38,7 +41,7 @@ psql -d $DB_NAME_HERE -f bootstrap.sql
 
 ## Bootstrapping
 
-This doesn't *fully* work yet, but run `cargo run --release -- bootstrap SOURCE YYYY-MM-DD` to populate the database with all relevant data since YYYY-MM-DD.
+Run `cargo run --release -- bootstrap SOURCE YYYY-MM-DD` to populate the database with all relevant data since YYYY-MM-DD.
 
 Substitute `SOURCE` in that example with one of:
 
@@ -46,7 +49,16 @@ Substitute `SOURCE` in that example with one of:
 * `releases`
 * `buildbot`
 
-The date can also be replaced by `all`, which will scrape all data available since 2015-05-15 (Rust's 1.0 launch).
+The date can also be replaced by `all`, which will scrape all data available since 2015-05-15 (Rust's 1.0 launch). Any date will be ignored for the buildbot command, as the API doesn't support queries for recently updated items.
+
+## Scraping
+
+The launch the scraping daemon, make sure the interval environment variables are set to sensible values, and run `cargo run --release -- scrape`. This will scrape each data source, sleeping each data source's scraper for the given interval in between runs. Some important notes about the current setup:
+
+* **IMPORTANT**: if the scraper daemon is killed in the middle of scraping and persisting a data source, it's a *very* good idea to run the bootstrap command for that/those data source(s). Current the database schema doesn't house any check-pointing or machine-readable confirmation of a successful scraping, which could result in erroneous holes in data for APIs which support "all results updated since TIME" queries (like GitHub). This is due to the fact that the current scraper just checks for the most recent entities in each category before telling the API how far back it wants to go.
+* In order to avoid overloading services, make sure that the intervals are not too small. Some examples:
+  * The GitHub API allows (at the time of this writing) 5000 authenticated requests per hour. The GitHub scraper currently makes 1 request for every 100 updated issues, 1 request for every 100 update issue comments, and **1 request for every updated pull request**. Granted, this API limit is only likely to be an issue when bootstrapping the entire repository history, but bear it in mind if setting very low intervals (e.g. 1-2 minutes) or if using the same GitHub account for multiple API-using tools.
+  * The buildbot scraper takes 5-20 minutes as of this writing, and could potentially place significant load on the CI cluster since it requests all build records which may have to be deserialized from disk. Make sure to space this scraper out accordingly so that it is not running a significant percentage of the time.
 
 ## License
 

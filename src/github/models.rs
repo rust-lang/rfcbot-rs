@@ -126,7 +126,8 @@ impl Into<IssueComment> for CommentFromJson {
         let issue_id = match issue_id {
             Some(Some(Ok(n))) => n,
             _ => {
-                // TODO log failed parsing
+                // this should never happen
+                // hi absurd GitHub search!
                 i32::MAX
             }
         };
