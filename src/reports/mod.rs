@@ -43,6 +43,7 @@ pub struct IssueSummary {
 #[derive(Clone, Debug)]
 pub struct BuildbotSummary {
     per_builder_times_mins: BTreeMap<String, BTreeMap<NaiveDate, f64>>,
+    per_builder_failures: BTreeMap<String, BTreeMap<NaiveDate, i64>>
 }
 
 pub fn summary() -> DashResult<DashSummary> {
@@ -82,6 +83,7 @@ pub fn summary() -> DashResult<DashSummary> {
         },
         buildbots: BuildbotSummary {
             per_builder_times_mins: try!(buildbot_build_times(since, until)),
+            per_builder_failures: try!(buildbot_failures_by_day(since, until)),
         },
     })
 }
@@ -308,6 +310,33 @@ pub fn buildbot_build_times(since: NaiveDateTime,
                             .filter(builder_name.like("auto-%"))
                             .group_by(&name_date)
                             .load::<((String, NaiveDate), f64)>(&*conn));
+
+    let mut results = BTreeMap::new();
+    for ((builder, date), build_minutes) in triples {
+        results.entry(builder).or_insert(BTreeMap::new()).insert(date, build_minutes);
+    }
+
+    Ok(results)
+}
+
+pub fn buildbot_failures_by_day(since: NaiveDateTime,
+                            until: NaiveDateTime)
+                            -> DashResult<BTreeMap<String, BTreeMap<NaiveDate, i64>>> {
+    use domain::schema::build::dsl::*;
+
+    let conn = try!(DB_POOL.get());
+
+    let name_date = sql::<(Text, Date)>("builder_name, date(start_time)");
+
+    let triples = try!(build.select((&name_date,
+                                     sql::<BigInt>("COUNT(*)")))
+                            .filter(successful.ne(true))
+                            .filter(start_time.is_not_null())
+                            .filter(start_time.ge(since))
+                            .filter(start_time.le(until))
+                            .filter(builder_name.like("auto-%"))
+                            .group_by(&name_date)
+                            .load::<((String, NaiveDate), i64)>(&*conn));
 
     let mut results = BTreeMap::new();
     for ((builder, date), build_minutes) in triples {

@@ -113,7 +113,7 @@ ORDER BY AVG(b.duration_secs) DESC
 # everything below this line is unimplemented
 ###############################################
 
-# build-bot specific failures in last 2 days
+# build-bot specific failures in last 2 days (from bors retries)
 SELECT
   regexp_replace(
     replace(ic.body, ':broken_heart: Test failed - [', ''),
