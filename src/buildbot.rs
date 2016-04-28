@@ -1,7 +1,9 @@
 use std::collections::BTreeMap;
 use std::io::Read;
 
+use chrono::NaiveDateTime;
 use diesel;
+use diesel::prelude::*;
 use hyper::Client;
 use serde_json;
 
@@ -26,15 +28,6 @@ impl Into<Build> for BuildFromJson {
             None => false,
         };
 
-        let duration = if successful {
-            match self.times {
-                (Some(start), Some(end)) => Some((end - start) as i32),
-                _ => None,
-            }
-        } else {
-            None
-        };
-
         let concat_msg = {
             let mut buf = String::new();
             for s in self.text {
@@ -46,12 +39,33 @@ impl Into<Build> for BuildFromJson {
             buf
         };
 
+        let start_time = match self.times.0 {
+            Some(t) => NaiveDateTime::from_timestamp_opt(t as i64, 0),
+            None => None,
+        };
+
+        let end_time = match self.times.1 {
+            Some(t) => NaiveDateTime::from_timestamp_opt(t as i64, 0),
+            None => None,
+        };
+
+        let duration = if successful {
+            match self.times {
+                (Some(start), Some(end)) => Some((end - start) as i32),
+                _ => None,
+            }
+        } else {
+            None
+        };
+
         Build {
             number: self.number,
             builder_name: self.builderName,
             successful: successful,
             message: concat_msg,
             duration_secs: duration,
+            start_time: start_time,
+            end_time: end_time,
         }
     }
 }
@@ -89,12 +103,13 @@ pub fn ingest() -> DashResult<()> {
                            .collect::<Vec<Build>>();
 
         debug!("Inserting/updating records in database.");
+        trace!("{:#?}", &builds);
         for b in builds {
-            use diesel::prelude::*;
             use domain::schema::build::dsl::*;
-            let pk = build.filter(number.eq(b.number).and(builder_name.eq(&b.builder_name)))
-                          .first::<(i32, i32, String, bool, String, Option<i32>)>(&*conn)
-                          .map(|f| f.0)
+            let pk = build.select(id)
+                          .filter(number.eq(b.number))
+                          .filter(builder_name.eq(&b.builder_name))
+                          .first::<i32>(&*conn)
                           .ok();
 
             if let Some(pk) = pk {

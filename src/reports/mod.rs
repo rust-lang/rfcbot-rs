@@ -13,6 +13,7 @@ use error::DashResult;
 pub struct DashSummary {
     pull_requests: PullRequestSummary,
     issues: IssueSummary,
+    buildbots: BuildbotSummary,
 }
 
 #[derive(Clone, Debug)]
@@ -37,6 +38,11 @@ pub struct IssueSummary {
     num_open_regression_nightly_issues: i64,
     num_open_regression_beta_issues: i64,
     num_open_regression_stable_issues: i64,
+}
+
+#[derive(Clone, Debug)]
+pub struct BuildbotSummary {
+    per_builder_times_mins: BTreeMap<String, BTreeMap<NaiveDate, f64>>,
 }
 
 pub fn summary() -> DashResult<DashSummary> {
@@ -73,6 +79,9 @@ pub fn summary() -> DashResult<DashSummary> {
             num_open_regression_nightly_issues: nightly_regress,
             num_open_regression_beta_issues: beta_regress,
             num_open_regression_stable_issues: stable_regress,
+        },
+        buildbots: BuildbotSummary {
+            per_builder_times_mins: try!(buildbot_build_times(since, until)),
         },
     })
 }
@@ -279,4 +288,31 @@ pub fn open_issues_with_label(label: &str) -> DashResult<i64> {
                  .filter(closed_at.is_not_null())
                  .filter(AsExpression::<Text>::as_expression(label).eq(any(labels)))
                  .first(&*conn)))
+}
+
+pub fn buildbot_build_times(since: NaiveDateTime,
+                            until: NaiveDateTime)
+                            -> DashResult<BTreeMap<String, BTreeMap<NaiveDate, f64>>> {
+    use domain::schema::build::dsl::*;
+
+    let conn = try!(DB_POOL.get());
+
+    let name_date = sql::<(Text, Date)>("builder_name, date(start_time)");
+
+    let triples = try!(build.select((&name_date,
+                                     sql::<Double>("(AVG(duration_secs) / 60)::float")))
+                            .filter(successful)
+                            .filter(start_time.is_not_null())
+                            .filter(start_time.ge(since))
+                            .filter(start_time.le(until))
+                            .filter(builder_name.like("auto-%"))
+                            .group_by(&name_date)
+                            .load::<((String, NaiveDate), f64)>(&*conn));
+
+    let mut results = BTreeMap::new();
+    for ((builder, date), build_minutes) in triples {
+        results.entry(builder).or_insert(BTreeMap::new()).insert(date, build_minutes);
+    }
+
+    Ok(results)
 }

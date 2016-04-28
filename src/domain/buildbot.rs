@@ -1,3 +1,4 @@
+use chrono::NaiveDateTime;
 use diesel::ExpressionMethods;
 
 use super::schema::*;
@@ -11,6 +12,6 @@ pub struct Build {
     pub successful: bool,
     pub message: String,
     pub duration_secs: Option<i32>,
+    pub start_time: Option<NaiveDateTime>,
+    pub end_time: Option<NaiveDateTime>,
 }
-
-// TODO record end time
