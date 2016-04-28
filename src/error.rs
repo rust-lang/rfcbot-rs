@@ -6,6 +6,7 @@ use std::io;
 
 use diesel;
 use hyper;
+use iron;
 use r2d2;
 use serde_json;
 
@@ -48,5 +49,21 @@ impl From<r2d2::GetTimeout> for DashError {
 impl From<diesel::result::Error> for DashError {
     fn from(e: diesel::result::Error) -> Self {
         DashError::DieselError(e)
+    }
+}
+
+impl From<DashError> for iron::IronError {
+    fn from(e: DashError) -> iron::IronError {
+        iron::IronError {
+            error: match e {
+                DashError::Hyper(e) => Box::new(e),
+                DashError::Io(e) => Box::new(e),
+                DashError::Serde(e) => Box::new(e),
+                DashError::R2d2Timeout(e) => Box::new(e),
+                DashError::DieselError(e) => Box::new(e),
+                DashError::Misc => Box::new(io::Error::new(io::ErrorKind::Other, "miscellaneous error")),
+            },
+            response: iron::Response::with(iron::status::InternalServerError),
+        }
     }
 }

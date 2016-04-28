@@ -11,12 +11,16 @@ extern crate dotenv;
 extern crate env_logger;
 #[macro_use]
 extern crate hyper;
+extern crate iron;
 #[macro_use]
 extern crate lazy_static;
 #[macro_use]
 extern crate log;
+extern crate mount;
 extern crate r2d2;
 extern crate r2d2_diesel;
+#[macro_use]
+extern crate router;
 extern crate serde;
 extern crate serde_json;
 
@@ -28,6 +32,7 @@ mod github;
 mod releases;
 mod reports;
 mod scraper;
+mod server;
 
 use chrono::{DateTime, Local, TimeZone, UTC};
 use clap::{App, Arg, ArgMatches, SubCommand};
@@ -70,6 +75,10 @@ fn main() {
         // need to come up with a better way to do this...
         scraper::start_scraping();
 
+    } else if let Some(_) = args.subcommand_matches("serve") {
+
+        server::serve();
+
     } else if let Some(args) = args.subcommand_matches("bootstrap") {
         // OK to unwrap, this has already been validated by clap
         let start = make_date_time(args.value_of("since").unwrap())
@@ -99,7 +108,15 @@ fn main() {
             _ => error!("Invalid scraping source specified."),
         }
     } else {
-        info!("testing reports:\n{:#?}", reports::summary());
+        let today = UTC::today().naive_utc();
+        let since = today - chrono::Duration::days(120);
+        let summary = reports::summary(since, today).unwrap();
+        debug!("{:?}", &summary);
+
+        let summary_json = serde_json::to_string_pretty(&summary).unwrap();
+        debug!("{}", summary_json);
+
+        panic!("invalid subcommand -- see help message or maybe open GitHub issue");
     }
 }
 
@@ -109,6 +126,7 @@ fn make_date_time(date_str: &str) -> Result<DateTime<UTC>, chrono::ParseError> {
 
 fn init_cli<'a>() -> ArgMatches<'a> {
     let scrape = SubCommand::with_name("scrape").about("scrapes any updated data");
+    let serve = SubCommand::with_name("serve").about("serve the dashboard JSON API");
 
     let bootstrap = SubCommand::with_name("bootstrap")
                         .about("bootstraps the database")
@@ -141,6 +159,7 @@ fn init_cli<'a>() -> ArgMatches<'a> {
         .about(env!("CARGO_PKG_DESCRIPTION"))
         .subcommand(bootstrap)
         .subcommand(scrape)
+        .subcommand(serve)
         .get_matches()
 }
 

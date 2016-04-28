@@ -23,6 +23,7 @@ rustc 1.10.0-nightly (c2aaad4e2 2016-04-19)
 * `GITHUB_SCRAPE_INTERVAL`: time (in minutes) to wait in between GitHub scrapes
 * `RELEASES_SCRAPE_INTERVAL`: time (in minutes) to wait in between nightly release scrapes
 * `BUILDBOT_SCRAPE_INTERVAL`: time (in minutes) to wait in between buildbot scrapes
+* `SERVER_PORT`: port on which the API server should listen
 
 ## Database
 

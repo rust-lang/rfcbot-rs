@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 
-use chrono::{Duration, NaiveDate, NaiveDateTime, UTC};
+use chrono::{NaiveDate, NaiveDateTime};
 use diesel::expression::dsl::*;
 use diesel::expression::AsExpression;
 use diesel::prelude::*;
@@ -9,14 +9,14 @@ use diesel::types::{BigInt, Date, Double, Integer, Text};
 use DB_POOL;
 use error::DashResult;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize)]
 pub struct DashSummary {
     pull_requests: PullRequestSummary,
     issues: IssueSummary,
     buildbots: BuildbotSummary,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize)]
 pub struct PullRequestSummary {
     opened_per_day: BTreeMap<NaiveDate, i64>,
     closed_per_day: BTreeMap<NaiveDate, i64>,
@@ -24,10 +24,10 @@ pub struct PullRequestSummary {
     num_closed_per_week: BTreeMap<NaiveDate, i64>,
     days_open_before_close: BTreeMap<NaiveDate, f64>,
     current_open_age_days_mean: f64,
-    bors_retries: BTreeMap<i32, i64>,
+    bors_retries: BTreeMap<String, i64>,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize)]
 pub struct IssueSummary {
     opened_per_day: BTreeMap<NaiveDate, i64>,
     closed_per_day: BTreeMap<NaiveDate, i64>,
@@ -40,15 +40,15 @@ pub struct IssueSummary {
     num_open_regression_stable_issues: i64,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize)]
 pub struct BuildbotSummary {
     per_builder_times_mins: BTreeMap<String, BTreeMap<NaiveDate, f64>>,
     per_builder_failures: BTreeMap<String, BTreeMap<NaiveDate, i64>>,
 }
 
-pub fn summary() -> DashResult<DashSummary> {
-    let until = UTC::now().naive_utc();
-    let since = until - Duration::days(90);
+pub fn summary(since: NaiveDate, until: NaiveDate) -> DashResult<DashSummary> {
+    let since = since.and_hms(0, 0, 0);
+    let until = until.and_hms(23, 59, 59);
 
     let pr_open_time = try!(prs_open_time_before_close(since, until));
     let issue_open_time = try!(issues_open_time_before_close(since, until));
@@ -187,7 +187,7 @@ pub fn open_prs_avg_days_old() -> DashResult<f64> {
 
 pub fn bors_retries_per_pr(since: NaiveDateTime,
                            until: NaiveDateTime)
-                           -> DashResult<BTreeMap<i32, i64>> {
+                           -> DashResult<BTreeMap<String, i64>> {
 
     use domain::schema::issuecomment::dsl::*;
     let conn = try!(DB_POOL.get());
@@ -199,6 +199,7 @@ pub fn bors_retries_per_pr(since: NaiveDateTime,
                         .group_by(fk_issue)
                         .load(&*conn))
            .into_iter()
+           .map(|(k, v): (i32, i64)| (k.to_string(), v))
            .collect())
 }
 
