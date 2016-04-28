@@ -35,8 +35,6 @@ pub fn summary(req: &mut Request) -> IronResult<Response> {
             // TODO parse the request dates out of the url
 
             unimplemented!();
-
-            Ok(Response::with((status::NotFound, format!("unimplemented"))))
         },
         _ => {
             Ok(Response::with(status::Unauthorized))
