@@ -40,10 +40,6 @@ SELECT
 FROM pullrequest
 WHERE closed_at IS NULL
 
-###############################################
-# everything below this line is unimplemented
-###############################################
-
 # number of '@bors: retry' per PR
 SELECT ic.fk_issue, COUNT(ic.*)
 FROM issuecomment ic
@@ -103,6 +99,10 @@ WHERE
   'regression-from-stable-to-beta' = ANY (i.labels) OR
   'regression-from-stable-to-nightly' = ANY (i.labels) OR
   'regression-from-stable-to-stable' = ANY (i.labels)
+
+###############################################
+# everything below this line is unimplemented
+###############################################
 
 # build-bot specific failures in last 2 days
 SELECT
