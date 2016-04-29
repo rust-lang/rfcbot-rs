@@ -7,9 +7,9 @@ $ time curl http://localhost:8080/summary
 
 # JSON output below
 
-real	0m0.424s
+real	0m0.149s
 user	0m0.007s
-sys	0m0.003s
+sys	0m0.000s
 ```
 
 ```json
