@@ -52,72 +52,134 @@ pub fn summary(since: NaiveDate, until: NaiveDate) -> DashResult<DashSummary> {
     let since = since.and_hms(0, 0, 0);
     let until = until.and_hms(23, 59, 59);
 
-    let pr_summary = Mutex::new(None);
-    let issue_summary = Mutex::new(None);
-    let builder_summary = Mutex::new(None);
+    let current_pr_age = Mutex::new(None);
+    let prs_open_per_day = Mutex::new(None);
+    let prs_close_per_day = Mutex::new(None);
+    let prs_merge_per_day = Mutex::new(None);
+    let pr_open_time = Mutex::new(None);
+    let bors_retries = Mutex::new(None);
+    let per_builder_times = Mutex::new(None);
+    let per_builder_fails = Mutex::new(None);
+    let current_issue_age = Mutex::new(None);
+    let issue_open_time = Mutex::new(None);
+    let issues_open_per_day = Mutex::new(None);
+    let issues_close_per_day = Mutex::new(None);
+    let num_p_high = Mutex::new(None);
+    let nightly_regress = Mutex::new(None);
+    let beta_regress = Mutex::new(None);
+    let stable_regress = Mutex::new(None);
 
-    // TODO generate much better error handling for problems with queries
+    // TODO (adam) make this less fugly
     crossbeam::scope(|scope| {
         scope.spawn(|| {
-            let current_pr_age = open_prs_avg_days_old().expect("problem with query");
-            let prs_open_per_day = prs_opened_per_day(since, until).expect("problem with query");
-            let prs_close_per_day = prs_closed_per_day(since, until).expect("problem with query");
-            let prs_merged_per_day = prs_merged_per_day(since, until).expect("problem with query");
-            let pr_open_time = prs_open_time_before_close(since, until).expect("problem with query");
-            let bors_retries = bors_retries_per_pr(since, until).expect("problem with query");
+            let mut current_pr_age = current_pr_age.lock().unwrap();
+            *current_pr_age = Some(open_prs_avg_days_old());
+        });
 
-            let mut prs = pr_summary.lock().unwrap();
-            *prs = Some(PullRequestSummary {
-                opened_per_day: prs_open_per_day,
-                closed_per_day: prs_close_per_day,
-                merged_per_day: prs_merged_per_day,
-                num_closed_per_week: pr_open_time.0,
-                days_open_before_close: pr_open_time.1,
-                current_open_age_days_mean: current_pr_age,
-                bors_retries: bors_retries,
-            });
+        scope.spawn(||{
+            let mut prs_open_per_day = prs_open_per_day.lock().unwrap();
+            *prs_open_per_day = Some(prs_opened_per_day(since, until));
+        });
 
-            let per_builder_times = buildbot_build_times(since, until).expect("problem with query");
-            let per_builder_fails = buildbot_failures_by_day(since, until).expect("problem with query");
+        scope.spawn(||{
+            let mut prs_close_per_day = prs_close_per_day.lock().unwrap();
+            *prs_close_per_day = Some(prs_closed_per_day(since, until));
+        });
 
-            let mut builds = builder_summary.lock().unwrap();
-            *builds = Some(BuildbotSummary {
-                per_builder_times_mins: per_builder_times,
-                per_builder_failures: per_builder_fails,
-            });
+        scope.spawn(||{
+            let mut prs_merge_per_day = prs_merge_per_day.lock().unwrap();
+            *prs_merge_per_day = Some(prs_merged_per_day(since, until));
+        });
+
+        scope.spawn(||{
+            let mut pr_open_time = pr_open_time.lock().unwrap();
+            *pr_open_time = Some(prs_open_time_before_close(since, until));
+        });
+
+        scope.spawn(||{
+            let mut bors_retries = bors_retries.lock().unwrap();
+            *bors_retries = Some(bors_retries_per_pr(since, until));
+        });
+
+        scope.spawn(||{
+            let mut per_builder_times = per_builder_times.lock().unwrap();
+            *per_builder_times = Some(buildbot_build_times(since, until));
+        });
+
+        scope.spawn(||{
+            let mut per_builder_fails = per_builder_fails.lock().unwrap();
+            *per_builder_fails = Some(buildbot_failures_by_day(since, until));
         });
 
         scope.spawn(|| {
-            let current_issue_age = open_issues_avg_days_old().expect("problem with query");
-            let issue_open_time = issues_open_time_before_close(since, until).expect("problem with query");
+            let mut current_issue_age = current_issue_age.lock().unwrap();
+            *current_issue_age = Some(open_issues_avg_days_old());
+        });
 
-            let issues_open_per_day = issues_opened_per_day(since, until).expect("problem with query");
-            let issues_close_per_day = issues_closed_per_day(since, until).expect("problem with query");
+        scope.spawn(||{
+            let mut issue_open_time = issue_open_time.lock().unwrap();
+            *issue_open_time = Some(issues_open_time_before_close(since, until));
+        });
 
-            let num_p_high = open_issues_with_label("P-high").expect("problem with query");
-            let nightly_regress = open_issues_with_label("regression-from-stable-to-nightly").expect("problem with query");
-            let beta_regress = open_issues_with_label("regression-from-stable-to-beta").expect("problem with query");
-            let stable_regress = open_issues_with_label("regression-from-stable-to-stable").expect("problem with query");
+        scope.spawn(||{
+            let mut issues_open_per_day = issues_open_per_day.lock().unwrap();
+            *issues_open_per_day = Some(issues_opened_per_day(since, until));
+        });
 
-            let mut issues = issue_summary.lock().unwrap();
-            *issues = Some(IssueSummary {
-                opened_per_day: issues_open_per_day,
-                closed_per_day: issues_close_per_day,
-                num_closed_per_week: issue_open_time.0,
-                days_open_before_close: issue_open_time.1,
-                current_open_age_days_mean: current_issue_age,
-                num_open_p_high_issues: num_p_high,
-                num_open_regression_nightly_issues: nightly_regress,
-                num_open_regression_beta_issues: beta_regress,
-                num_open_regression_stable_issues: stable_regress,
-            });
+        scope.spawn(||{
+            let mut issues_close_per_day = issues_close_per_day.lock().unwrap();
+            *issues_close_per_day = Some(issues_closed_per_day(since, until));
+        });
+
+        scope.spawn(||{
+            let mut num_p_high = num_p_high.lock().unwrap();
+            *num_p_high = Some(open_issues_with_label("P-high"));
+        });
+
+        scope.spawn(||{
+            let mut nightly_regress = nightly_regress.lock().unwrap();
+            *nightly_regress = Some(open_issues_with_label("regression-from-stable-to-nightly"));
+        });
+
+        scope.spawn(||{
+            let mut beta_regress = beta_regress.lock().unwrap();
+            *beta_regress = Some(open_issues_with_label("regression-from-stable-to-beta"));
+        });
+
+        scope.spawn(||{
+            let mut stable_regress = stable_regress.lock().unwrap();
+            *stable_regress = Some(open_issues_with_label("regression-from-stable-to-stable"));
         });
     });
 
+    let pr_open_time_result = try!(pr_open_time.into_inner().unwrap().unwrap());
+    let issue_open_time = try!(issue_open_time.into_inner().unwrap().unwrap());
+
     Ok(DashSummary {
-        pull_requests: pr_summary.into_inner().unwrap().unwrap(),
-        issues: issue_summary.into_inner().unwrap().unwrap(),
-        buildbots: builder_summary.into_inner().unwrap().unwrap(),
+        pull_requests: PullRequestSummary {
+            opened_per_day: try!(prs_open_per_day.into_inner().unwrap().unwrap()),
+            closed_per_day: try!(prs_close_per_day.into_inner().unwrap().unwrap()),
+            merged_per_day: try!(prs_merge_per_day.into_inner().unwrap().unwrap()),
+            num_closed_per_week: pr_open_time_result.0,
+            days_open_before_close: pr_open_time_result.1,
+            current_open_age_days_mean: try!(current_pr_age.into_inner().unwrap().unwrap()),
+            bors_retries: try!(bors_retries.into_inner().unwrap().unwrap()),
+        },
+        issues: IssueSummary {
+            opened_per_day: try!(issues_open_per_day.into_inner().unwrap().unwrap()),
+            closed_per_day: try!(issues_close_per_day.into_inner().unwrap().unwrap()),
+            num_closed_per_week: issue_open_time.0,
+            days_open_before_close: issue_open_time.1,
+            current_open_age_days_mean: try!(current_issue_age.into_inner().unwrap().unwrap()),
+            num_open_p_high_issues: try!(num_p_high.into_inner().unwrap().unwrap()),
+            num_open_regression_nightly_issues: try!(nightly_regress.into_inner().unwrap().unwrap()),
+            num_open_regression_beta_issues: try!(beta_regress.into_inner().unwrap().unwrap()),
+            num_open_regression_stable_issues: try!(stable_regress.into_inner().unwrap().unwrap()),
+        },
+        buildbots: BuildbotSummary {
+            per_builder_times_mins: try!(per_builder_times.into_inner().unwrap().unwrap()),
+            per_builder_failures: try!(per_builder_fails.into_inner().unwrap().unwrap()),
+        },
     })
 }
 

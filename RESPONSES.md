@@ -1,16 +1,18 @@
 # API Responses
 
-An example request to the summary API (with the JSON prettified and truncated greatly):
+An example request to the summary API.
 
 ```bash
-$ time curl http://localhost:8080/summary
+$ time curl http://localhost:8080/summary?[0-100] > /dev/null
 
-# JSON output below
+# ...
 
-real	0m0.149s
-user	0m0.007s
-sys	0m0.000s
+real	0m8.431s
+user	0m0.020s
+sys	0m0.020s
 ```
+
+Example of JSON output (prettified and truncated greatly):
 
 ```json
 {
