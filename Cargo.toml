@@ -6,6 +6,7 @@ authors = ["Adam Perry <adam.n.perry@gmail.com>"]
 [dependencies]
 chrono = {version = "0.2.21", features = ["serde"] }
 clap = "2.2.5"
+crossbeam = "0.2.9"
 dotenv = "0.8.0"
 dotenv_macros = "0.8.0"
 env_logger = "0.3.3"

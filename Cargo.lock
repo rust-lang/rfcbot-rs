@@ -4,6 +4,7 @@ version = "0.1.0"
 dependencies = [
  "chrono 0.2.22 (registry+https://github.com/rust-lang/crates.io-index)",
  "clap 2.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "crossbeam 0.2.9 (registry+https://github.com/rust-lang/crates.io-index)",
  "diesel 0.6.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "diesel_codegen 0.6.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "dotenv 0.8.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -96,6 +97,11 @@ dependencies = [
  "time 0.1.35 (registry+https://github.com/rust-lang/crates.io-index)",
  "url 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
+
+[[package]]
+name = "crossbeam"
+version = "0.2.9"
+source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
 name = "diesel"

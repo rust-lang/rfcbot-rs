@@ -5,6 +5,7 @@
 
 extern crate chrono;
 extern crate clap;
+extern crate crossbeam;
 #[macro_use]
 extern crate diesel;
 extern crate dotenv;
