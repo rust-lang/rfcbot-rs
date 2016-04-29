@@ -19,7 +19,7 @@ pub struct DashSummary {
 
 #[derive(Clone, Debug, Serialize)]
 pub struct PullRequestSummary {
-    opened_per_day: BTreeMap<NaiveDate, i64>,
+    opened_per_day: Vec<(NaiveDate, i64)>,
     closed_per_day: BTreeMap<NaiveDate, i64>,
     merged_per_day: BTreeMap<NaiveDate, i64>,
     num_closed_per_week: BTreeMap<NaiveDate, i64>,
@@ -160,7 +160,7 @@ pub fn summary(since: NaiveDate, until: NaiveDate) -> DashResult<DashSummary> {
 
 pub fn prs_opened_per_day(since: NaiveDateTime,
                           until: NaiveDateTime)
-                          -> DashResult<BTreeMap<NaiveDate, i64>> {
+                          -> DashResult<Vec<(NaiveDate, i64)>> {
     use domain::schema::pullrequest::dsl::*;
 
     let conn = try!(DB_POOL.get());
@@ -169,9 +169,8 @@ pub fn prs_opened_per_day(since: NaiveDateTime,
                        .filter(created_at.ge(since))
                        .filter(created_at.le(until))
                        .group_by(d)
-                       .get_results(&*conn))
-           .into_iter()
-           .collect())
+                       .order(date(created_at).asc())
+                       .get_results(&*conn)))
 }
 
 pub fn prs_closed_per_day(since: NaiveDateTime,

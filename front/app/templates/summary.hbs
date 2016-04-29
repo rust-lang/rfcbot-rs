@@ -1,5 +1,6 @@
 {{outlet}}
 
-<p>
-  summary goes here
-</p>
+{{high-charts mode=model.pr.open_per_day.mode
+              content=model.pr.open_per_day.data
+              chartOptions=model.pr.open_per_day.opts
+              them=model.pr.open_per_day.theme }}
