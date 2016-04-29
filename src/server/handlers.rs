@@ -21,10 +21,8 @@ pub fn default_summary(req: &mut Request) -> IronResult<Response> {
             }));
 
             Ok(Response::with((status::Ok, summary_json)))
-        },
-        _ => {
-            Ok(Response::with(status::Unauthorized))
         }
+        _ => Ok(Response::with(status::Unauthorized)),
     }
 }
 
@@ -35,9 +33,7 @@ pub fn summary(req: &mut Request) -> IronResult<Response> {
             // TODO parse the request dates out of the url
 
             unimplemented!();
-        },
-        _ => {
-            Ok(Response::with(status::Unauthorized))
         }
+        _ => Ok(Response::with(status::Unauthorized)),
     }
 }

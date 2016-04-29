@@ -61,7 +61,9 @@ impl From<DashError> for iron::IronError {
                 DashError::Serde(e) => Box::new(e),
                 DashError::R2d2Timeout(e) => Box::new(e),
                 DashError::DieselError(e) => Box::new(e),
-                DashError::Misc => Box::new(io::Error::new(io::ErrorKind::Other, "miscellaneous error")),
+                DashError::Misc => {
+                    Box::new(io::Error::new(io::ErrorKind::Other, "miscellaneous error"))
+                }
             },
             response: iron::Response::with(iron::status::InternalServerError),
         }

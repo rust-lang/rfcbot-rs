@@ -1,5 +1,4 @@
 use std::collections::BTreeMap;
-use std::sync::Mutex;
 
 use chrono::{NaiveDate, NaiveDateTime};
 use crossbeam;
@@ -52,133 +51,109 @@ pub fn summary(since: NaiveDate, until: NaiveDate) -> DashResult<DashSummary> {
     let since = since.and_hms(0, 0, 0);
     let until = until.and_hms(23, 59, 59);
 
-    let current_pr_age = Mutex::new(None);
-    let prs_open_per_day = Mutex::new(None);
-    let prs_close_per_day = Mutex::new(None);
-    let prs_merge_per_day = Mutex::new(None);
-    let pr_open_time = Mutex::new(None);
-    let bors_retries = Mutex::new(None);
-    let per_builder_times = Mutex::new(None);
-    let per_builder_fails = Mutex::new(None);
-    let current_issue_age = Mutex::new(None);
-    let issue_open_time = Mutex::new(None);
-    let issues_open_per_day = Mutex::new(None);
-    let issues_close_per_day = Mutex::new(None);
-    let num_p_high = Mutex::new(None);
-    let nightly_regress = Mutex::new(None);
-    let beta_regress = Mutex::new(None);
-    let stable_regress = Mutex::new(None);
+    // set up "landing zones" for async result propagation
+    let mut current_pr_age = None;
+    let mut prs_open_per_day = None;
+    let mut prs_close_per_day = None;
+    let mut prs_merge_per_day = None;
+    let mut pr_open_time = None;
+    let mut bors_retries = None;
+    let mut per_builder_times = None;
+    let mut per_builder_fails = None;
+    let mut current_issue_age = None;
+    let mut issue_open_time = None;
+    let mut issues_open_per_day = None;
+    let mut issues_close_per_day = None;
+    let mut num_p_high = None;
+    let mut nightly_regress = None;
+    let mut beta_regress = None;
+    let mut stable_regress = None;
 
-    // TODO (adam) make this less fugly
+    // go and get all of the results in parallel
     crossbeam::scope(|scope| {
+        scope.spawn(|| current_pr_age = Some(open_prs_avg_days_old()));
+
+        scope.spawn(|| prs_open_per_day = Some(prs_opened_per_day(since, until)));
+
+        scope.spawn(|| prs_close_per_day = Some(prs_closed_per_day(since, until)));
+
+        scope.spawn(|| prs_merge_per_day = Some(prs_merged_per_day(since, until)));
+
+        scope.spawn(|| pr_open_time = Some(prs_open_time_before_close(since, until)));
+
+        scope.spawn(|| bors_retries = Some(bors_retries_per_pr(since, until)));
+
+        scope.spawn(|| per_builder_times = Some(buildbot_build_times(since, until)));
+
+        scope.spawn(|| per_builder_fails = Some(buildbot_failures_by_day(since, until)));
+
+        scope.spawn(|| current_issue_age = Some(open_issues_avg_days_old()));
+
+        scope.spawn(|| issue_open_time = Some(issues_open_time_before_close(since, until)));
+
+        scope.spawn(|| issues_open_per_day = Some(issues_opened_per_day(since, until)));
+
+        scope.spawn(|| issues_close_per_day = Some(issues_closed_per_day(since, until)));
+
+        scope.spawn(|| num_p_high = Some(open_issues_with_label("P-high")));
+
         scope.spawn(|| {
-            let mut current_pr_age = current_pr_age.lock().unwrap();
-            *current_pr_age = Some(open_prs_avg_days_old());
-        });
-
-        scope.spawn(||{
-            let mut prs_open_per_day = prs_open_per_day.lock().unwrap();
-            *prs_open_per_day = Some(prs_opened_per_day(since, until));
-        });
-
-        scope.spawn(||{
-            let mut prs_close_per_day = prs_close_per_day.lock().unwrap();
-            *prs_close_per_day = Some(prs_closed_per_day(since, until));
-        });
-
-        scope.spawn(||{
-            let mut prs_merge_per_day = prs_merge_per_day.lock().unwrap();
-            *prs_merge_per_day = Some(prs_merged_per_day(since, until));
-        });
-
-        scope.spawn(||{
-            let mut pr_open_time = pr_open_time.lock().unwrap();
-            *pr_open_time = Some(prs_open_time_before_close(since, until));
-        });
-
-        scope.spawn(||{
-            let mut bors_retries = bors_retries.lock().unwrap();
-            *bors_retries = Some(bors_retries_per_pr(since, until));
-        });
-
-        scope.spawn(||{
-            let mut per_builder_times = per_builder_times.lock().unwrap();
-            *per_builder_times = Some(buildbot_build_times(since, until));
-        });
-
-        scope.spawn(||{
-            let mut per_builder_fails = per_builder_fails.lock().unwrap();
-            *per_builder_fails = Some(buildbot_failures_by_day(since, until));
+            nightly_regress = Some(open_issues_with_label("regression-from-stable-to-nightly"))
         });
 
         scope.spawn(|| {
-            let mut current_issue_age = current_issue_age.lock().unwrap();
-            *current_issue_age = Some(open_issues_avg_days_old());
+            beta_regress = Some(open_issues_with_label("regression-from-stable-to-beta"))
         });
 
-        scope.spawn(||{
-            let mut issue_open_time = issue_open_time.lock().unwrap();
-            *issue_open_time = Some(issues_open_time_before_close(since, until));
-        });
-
-        scope.spawn(||{
-            let mut issues_open_per_day = issues_open_per_day.lock().unwrap();
-            *issues_open_per_day = Some(issues_opened_per_day(since, until));
-        });
-
-        scope.spawn(||{
-            let mut issues_close_per_day = issues_close_per_day.lock().unwrap();
-            *issues_close_per_day = Some(issues_closed_per_day(since, until));
-        });
-
-        scope.spawn(||{
-            let mut num_p_high = num_p_high.lock().unwrap();
-            *num_p_high = Some(open_issues_with_label("P-high"));
-        });
-
-        scope.spawn(||{
-            let mut nightly_regress = nightly_regress.lock().unwrap();
-            *nightly_regress = Some(open_issues_with_label("regression-from-stable-to-nightly"));
-        });
-
-        scope.spawn(||{
-            let mut beta_regress = beta_regress.lock().unwrap();
-            *beta_regress = Some(open_issues_with_label("regression-from-stable-to-beta"));
-        });
-
-        scope.spawn(||{
-            let mut stable_regress = stable_regress.lock().unwrap();
-            *stable_regress = Some(open_issues_with_label("regression-from-stable-to-stable"));
+        scope.spawn(|| {
+            stable_regress = Some(open_issues_with_label("regression-from-stable-to-stable"))
         });
     });
 
-    let pr_open_time_result = try!(pr_open_time.into_inner().unwrap().unwrap());
-    let issue_open_time = try!(issue_open_time.into_inner().unwrap().unwrap());
+    // unwrap the options (they will be Some if the crossbeam scope ended)
+    // and return the first (if any) error out
+    let current_pr_age = try!(current_pr_age.unwrap());
+    let prs_open_per_day = try!(prs_open_per_day.unwrap());
+    let prs_close_per_day = try!(prs_close_per_day.unwrap());
+    let prs_merge_per_day = try!(prs_merge_per_day.unwrap());
+    let pr_open_time = try!(pr_open_time.unwrap());
+    let bors_retries = try!(bors_retries.unwrap());
+    let per_builder_times = try!(per_builder_times.unwrap());
+    let per_builder_fails = try!(per_builder_fails.unwrap());
+    let current_issue_age = try!(current_issue_age.unwrap());
+    let issue_open_time = try!(issue_open_time.unwrap());
+    let issues_open_per_day = try!(issues_open_per_day.unwrap());
+    let issues_close_per_day = try!(issues_close_per_day.unwrap());
+    let num_p_high = try!(num_p_high.unwrap());
+    let nightly_regress = try!(nightly_regress.unwrap());
+    let beta_regress = try!(beta_regress.unwrap());
+    let stable_regress = try!(stable_regress.unwrap());
 
+    // if we've made it this far, everything was successful
     Ok(DashSummary {
         pull_requests: PullRequestSummary {
-            opened_per_day: try!(prs_open_per_day.into_inner().unwrap().unwrap()),
-            closed_per_day: try!(prs_close_per_day.into_inner().unwrap().unwrap()),
-            merged_per_day: try!(prs_merge_per_day.into_inner().unwrap().unwrap()),
-            num_closed_per_week: pr_open_time_result.0,
-            days_open_before_close: pr_open_time_result.1,
-            current_open_age_days_mean: try!(current_pr_age.into_inner().unwrap().unwrap()),
-            bors_retries: try!(bors_retries.into_inner().unwrap().unwrap()),
+            opened_per_day: prs_open_per_day,
+            closed_per_day: prs_close_per_day,
+            merged_per_day: prs_merge_per_day,
+            num_closed_per_week: pr_open_time.0,
+            days_open_before_close: pr_open_time.1,
+            current_open_age_days_mean: current_pr_age,
+            bors_retries: bors_retries,
         },
         issues: IssueSummary {
-            opened_per_day: try!(issues_open_per_day.into_inner().unwrap().unwrap()),
-            closed_per_day: try!(issues_close_per_day.into_inner().unwrap().unwrap()),
+            opened_per_day: issues_open_per_day,
+            closed_per_day: issues_close_per_day,
             num_closed_per_week: issue_open_time.0,
             days_open_before_close: issue_open_time.1,
-            current_open_age_days_mean: try!(current_issue_age.into_inner().unwrap().unwrap()),
-            num_open_p_high_issues: try!(num_p_high.into_inner().unwrap().unwrap()),
-            num_open_regression_nightly_issues: try!(nightly_regress.into_inner().unwrap().unwrap()),
-            num_open_regression_beta_issues: try!(beta_regress.into_inner().unwrap().unwrap()),
-            num_open_regression_stable_issues: try!(stable_regress.into_inner().unwrap().unwrap()),
+            current_open_age_days_mean: current_issue_age,
+            num_open_p_high_issues: num_p_high,
+            num_open_regression_nightly_issues: nightly_regress,
+            num_open_regression_beta_issues: beta_regress,
+            num_open_regression_stable_issues: stable_regress,
         },
         buildbots: BuildbotSummary {
-            per_builder_times_mins: try!(per_builder_times.into_inner().unwrap().unwrap()),
-            per_builder_failures: try!(per_builder_fails.into_inner().unwrap().unwrap()),
+            per_builder_times_mins: per_builder_times,
+            per_builder_failures: per_builder_fails,
         },
     })
 }

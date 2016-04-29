@@ -10,7 +10,8 @@ mod handlers;
 pub fn serve() {
     let mut mount = Mount::new();
 
-    mount.mount("/summary/", router!(
+    mount.mount("/summary/",
+                router!(
         get "/" => handlers::default_summary,
         get "/:start/:end" => handlers::summary,
     ));
