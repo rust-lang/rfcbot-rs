@@ -10,6 +10,8 @@ use diesel::types::{BigInt, Date, Double, Integer, Text};
 use DB_POOL;
 use error::DashResult;
 
+pub type EpochTimestamp = i64;
+
 #[derive(Clone, Debug, Serialize)]
 pub struct DashSummary {
     pull_requests: PullRequestSummary,
@@ -19,13 +21,12 @@ pub struct DashSummary {
 
 #[derive(Clone, Debug, Serialize)]
 pub struct PullRequestSummary {
-    opened_per_day: Vec<(NaiveDate, i64)>,
-    closed_per_day: BTreeMap<NaiveDate, i64>,
-    merged_per_day: BTreeMap<NaiveDate, i64>,
-    num_closed_per_week: BTreeMap<NaiveDate, i64>,
-    days_open_before_close: BTreeMap<NaiveDate, f64>,
+    opened_per_day: Vec<(EpochTimestamp, i64)>,
+    closed_per_day: Vec<(EpochTimestamp, i64)>,
+    merged_per_day: Vec<(EpochTimestamp, i64)>,
+    days_open_before_close: Vec<(EpochTimestamp, f64)>,
     current_open_age_days_mean: f64,
-    bors_retries: BTreeMap<String, i64>,
+    bors_retries: Vec<(i32, i64)>,
 }
 
 #[derive(Clone, Debug, Serialize)]
@@ -135,8 +136,7 @@ pub fn summary(since: NaiveDate, until: NaiveDate) -> DashResult<DashSummary> {
             opened_per_day: prs_open_per_day,
             closed_per_day: prs_close_per_day,
             merged_per_day: prs_merge_per_day,
-            num_closed_per_week: pr_open_time.0,
-            days_open_before_close: pr_open_time.1,
+            days_open_before_close: pr_open_time,
             current_open_age_days_mean: current_pr_age,
             bors_retries: bors_retries,
         },
@@ -160,7 +160,7 @@ pub fn summary(since: NaiveDate, until: NaiveDate) -> DashResult<DashSummary> {
 
 pub fn prs_opened_per_day(since: NaiveDateTime,
                           until: NaiveDateTime)
-                          -> DashResult<Vec<(NaiveDate, i64)>> {
+                          -> DashResult<Vec<(EpochTimestamp, i64)>> {
     use domain::schema::pullrequest::dsl::*;
 
     let conn = try!(DB_POOL.get());
@@ -170,12 +170,15 @@ pub fn prs_opened_per_day(since: NaiveDateTime,
                        .filter(created_at.le(until))
                        .group_by(d)
                        .order(date(created_at).asc())
-                       .get_results(&*conn)))
+                       .get_results::<(NaiveDate, i64)>(&*conn))
+           .into_iter()
+           .map(|(d, cnt)| (d.and_hms(12, 0, 0).timestamp(), cnt))
+           .collect())
 }
 
 pub fn prs_closed_per_day(since: NaiveDateTime,
                           until: NaiveDateTime)
-                          -> DashResult<BTreeMap<NaiveDate, i64>> {
+                          -> DashResult<Vec<(EpochTimestamp, i64)>> {
     use domain::schema::pullrequest::dsl::*;
 
     let conn = try!(DB_POOL.get());
@@ -184,15 +187,17 @@ pub fn prs_closed_per_day(since: NaiveDateTime,
                        .filter(closed_at.is_not_null())
                        .filter(closed_at.ge(since))
                        .filter(closed_at.le(until))
-                       .group_by(d)
-                       .get_results(&*conn))
+                       .group_by(&d)
+                       .order((&d).asc())
+                       .get_results::<(NaiveDate, i64)>(&*conn))
            .into_iter()
+           .map(|(d, cnt)| (d.and_hms(12, 0, 0).timestamp(), cnt))
            .collect())
 }
 
 pub fn prs_merged_per_day(since: NaiveDateTime,
                           until: NaiveDateTime)
-                          -> DashResult<BTreeMap<NaiveDate, i64>> {
+                          -> DashResult<Vec<(EpochTimestamp, i64)>> {
     use domain::schema::pullrequest::dsl::*;
 
     let conn = try!(DB_POOL.get());
@@ -201,48 +206,44 @@ pub fn prs_merged_per_day(since: NaiveDateTime,
                        .filter(merged_at.is_not_null())
                        .filter(merged_at.ge(since))
                        .filter(merged_at.le(until))
-                       .group_by(d)
-                       .get_results(&*conn))
+                       .group_by(&d)
+                       .order((&d).asc())
+                       .get_results::<(NaiveDate, i64)>(&*conn))
            .into_iter()
+           .map(|(d, cnt)| (d.and_hms(12, 0, 0).timestamp(), cnt))
            .collect())
 }
 
-pub fn prs_open_time_before_close
-    (since: NaiveDateTime,
-     until: NaiveDateTime)
-     -> DashResult<(BTreeMap<NaiveDate, i64>, BTreeMap<NaiveDate, f64>)> {
+pub fn prs_open_time_before_close(since: NaiveDateTime,
+                                  until: NaiveDateTime)
+                                  -> DashResult<Vec<(EpochTimestamp, f64)>> {
     use domain::schema::pullrequest::dsl::*;
 
     let conn = try!(DB_POOL.get());
 
     let w = sql::<Text>("iso_closed_week");
-    let triples = try!(pullrequest.select(sql::<(BigInt, Double, Text)>("\
-        COUNT(*), \
-        \
+    let mut results = try!(pullrequest.select(sql::<(Double, Text)>("\
         AVG(EXTRACT(EPOCH FROM closed_at) - \
           EXTRACT(EPOCH FROM created_at)) \
           / (60 * 60 * 24), \
         \
         EXTRACT(ISOYEAR FROM closed_at)::text || '-' || \
           EXTRACT(WEEK FROM closed_at)::text || '-6' AS iso_closed_week"))
-                                  .filter(closed_at.is_not_null())
-                                  .filter(closed_at.ge(since))
-                                  .filter(closed_at.le(until))
-                                  .group_by(w)
-                                  .get_results::<(i64, f64, String)>(&*conn));
+                       .filter(closed_at.is_not_null())
+                       .filter(closed_at.ge(since))
+                       .filter(closed_at.le(until))
+                       .group_by(&w)
+                       .get_results::<(f64, String)>(&*conn))
+           .into_iter()
+           .map(|(time, week)| {
+               let d = NaiveDate::parse_from_str(&week, "%G-%V-%w").unwrap();
+               let d = d.and_hms(12, 0, 0).timestamp();
+               (d, time)
+           })
+           .collect::<Vec<(EpochTimestamp, f64)>>();
 
-    let mut num_closed_map = BTreeMap::new();
-    let mut days_open_map = BTreeMap::new();
-
-    for (num_closed, days_open, week_str) in triples {
-        // this will give us the end of each week we're describing
-        // unwrapping this parsing is fine since we dictate above what format is acceptable
-        let d = NaiveDate::parse_from_str(&week_str, "%G-%V-%w").unwrap();
-        num_closed_map.insert(d, num_closed);
-        days_open_map.insert(d, days_open);
-    }
-
-    Ok((num_closed_map, days_open_map))
+    results.sort_by(|&(d1, _), &(d2, _)| d1.cmp(&d2));
+    Ok(results)
 }
 
 pub fn open_prs_avg_days_old() -> DashResult<f64> {
@@ -256,7 +257,7 @@ pub fn open_prs_avg_days_old() -> DashResult<f64> {
 
 pub fn bors_retries_per_pr(since: NaiveDateTime,
                            until: NaiveDateTime)
-                           -> DashResult<BTreeMap<String, i64>> {
+                           -> DashResult<Vec<(i32, i64)>> {
 
     use domain::schema::issuecomment::dsl::*;
     let conn = try!(DB_POOL.get());
@@ -266,9 +267,9 @@ pub fn bors_retries_per_pr(since: NaiveDateTime,
                         .filter(created_at.ge(since))
                         .filter(created_at.le(until))
                         .group_by(fk_issue)
+                        .order(count_star().desc())
                         .load(&*conn))
            .into_iter()
-           .map(|(k, v): (i32, i64)| (k.to_string(), v))
            .collect())
 }
 
