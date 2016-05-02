@@ -44,8 +44,8 @@ pub struct IssueSummary {
 
 #[derive(Clone, Debug, Serialize)]
 pub struct BuildbotSummary {
-    per_builder_times_mins: BTreeMap<String, BTreeMap<NaiveDate, f64>>,
-    per_builder_failures: BTreeMap<String, BTreeMap<NaiveDate, i64>>,
+    per_builder_times_mins: Vec<(String, Vec<(EpochTimestamp, f64)>)>,
+    per_builder_failures: Vec<(String, Vec<(EpochTimestamp, i64)>)>,
 }
 
 pub fn summary(since: NaiveDate, until: NaiveDate) -> DashResult<DashSummary> {
@@ -229,18 +229,18 @@ pub fn prs_open_time_before_close(since: NaiveDateTime,
         \
         EXTRACT(ISOYEAR FROM closed_at)::text || '-' || \
           EXTRACT(WEEK FROM closed_at)::text || '-6' AS iso_closed_week"))
-                       .filter(closed_at.is_not_null())
-                       .filter(closed_at.ge(since))
-                       .filter(closed_at.le(until))
-                       .group_by(&w)
-                       .get_results::<(f64, String)>(&*conn))
-           .into_iter()
-           .map(|(time, week)| {
-               let d = NaiveDate::parse_from_str(&week, "%G-%V-%w").unwrap();
-               let d = d.and_hms(12, 0, 0).timestamp();
-               (d, time)
-           })
-           .collect::<Vec<(EpochTimestamp, f64)>>();
+                                      .filter(closed_at.is_not_null())
+                                      .filter(closed_at.ge(since))
+                                      .filter(closed_at.le(until))
+                                      .group_by(&w)
+                                      .get_results::<(f64, String)>(&*conn))
+                          .into_iter()
+                          .map(|(time, week)| {
+                              let d = NaiveDate::parse_from_str(&week, "%G-%V-%w").unwrap();
+                              let d = d.and_hms(12, 0, 0).timestamp();
+                              (d, time)
+                          })
+                          .collect::<Vec<(EpochTimestamp, f64)>>();
 
     results.sort_by(|&(d1, _), &(d2, _)| d1.cmp(&d2));
     Ok(results)
@@ -365,7 +365,7 @@ pub fn open_issues_with_label(label: &str) -> DashResult<i64> {
 
 pub fn buildbot_build_times(since: NaiveDateTime,
                             until: NaiveDateTime)
-                            -> DashResult<BTreeMap<String, BTreeMap<NaiveDate, f64>>> {
+                            -> DashResult<Vec<(String, Vec<(EpochTimestamp, f64)>)>> {
     use domain::schema::build::dsl::*;
 
     let conn = try!(DB_POOL.get());
@@ -380,19 +380,22 @@ pub fn buildbot_build_times(since: NaiveDateTime,
                             .filter(start_time.le(until))
                             .filter(builder_name.like("auto-%"))
                             .group_by(&name_date)
+                            .order((&name_date).asc())
                             .load::<((String, NaiveDate), f64)>(&*conn));
 
     let mut results = BTreeMap::new();
     for ((builder, date), build_minutes) in triples {
-        results.entry(builder).or_insert(BTreeMap::new()).insert(date, build_minutes);
+        results.entry(builder)
+               .or_insert(Vec::new())
+               .push((date.and_hms(12, 0, 0).timestamp(), build_minutes));
     }
 
-    Ok(results)
+    Ok(results.into_iter().collect())
 }
 
 pub fn buildbot_failures_by_day(since: NaiveDateTime,
                                 until: NaiveDateTime)
-                                -> DashResult<BTreeMap<String, BTreeMap<NaiveDate, i64>>> {
+                                -> DashResult<Vec<(String, Vec<(EpochTimestamp, i64)>)>> {
     use domain::schema::build::dsl::*;
 
     let conn = try!(DB_POOL.get());
@@ -406,12 +409,15 @@ pub fn buildbot_failures_by_day(since: NaiveDateTime,
                             .filter(start_time.le(until))
                             .filter(builder_name.like("auto-%"))
                             .group_by(&name_date)
+                            .order((&name_date).asc())
                             .load::<((String, NaiveDate), i64)>(&*conn));
 
     let mut results = BTreeMap::new();
     for ((builder, date), build_minutes) in triples {
-        results.entry(builder).or_insert(BTreeMap::new()).insert(date, build_minutes);
+        results.entry(builder)
+               .or_insert(Vec::new())
+               .push((date.and_hms(12, 0, 0).timestamp(), build_minutes));
     }
 
-    Ok(results)
+    Ok(results.into_iter().collect())
 }
