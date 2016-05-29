@@ -1,33 +1,6 @@
 import Ember from 'ember';
 import ENV from 'rust-dashboard/config/environment';
 
-function linearTrendLine(data) {
-  var sum = [0, 0, 0, 0, 0],
-    n = 0,
-    results = [];
-
-  // exclude the final data point, it will often only be a partial number
-  for (; n < data.length - 1; n++) {
-    if (data[n][1] != null) {
-      sum[0] += data[n][0];
-      sum[1] += data[n][1];
-      sum[2] += data[n][0] * data[n][0];
-      sum[3] += data[n][0] * data[n][1];
-      sum[4] += data[n][1] * data[n][1];
-    }
-  }
-
-  var gradient = (n * sum[3] - sum[0] * sum[1]) / (n * sum[2] - sum[0] * sum[0]);
-  var intercept = (sum[1] / n) - (gradient * sum[0]) / n;
-
-  for (var i = 0, len = data.length; i < len; i++) {
-    var coordinate = [data[i][0], data[i][0] * gradient + intercept];
-    results.push(coordinate);
-  }
-
-  return results;
-}
-
 function fixTimestamps(data) {
   return data.map(elt => {
     return [elt[0] * 1000, elt[1]];
@@ -99,6 +72,21 @@ export default Ember.Route.extend({
 
         });
 
+        const default_opts = {
+          chart: {
+            height: 250
+          },
+          navigator: {
+            enabled: false
+          },
+          scrollbar: {
+            enabled: false
+          },
+          rangeSelector: {
+            enabled: false
+          }
+        };
+
         const model = {
           issues: {
 
@@ -107,80 +95,60 @@ export default Ember.Route.extend({
             per_builder_times: {
               data: linux_buildbot_times,
               mode: 'StockChart',
-              opts: {
+              opts: Object.assign({
                 title: {
                   text: 'Times of Successful CI Builds (Linux)'
                 }
-              }
+              }, default_opts)
             },
             per_builder_fails: {
               data: linux_buildbot_fails,
               mode: 'StockChart',
-              opts: {
+              opts: Object.assign({
                 title: {
                   text: 'Number of Failed CI Builds (Linux)'
                 }
-              }
+              }, default_opts)
             }
           },
           windows_buildbots: {
             per_builder_times: {
               data: win_buildbot_times,
               mode: 'StockChart',
-              opts: {
+              opts: Object.assign({
                 title: {
                   text: 'Times of Successful CI Builds (Windows)'
                 }
-              }
+              }, default_opts)
             },
             per_builder_fails: {
               data: win_buildbot_fails,
               mode: 'StockChart',
-              opts: {
+              opts: Object.assign({
                 title: {
                   text: 'Number of Failed CI Builds (Windows)'
                 }
-              }
+              }, default_opts)
             }
           },
           mac_buildbots: {
             per_builder_times: {
               data: mac_buildbot_times,
               mode: 'StockChart',
-              opts: {
+              opts: Object.assign({
                 title: {
                   text: 'Times of Successful CI Builds (Mac)'
                 }
-              }
+              }, default_opts)
             },
             per_builder_fails: {
               data: mac_buildbot_fails,
               mode: 'StockChart',
-              opts: {
+              opts: Object.assign({
                 title: {
                   text: 'Number of Failed CI Builds (Mac)'
                 }
-              }
-            }
-          },
-          misc_buildbots: {
-            per_builder_times: {
-              data: misc_buildbot_times,
-              mode: 'StockChart',
-              opts: {
-                title: {
-                  text: 'Times of Successful CI Builds (Other)'
-                }
-              }
-            },
-            per_builder_fails: {
-              data: misc_buildbot_fails,
-              mode: 'StockChart',
-              opts: {
-                title: {
-                  text: 'Number of Failed CI Builds (Other)'
-                }
-              }
+              }, default_opts)
             }
           },
           pr: {
@@ -198,11 +166,11 @@ export default Ember.Route.extend({
                 data: prs_merged_per_day
               }],
               mode: 'StockChart',
-              opts: {
+              opts: Object.assign({
                 title: {
                   text: 'PRs Opened/Closed/Merged Per Day'
                 }
-              }
+              }, default_opts)
             },
             days_open_before_close: {
               data: [{
@@ -210,11 +178,11 @@ export default Ember.Route.extend({
                 data: prs_days_open_b4_close
               }],
               mode: 'StockChart',
-              opts: {
+              opts: Object.assign({
                 title: {
                   text: 'PR Days Open Before Closed'
                 }
-              }
+              }, default_opts)
             }
           }
         };

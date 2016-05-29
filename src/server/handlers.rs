@@ -12,7 +12,7 @@ pub fn default_summary(req: &mut Request) -> IronResult<Response> {
         Method::Get => {
 
             let today = UTC::today().naive_utc();
-            let since = today - Duration::days(60);
+            let since = today - Duration::days(30);
 
             let summary = try!(reports::summary(since, today));
             let summary_json = try!(ser::to_string(&summary).map_err(|e| {
