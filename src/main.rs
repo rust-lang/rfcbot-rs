@@ -37,7 +37,6 @@ mod server;
 
 use chrono::{DateTime, Local, TimeZone, UTC};
 use clap::{App, Arg, ArgMatches, SubCommand};
-use diesel::prelude::*;
 use diesel::pg::PgConnection;
 use env_logger::LogBuilder;
 use log::LogRecord;

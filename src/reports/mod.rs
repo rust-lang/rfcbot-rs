@@ -8,6 +8,7 @@ use diesel::prelude::*;
 use diesel::types::{BigInt, Date, Double, Integer, Text};
 
 use DB_POOL;
+use domain::releases::Release;
 use error::DashResult;
 
 pub type EpochTimestamp = i64;
@@ -17,6 +18,7 @@ pub struct DashSummary {
     pull_requests: PullRequestSummary,
     issues: IssueSummary,
     buildbots: BuildbotSummary,
+    nightlies: NightlySummary,
 }
 
 #[derive(Clone, Debug, Serialize)]
@@ -40,6 +42,11 @@ pub struct IssueSummary {
     num_open_regression_nightly_issues: i64,
     num_open_regression_beta_issues: i64,
     num_open_regression_stable_issues: i64,
+}
+
+#[derive(Clone, Debug, Serialize)]
+pub struct NightlySummary {
+    releases: Vec<Release>,
 }
 
 #[derive(Clone, Debug, Serialize)]
@@ -69,6 +76,7 @@ pub fn summary(since: NaiveDate, until: NaiveDate) -> DashResult<DashSummary> {
     let mut nightly_regress = None;
     let mut beta_regress = None;
     let mut stable_regress = None;
+    let mut nightlies = None;
 
     // go and get all of the results in parallel
     crossbeam::scope(|scope| {
@@ -109,6 +117,10 @@ pub fn summary(since: NaiveDate, until: NaiveDate) -> DashResult<DashSummary> {
         scope.spawn(|| {
             stable_regress = Some(open_issues_with_label("regression-from-stable-to-stable"))
         });
+
+        scope.spawn(|| {
+            nightlies = Some(nightly_releases(since, until));
+        });
     });
 
     // unwrap the options (they will be Some if the crossbeam scope ended)
@@ -129,6 +141,7 @@ pub fn summary(since: NaiveDate, until: NaiveDate) -> DashResult<DashSummary> {
     let nightly_regress = try!(nightly_regress.unwrap());
     let beta_regress = try!(beta_regress.unwrap());
     let stable_regress = try!(stable_regress.unwrap());
+    let nightlies = try!(nightlies.unwrap());
 
     // if we've made it this far, everything was successful
     Ok(DashSummary {
@@ -155,6 +168,7 @@ pub fn summary(since: NaiveDate, until: NaiveDate) -> DashResult<DashSummary> {
             per_builder_times_mins: per_builder_times,
             per_builder_failures: per_builder_fails,
         },
+        nightlies: NightlySummary { releases: nightlies },
     })
 }
 
@@ -225,7 +239,7 @@ pub fn prs_open_time_before_close(since: NaiveDateTime,
     let mut results = try!(pullrequest.select(sql::<(Double, Text)>("\
         AVG(EXTRACT(EPOCH FROM closed_at) - \
                                            EXTRACT(EPOCH FROM created_at)) / (60 * 60 * 24), \
-        \
+                                           \
                                            EXTRACT(ISOYEAR FROM closed_at)::text || '-' || \
                                            EXTRACT(WEEK FROM closed_at)::text || '-6' AS \
                                            iso_closed_week"))
@@ -316,11 +330,10 @@ pub fn issues_open_time_before_close
 
     let w = sql::<Text>("iso_closed_week");
     let triples = try!(issue.select(sql::<(BigInt, Double, Text)>("\
-        COUNT(*), \
-        AVG(EXTRACT(EPOCH \
-                                               FROM closed_at) - EXTRACT(EPOCH FROM \
-                                               created_at)) / (60 * 60 * 24), \
-        \
+        COUNT(*), AVG(EXTRACT(EPOCH FROM \
+                                               closed_at) - EXTRACT(EPOCH FROM created_at)) / \
+                                               (60 * 60 * 24), \
+                                               \
                                                EXTRACT(ISOYEAR FROM closed_at)::text || '-' || \
                                                EXTRACT(WEEK FROM closed_at)::text || '-6' AS \
                                                iso_closed_week"))
@@ -419,4 +432,16 @@ pub fn buildbot_failures_by_day(since: NaiveDateTime,
     }
 
     Ok(results.into_iter().collect())
+}
+
+pub fn nightly_releases(since: NaiveDateTime, until: NaiveDateTime) -> DashResult<Vec<Release>> {
+    use domain::schema::release::dsl::*;
+
+    let conn = try!(DB_POOL.get());
+
+    Ok(try!(release.select((date, released))
+        .filter(date.gt(since.date()))
+        .filter(date.le(until.date()))
+        .order(date.desc())
+        .load::<Release>(&*conn)))
 }

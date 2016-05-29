@@ -1,5 +1,30 @@
 {{outlet}}
 
+<h3>Nightly Releases</h3>
+
+<style>
+.square {
+    float: left;
+    position: relative;
+    width: 6%;
+    padding-bottom: 6%;
+    margin: 0.2%;
+    overflow: hidden;
+}
+</style>
+
+<div class="row">
+    {{#each model.nightlies.releases as |release|}}
+        {{#if release.released}}
+            <div class="square" style="background: #006600;" title="{{release.date}}"></div>
+        {{else}}
+            <div class="square" style="background: #990000;" title="{{release.date}}"></div>
+        {{/if}}
+    {{/each}}
+</div>
+
+<hr/>
+
 <h3>Issues</h3>
 
 <h5>

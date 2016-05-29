@@ -88,6 +88,9 @@ export default Ember.Route.extend({
         };
 
         const model = {
+          nightlies: {
+            releases: metrics.nightlies.releases
+          },
           issues: {
             days_open_current_mean: metrics.issues.current_open_age_days_mean.toFixed(2),
             num_high_priority: metrics.issues.num_open_p_high_issues,
