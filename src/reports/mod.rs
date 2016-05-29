@@ -166,14 +166,14 @@ pub fn prs_opened_per_day(since: NaiveDateTime,
     let conn = try!(DB_POOL.get());
     let d = sql::<Date>("d");
     Ok(try!(pullrequest.select(sql::<(Date, BigInt)>("created_at::date as d, COUNT(*)"))
-                       .filter(created_at.ge(since))
-                       .filter(created_at.le(until))
-                       .group_by(d)
-                       .order(date(created_at).asc())
-                       .get_results::<(NaiveDate, i64)>(&*conn))
-           .into_iter()
-           .map(|(d, cnt)| (d.and_hms(12, 0, 0).timestamp(), cnt))
-           .collect())
+            .filter(created_at.ge(since))
+            .filter(created_at.le(until))
+            .group_by(d)
+            .order(date(created_at).asc())
+            .get_results::<(NaiveDate, i64)>(&*conn))
+        .into_iter()
+        .map(|(d, cnt)| (d.and_hms(12, 0, 0).timestamp(), cnt))
+        .collect())
 }
 
 pub fn prs_closed_per_day(since: NaiveDateTime,
@@ -184,15 +184,15 @@ pub fn prs_closed_per_day(since: NaiveDateTime,
     let conn = try!(DB_POOL.get());
     let d = sql::<Date>("d");
     Ok(try!(pullrequest.select(sql::<(Date, BigInt)>("closed_at::date as d, COUNT(*)"))
-                       .filter(closed_at.is_not_null())
-                       .filter(closed_at.ge(since))
-                       .filter(closed_at.le(until))
-                       .group_by(&d)
-                       .order((&d).asc())
-                       .get_results::<(NaiveDate, i64)>(&*conn))
-           .into_iter()
-           .map(|(d, cnt)| (d.and_hms(12, 0, 0).timestamp(), cnt))
-           .collect())
+            .filter(closed_at.is_not_null())
+            .filter(closed_at.ge(since))
+            .filter(closed_at.le(until))
+            .group_by(&d)
+            .order((&d).asc())
+            .get_results::<(NaiveDate, i64)>(&*conn))
+        .into_iter()
+        .map(|(d, cnt)| (d.and_hms(12, 0, 0).timestamp(), cnt))
+        .collect())
 }
 
 pub fn prs_merged_per_day(since: NaiveDateTime,
@@ -203,15 +203,15 @@ pub fn prs_merged_per_day(since: NaiveDateTime,
     let conn = try!(DB_POOL.get());
     let d = sql::<Date>("d");
     Ok(try!(pullrequest.select(sql::<(Date, BigInt)>("merged_at::date as d, COUNT(*)"))
-                       .filter(merged_at.is_not_null())
-                       .filter(merged_at.ge(since))
-                       .filter(merged_at.le(until))
-                       .group_by(&d)
-                       .order((&d).asc())
-                       .get_results::<(NaiveDate, i64)>(&*conn))
-           .into_iter()
-           .map(|(d, cnt)| (d.and_hms(12, 0, 0).timestamp(), cnt))
-           .collect())
+            .filter(merged_at.is_not_null())
+            .filter(merged_at.ge(since))
+            .filter(merged_at.le(until))
+            .group_by(&d)
+            .order((&d).asc())
+            .get_results::<(NaiveDate, i64)>(&*conn))
+        .into_iter()
+        .map(|(d, cnt)| (d.and_hms(12, 0, 0).timestamp(), cnt))
+        .collect())
 }
 
 pub fn prs_open_time_before_close(since: NaiveDateTime,
@@ -224,23 +224,23 @@ pub fn prs_open_time_before_close(since: NaiveDateTime,
     let w = sql::<Text>("iso_closed_week");
     let mut results = try!(pullrequest.select(sql::<(Double, Text)>("\
         AVG(EXTRACT(EPOCH FROM closed_at) - \
-          EXTRACT(EPOCH FROM created_at)) \
-          / (60 * 60 * 24), \
+                                           EXTRACT(EPOCH FROM created_at)) / (60 * 60 * 24), \
         \
-        EXTRACT(ISOYEAR FROM closed_at)::text || '-' || \
-          EXTRACT(WEEK FROM closed_at)::text || '-6' AS iso_closed_week"))
-                                      .filter(closed_at.is_not_null())
-                                      .filter(closed_at.ge(since))
-                                      .filter(closed_at.le(until))
-                                      .group_by(&w)
-                                      .get_results::<(f64, String)>(&*conn))
-                          .into_iter()
-                          .map(|(time, week)| {
-                              let d = NaiveDate::parse_from_str(&week, "%G-%V-%w").unwrap();
-                              let d = d.and_hms(12, 0, 0).timestamp();
-                              (d, time)
-                          })
-                          .collect::<Vec<(EpochTimestamp, f64)>>();
+                                           EXTRACT(ISOYEAR FROM closed_at)::text || '-' || \
+                                           EXTRACT(WEEK FROM closed_at)::text || '-6' AS \
+                                           iso_closed_week"))
+            .filter(closed_at.is_not_null())
+            .filter(closed_at.ge(since))
+            .filter(closed_at.le(until))
+            .group_by(&w)
+            .get_results::<(f64, String)>(&*conn))
+        .into_iter()
+        .map(|(time, week)| {
+            let d = NaiveDate::parse_from_str(&week, "%G-%V-%w").unwrap();
+            let d = d.and_hms(12, 0, 0).timestamp();
+            (d, time)
+        })
+        .collect::<Vec<(EpochTimestamp, f64)>>();
 
     results.sort_by(|&(d1, _), &(d2, _)| d1.cmp(&d2));
     Ok(results)
@@ -263,14 +263,14 @@ pub fn bors_retries_per_pr(since: NaiveDateTime,
     let conn = try!(DB_POOL.get());
 
     Ok(try!(issuecomment.select(sql::<(Integer, BigInt)>("fk_issue, COUNT(*)"))
-                        .filter(body.like("%@bors%retry%"))
-                        .filter(created_at.ge(since))
-                        .filter(created_at.le(until))
-                        .group_by(fk_issue)
-                        .order(count_star().desc())
-                        .load(&*conn))
-           .into_iter()
-           .collect())
+            .filter(body.like("%@bors%retry%"))
+            .filter(created_at.ge(since))
+            .filter(created_at.le(until))
+            .group_by(fk_issue)
+            .order(count_star().desc())
+            .load(&*conn))
+        .into_iter()
+        .collect())
 }
 
 pub fn issues_opened_per_day(since: NaiveDateTime,
@@ -281,12 +281,12 @@ pub fn issues_opened_per_day(since: NaiveDateTime,
     let conn = try!(DB_POOL.get());
     let d = sql::<Date>("d");
     Ok(try!(issue.select(sql::<(Date, BigInt)>("created_at::date as d, COUNT(*)"))
-                 .filter(created_at.ge(since))
-                 .filter(created_at.le(until))
-                 .group_by(d)
-                 .get_results(&*conn))
-           .into_iter()
-           .collect())
+            .filter(created_at.ge(since))
+            .filter(created_at.le(until))
+            .group_by(d)
+            .get_results(&*conn))
+        .into_iter()
+        .collect())
 }
 
 pub fn issues_closed_per_day(since: NaiveDateTime,
@@ -297,13 +297,13 @@ pub fn issues_closed_per_day(since: NaiveDateTime,
     let conn = try!(DB_POOL.get());
     let d = sql::<Date>("d");
     Ok(try!(issue.select(sql::<(Date, BigInt)>("closed_at::date as d, COUNT(*)"))
-                 .filter(closed_at.is_not_null())
-                 .filter(closed_at.ge(since))
-                 .filter(closed_at.le(until))
-                 .group_by(d)
-                 .get_results(&*conn))
-           .into_iter()
-           .collect())
+            .filter(closed_at.is_not_null())
+            .filter(closed_at.ge(since))
+            .filter(closed_at.le(until))
+            .group_by(d)
+            .get_results(&*conn))
+        .into_iter()
+        .collect())
 }
 
 pub fn issues_open_time_before_close
@@ -317,18 +317,18 @@ pub fn issues_open_time_before_close
     let w = sql::<Text>("iso_closed_week");
     let triples = try!(issue.select(sql::<(BigInt, Double, Text)>("\
         COUNT(*), \
+        AVG(EXTRACT(EPOCH \
+                                               FROM closed_at) - EXTRACT(EPOCH FROM \
+                                               created_at)) / (60 * 60 * 24), \
         \
-        AVG(EXTRACT(EPOCH FROM closed_at) - \
-          EXTRACT(EPOCH FROM created_at)) \
-          / (60 * 60 * 24), \
-        \
-        EXTRACT(ISOYEAR FROM closed_at)::text || '-' || \
-          EXTRACT(WEEK FROM closed_at)::text || '-6' AS iso_closed_week"))
-                            .filter(closed_at.is_not_null())
-                            .filter(closed_at.ge(since))
-                            .filter(closed_at.le(until))
-                            .group_by(w)
-                            .get_results::<(i64, f64, String)>(&*conn));
+                                               EXTRACT(ISOYEAR FROM closed_at)::text || '-' || \
+                                               EXTRACT(WEEK FROM closed_at)::text || '-6' AS \
+                                               iso_closed_week"))
+        .filter(closed_at.is_not_null())
+        .filter(closed_at.ge(since))
+        .filter(closed_at.le(until))
+        .group_by(w)
+        .get_results::<(i64, f64, String)>(&*conn));
 
     let mut num_closed_map = BTreeMap::new();
     let mut days_open_map = BTreeMap::new();
@@ -358,9 +358,9 @@ pub fn open_issues_with_label(label: &str) -> DashResult<i64> {
     let conn = try!(DB_POOL.get());
 
     Ok(try!(issue.select(count_star())
-                 .filter(closed_at.is_not_null())
-                 .filter(AsExpression::<Text>::as_expression(label).eq(any(labels)))
-                 .first(&*conn)))
+        .filter(closed_at.is_null())
+        .filter(AsExpression::<Text>::as_expression(label).eq(any(labels)))
+        .first(&*conn)))
 }
 
 pub fn buildbot_build_times(since: NaiveDateTime,
@@ -372,22 +372,21 @@ pub fn buildbot_build_times(since: NaiveDateTime,
 
     let name_date = sql::<(Text, Date)>("builder_name, date(start_time)");
 
-    let triples = try!(build.select((&name_date,
-                                     sql::<Double>("(AVG(duration_secs) / 60)::float")))
-                            .filter(successful)
-                            .filter(start_time.is_not_null())
-                            .filter(start_time.ge(since))
-                            .filter(start_time.le(until))
-                            .filter(builder_name.like("auto-%"))
-                            .group_by(&name_date)
-                            .order((&name_date).asc())
-                            .load::<((String, NaiveDate), f64)>(&*conn));
+    let triples = try!(build.select((&name_date, sql::<Double>("(AVG(duration_secs) / 60)::float")))
+        .filter(successful)
+        .filter(start_time.is_not_null())
+        .filter(start_time.ge(since))
+        .filter(start_time.le(until))
+        .filter(builder_name.like("auto-%"))
+        .group_by(&name_date)
+        .order((&name_date).asc())
+        .load::<((String, NaiveDate), f64)>(&*conn));
 
     let mut results = BTreeMap::new();
     for ((builder, date), build_minutes) in triples {
         results.entry(builder)
-               .or_insert(Vec::new())
-               .push((date.and_hms(12, 0, 0).timestamp(), build_minutes));
+            .or_insert(Vec::new())
+            .push((date.and_hms(12, 0, 0).timestamp(), build_minutes));
     }
 
     Ok(results.into_iter().collect())
@@ -403,20 +402,20 @@ pub fn buildbot_failures_by_day(since: NaiveDateTime,
     let name_date = sql::<(Text, Date)>("builder_name, date(start_time)");
 
     let triples = try!(build.select((&name_date, sql::<BigInt>("COUNT(*)")))
-                            .filter(successful.ne(true))
-                            .filter(start_time.is_not_null())
-                            .filter(start_time.ge(since))
-                            .filter(start_time.le(until))
-                            .filter(builder_name.like("auto-%"))
-                            .group_by(&name_date)
-                            .order((&name_date).asc())
-                            .load::<((String, NaiveDate), i64)>(&*conn));
+        .filter(successful.ne(true))
+        .filter(start_time.is_not_null())
+        .filter(start_time.ge(since))
+        .filter(start_time.le(until))
+        .filter(builder_name.like("auto-%"))
+        .group_by(&name_date)
+        .order((&name_date).asc())
+        .load::<((String, NaiveDate), i64)>(&*conn));
 
     let mut results = BTreeMap::new();
     for ((builder, date), build_minutes) in triples {
         results.entry(builder)
-               .or_insert(Vec::new())
-               .push((date.and_hms(12, 0, 0).timestamp(), build_minutes));
+            .or_insert(Vec::new())
+            .push((date.and_hms(12, 0, 0).timestamp(), build_minutes));
     }
 
     Ok(results.into_iter().collect())

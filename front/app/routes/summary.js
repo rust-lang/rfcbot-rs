@@ -89,7 +89,11 @@ export default Ember.Route.extend({
 
         const model = {
           issues: {
-
+            days_open_current_mean: metrics.issues.current_open_age_days_mean.toFixed(2),
+            num_high_priority: metrics.issues.num_open_p_high_issues,
+            num_nightly_regress: metrics.issues.num_open_regression_nightly_issues,
+            num_beta_regress: metrics.issues.num_open_regression_beta_issues,
+            num_stable_regress: metrics.issues.num_open_regression_stable_issues
           },
           linux_buildbots: {
             per_builder_times: {
