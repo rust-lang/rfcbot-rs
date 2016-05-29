@@ -39,6 +39,7 @@ export default Ember.Route.extend({
     var summary_url = ENV.apiBaseURL + 'summary';
     return Ember.$.getJSON(summary_url)
       .then(metrics => {
+
         const bors_retries = metrics.pull_requests.bors_retries.map(elt => {
           return {
             pr_number: elt[0],
@@ -190,43 +191,16 @@ export default Ember.Route.extend({
                 name: 'PRs Opened Per Day',
                 data: prs_open_per_day
               }, {
-                name: 'Trend line',
-                data: linearTrendLine(prs_open_per_day)
-              }],
-              mode: 'StockChart',
-              opts: {
-                title: {
-                  text: 'PRs Opened Per Day'
-                }
-              }
-            },
-            closed_per_day: {
-              data: [{
                 name: 'PRs Closed Per Day',
                 data: prs_closed_per_day
               }, {
-                name: 'Trend line',
-                data: linearTrendLine(prs_closed_per_day)
-              }],
-              mode: 'StockChart',
-              opts: {
-                title: {
-                  text: 'PRs Closed Per Day'
-                }
-              }
-            },
-            merged_per_day: {
-              data: [{
                 name: 'PRs Merged Per Day',
                 data: prs_merged_per_day
-              }, {
-                name: 'Trend line',
-                data: linearTrendLine(prs_merged_per_day)
               }],
               mode: 'StockChart',
               opts: {
                 title: {
-                  text: 'PRs Merged Per Day'
+                  text: 'PRs Opened/Closed/Merged Per Day'
                 }
               }
             },
@@ -234,9 +208,6 @@ export default Ember.Route.extend({
               data: [{
                 name: 'PR Days Open Before Closed (by week)',
                 data: prs_days_open_b4_close
-              }, {
-                name: 'Days Open Trend line',
-                data: linearTrendLine(prs_days_open_b4_close)
               }],
               mode: 'StockChart',
               opts: {

@@ -1,12 +1,8 @@
 {{outlet}}
 
-<h3>Mean Age of Currently Open PRs: {{model.pr.days_open_current_mean}} days</h3>
+<h5>Mean Age of Currently Open PRs: {{model.pr.days_open_current_mean}} days</h5>
 
 {{high-charts mode=model.pr.open_per_day.mode content=model.pr.open_per_day.data chartOptions=model.pr.open_per_day.opts }}
-
-{{high-charts mode=model.pr.closed_per_day.mode content=model.pr.closed_per_day.data chartOptions=model.pr.closed_per_day.opts }}
-
-{{high-charts mode=model.pr.merged_per_day.mode content=model.pr.merged_per_day.data chartOptions=model.pr.merged_per_day.opts}}
 
 {{high-charts mode=model.pr.days_open_before_close.mode content=model.pr.days_open_before_close.data chartOptions=model.pr.days_open_before_close.opts }}
 
