@@ -33,10 +33,9 @@ pub struct PullRequestSummary {
 
 #[derive(Clone, Debug, Serialize)]
 pub struct IssueSummary {
-    opened_per_day: BTreeMap<NaiveDate, i64>,
-    closed_per_day: BTreeMap<NaiveDate, i64>,
-    num_closed_per_week: BTreeMap<NaiveDate, i64>,
-    days_open_before_close: BTreeMap<NaiveDate, f64>,
+    opened_per_day: Vec<(EpochTimestamp, i64)>,
+    closed_per_day: Vec<(EpochTimestamp, i64)>,
+    days_open_before_close: Vec<(EpochTimestamp, f64)>,
     current_open_age_days_mean: f64,
     num_open_p_high_issues: i64,
     num_open_regression_nightly_issues: i64,
@@ -156,8 +155,7 @@ pub fn summary(since: NaiveDate, until: NaiveDate) -> DashResult<DashSummary> {
         issues: IssueSummary {
             opened_per_day: issues_open_per_day,
             closed_per_day: issues_close_per_day,
-            num_closed_per_week: issue_open_time.0,
-            days_open_before_close: issue_open_time.1,
+            days_open_before_close: issue_open_time,
             current_open_age_days_mean: current_issue_age,
             num_open_p_high_issues: num_p_high,
             num_open_regression_nightly_issues: nightly_regress,
@@ -289,7 +287,7 @@ pub fn bors_retries_per_pr(since: NaiveDateTime,
 
 pub fn issues_opened_per_day(since: NaiveDateTime,
                              until: NaiveDateTime)
-                             -> DashResult<BTreeMap<NaiveDate, i64>> {
+                             -> DashResult<Vec<(EpochTimestamp, i64)>> {
     use domain::schema::issue::dsl::*;
 
     let conn = try!(DB_POOL.get());
@@ -297,15 +295,17 @@ pub fn issues_opened_per_day(since: NaiveDateTime,
     Ok(try!(issue.select(sql::<(Date, BigInt)>("created_at::date as d, COUNT(*)"))
             .filter(created_at.ge(since))
             .filter(created_at.le(until))
-            .group_by(d)
-            .get_results(&*conn))
+            .group_by(&d)
+            .order((&d).asc())
+            .get_results::<(NaiveDate, i64)>(&*conn))
         .into_iter()
+        .map(|(t, c)| (t.and_hms(12, 0, 0).timestamp(), c))
         .collect())
 }
 
 pub fn issues_closed_per_day(since: NaiveDateTime,
                              until: NaiveDateTime)
-                             -> DashResult<BTreeMap<NaiveDate, i64>> {
+                             -> DashResult<Vec<(EpochTimestamp, i64)>> {
     use domain::schema::issue::dsl::*;
 
     let conn = try!(DB_POOL.get());
@@ -314,47 +314,45 @@ pub fn issues_closed_per_day(since: NaiveDateTime,
             .filter(closed_at.is_not_null())
             .filter(closed_at.ge(since))
             .filter(closed_at.le(until))
-            .group_by(d)
-            .get_results(&*conn))
+            .group_by(&d)
+            .order((&d).asc())
+            .get_results::<(NaiveDate, i64)>(&*conn))
         .into_iter()
+        .map(|(t, c)| (t.and_hms(12, 0, 0).timestamp(), c))
         .collect())
 }
 
-pub fn issues_open_time_before_close
-    (since: NaiveDateTime,
-     until: NaiveDateTime)
-     -> DashResult<(BTreeMap<NaiveDate, i64>, BTreeMap<NaiveDate, f64>)> {
+pub fn issues_open_time_before_close(since: NaiveDateTime,
+                                     until: NaiveDateTime)
+                                     -> DashResult<Vec<(EpochTimestamp, f64)>> {
     use domain::schema::issue::dsl::*;
 
     let conn = try!(DB_POOL.get());
 
     let w = sql::<Text>("iso_closed_week");
-    let triples = try!(issue.select(sql::<(BigInt, Double, Text)>("\
-        COUNT(*), AVG(EXTRACT(EPOCH FROM \
-                                               closed_at) - EXTRACT(EPOCH FROM created_at)) / \
-                                               (60 * 60 * 24), \
-                                               \
-                                               EXTRACT(ISOYEAR FROM closed_at)::text || '-' || \
-                                               EXTRACT(WEEK FROM closed_at)::text || '-6' AS \
-                                               iso_closed_week"))
-        .filter(closed_at.is_not_null())
-        .filter(closed_at.ge(since))
-        .filter(closed_at.le(until))
-        .group_by(w)
-        .get_results::<(i64, f64, String)>(&*conn));
+    let mut results = try!(issue.select(sql::<(Double, Text)>("\
+                                             \
+                                           AVG(EXTRACT(EPOCH FROM closed_at) - EXTRACT(EPOCH \
+                                           FROM created_at)) / (60 * 60 * 24), \
+                                           \
+                                           EXTRACT(ISOYEAR FROM closed_at)::text || '-' || \
+                                           EXTRACT(WEEK FROM closed_at)::text || '-6' AS \
+                                           iso_closed_week"))
+            .filter(closed_at.is_not_null())
+            .filter(closed_at.ge(since))
+            .filter(closed_at.le(until))
+            .group_by(&w)
+            .get_results::<(f64, String)>(&*conn))
+        .into_iter()
+        .map(|(time, week)| {
+            let d = NaiveDate::parse_from_str(&week, "%G-%V-%w").unwrap();
+            let d = d.and_hms(12, 0, 0).timestamp();
+            (d, time)
+        })
+        .collect::<Vec<(EpochTimestamp, f64)>>();
 
-    let mut num_closed_map = BTreeMap::new();
-    let mut days_open_map = BTreeMap::new();
-
-    for (num_closed, days_open, week_str) in triples {
-        // this will give us the end of each week we're describing
-        // unwrapping this parsing is fine since we dictate above what format is acceptable
-        let d = NaiveDate::parse_from_str(&week_str, "%G-%V-%w").unwrap();
-        num_closed_map.insert(d, num_closed);
-        days_open_map.insert(d, days_open);
-    }
-
-    Ok((num_closed_map, days_open_map))
+    results.sort_by(|&(d1, _), &(d2, _)| d1.cmp(&d2));
+    Ok(results)
 }
 
 pub fn open_issues_avg_days_old() -> DashResult<f64> {

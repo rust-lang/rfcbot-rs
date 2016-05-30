@@ -61,7 +61,9 @@
 </a>
 </h5>
 
-TODO
+{{high-charts mode=model.issues.open_close_per_day.mode content=model.issues.open_close_per_day.data chartOptions=model.issues.open_close_per_day.opts }}
+
+{{high-charts mode=model.issues.days_open_before_close.mode content=model.issues.days_open_before_close.data chartOptions=model.issues.days_open_before_close.opts }}
 
 <hr/>
 
@@ -71,9 +73,9 @@ TODO
         {{model.pr.days_open_current_mean}} days
     </a>
 </h5>
-<div class="row">
+
 {{high-charts mode=model.pr.open_per_day.mode content=model.pr.open_per_day.data chartOptions=model.pr.open_per_day.opts }}
-</div>
+
 {{high-charts mode=model.pr.days_open_before_close.mode content=model.pr.days_open_before_close.data chartOptions=model.pr.days_open_before_close.opts }}
 
 <hr/>

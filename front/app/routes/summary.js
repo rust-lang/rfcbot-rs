@@ -28,6 +28,10 @@ export default Ember.Route.extend({
         const prs_merged_per_day = fixTimestamps(metrics.pull_requests.merged_per_day);
         const prs_days_open_b4_close = fixTimestamps(metrics.pull_requests.days_open_before_close);
 
+        const issues_open_per_day = fixTimestamps(metrics.issues.opened_per_day);
+        const issues_closed_per_day = fixTimestamps(metrics.issues.closed_per_day);
+        const issues_days_open_b4_close = fixTimestamps(metrics.issues.days_open_before_close);
+
         var win_buildbot_times = [];
         var mac_buildbot_times = [];
         var linux_buildbot_times = [];
@@ -96,7 +100,34 @@ export default Ember.Route.extend({
             num_high_priority: metrics.issues.num_open_p_high_issues,
             num_nightly_regress: metrics.issues.num_open_regression_nightly_issues,
             num_beta_regress: metrics.issues.num_open_regression_beta_issues,
-            num_stable_regress: metrics.issues.num_open_regression_stable_issues
+            num_stable_regress: metrics.issues.num_open_regression_stable_issues,
+            open_close_per_day: {
+              data: [{
+                name: 'Issues Opened Per Day',
+                data: issues_open_per_day
+              }, {
+                name: 'Issues Closed Per Day',
+                data: issues_closed_per_day
+              }],
+              mode: 'StockChart',
+              opts: Object.assign({
+                title: {
+                  text: 'Issues Opened/Closed Per Day'
+                }
+              }, default_opts)
+            },
+            days_open_before_close: {
+              data: [{
+                name: 'PR Days Open Before Closed (by week)',
+                data: prs_days_open_b4_close
+              }],
+              mode: 'StockChart',
+              opts: Object.assign({
+                title: {
+                  text: 'PR Days Open Before Closed'
+                }
+              }, default_opts)
+            }
           },
           linux_buildbots: {
             per_builder_times: {
