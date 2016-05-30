@@ -1,6 +1,20 @@
 {{outlet}}
 
-<h3>Nightly Releases</h3>
+<h5>Sections:</h5>
+<p>
+    <a href="#nightlies">Nightly Releases</a>
+    &bull;
+    <a href="#issues">Issues</a>
+    &bull;
+    <a href="#pull-requests">Pull Requests</a>
+    &bull;
+    <a href="#ci-times">CI Times</a>
+    &bull;
+    <a href="#ci-failures">CI Failures</a>
+</p>
+<hr/>
+
+<h3><a id="nightlies"/>Nightly Releases</h3>
 
 <style>
 .square {
@@ -25,7 +39,7 @@
 
 <hr/>
 
-<h3>Issues</h3>
+<h3><a id="issues"/>Issues</h3>
 
 <h5>
     # of <code>P-high</code> issues open:
@@ -67,7 +81,7 @@
 
 <hr/>
 
-<h3>Pull Requests</h3>
+<h3><a id="pull-requests"/>Pull Requests</h3>
 <h5>Mean Age of Currently Open PRs:
     <a href="https://github.com/rust-lang/rust/pulls?q=is%3Apr+is%3Aopen+sort%3Acreated-asc" target="_blank">
         {{model.pr.days_open_current_mean}} days
@@ -80,7 +94,7 @@
 
 <hr/>
 
-<h3>CI Times</h3>
+<h3><a id="ci-times"/>CI Times</h3>
 {{high-charts mode=model.linux_buildbots.per_builder_times.mode content=model.linux_buildbots.per_builder_times.data chartOptions=model.linux_buildbots.per_builder_times.opts }}
 
 {{high-charts mode=model.mac_buildbots.per_builder_times.mode content=model.mac_buildbots.per_builder_times.data chartOptions=model.mac_buildbots.per_builder_times.opts }}
@@ -89,7 +103,7 @@
 
 <hr/>
 
-<h3>CI Failures</h3>
+<h3><a id="ci-failures"/>CI Failures</h3>
 
 {{high-charts mode=model.linux_buildbots.per_builder_fails.mode content=model.linux_buildbots.per_builder_fails.data chartOptions=model.linux_buildbots.per_builder_fails.opts }}
 
