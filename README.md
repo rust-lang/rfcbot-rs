@@ -63,7 +63,9 @@ The launch the scraping daemon, make sure the interval environment variables are
 
 ## Deployment
 
-Run `build.sh` on an Ubuntu 16.04 box with a compatible nightly installed (2016-05-24 right now). This will create a `rust-dashboard.deb` in the repo root. Install with `dpkg -i rust-dashboard.deb`, configure `/etc/rust-dashboard/env` from the example file there, and start the services:
+Setup a postgres database and user on a server with `dpkg` (recent Ubuntu is what's tested), and install nginx.
+
+Run `build.sh` on that with a compatible nightly installed (2016-05-24 right now). This will create a `rust-dashboard.deb` in the repo root. Install with `dpkg -i rust-dashboard.deb`, configure `/etc/rust-dashboard/env` from the example file there, and start the services:
 
 ```bash
 sudo systemctl enable rust-dashboard-scraper
@@ -71,6 +73,8 @@ sudo systemctl enable rust-dashboard-api
 sudo systemctl start rust-dashboard-scraper
 sudo systemctl start rust-dashboard-api
 ```
+
+Hopefully, that'll all *just work*. Haha.
 
 ## License
 
