@@ -1,0 +1,7 @@
+Package: rust-dashboard
+Version: 0.1.0
+Architecture: amd64
+Depends: nginx, postgresql
+Maintainer: Adam Perry <adam.n.perry@gmail.com>
+Description: Rust Dashboard
+ Metrics dashboard for the Rust project.

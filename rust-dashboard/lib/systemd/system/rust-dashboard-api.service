@@ -1,0 +1,12 @@
+[Unit]
+Description=API Server for the Rust project metrics dashboard
+Documentation=https://github.com/dikaiosune/rust-dashboard
+After=postgresql.service nginx.service
+
+[Service]
+EnvironmentFile=/etc/rust-dashboard/env
+ExecStart=/usr/bin/rust-dashboard serve
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
