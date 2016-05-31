@@ -1,6 +1,6 @@
 # rust-dashboard
 
-Nothing to see here yet. Move along.
+Deployed to http://rusty-dash.com right now. Some basic metrics about Rust development.
 
 ## Configuration
 
@@ -60,6 +60,17 @@ The launch the scraping daemon, make sure the interval environment variables are
 * In order to avoid overloading services, make sure that the intervals are not too small. Some examples:
   * The GitHub API allows (at the time of this writing) 5000 authenticated requests per hour. The GitHub scraper currently makes 1 request for every 100 updated issues, 1 request for every 100 update issue comments, and **1 request for every updated pull request**. Granted, this API limit is only likely to be an issue when bootstrapping the entire repository history, but bear it in mind if setting very low intervals (e.g. 1-2 minutes) or if using the same GitHub account for multiple API-using tools.
   * The buildbot scraper takes 5-20 minutes as of this writing, and could potentially place significant load on the CI cluster since it requests all build records which may have to be deserialized from disk. Make sure to space this scraper out accordingly so that it is not running a significant percentage of the time.
+
+## Deployment
+
+Run `build.sh` on an Ubuntu 16.04 box with a compatible nightly installed (2016-05-24 right now). This will create a `rust-dashboard.deb` in the repo root. Install with `dpkg -i rust-dashboard.deb`, configure `/etc/rust-dashboard/env` from the example file there, and start the services:
+
+```bash
+sudo systemctl enable rust-dashboard-scraper
+sudo systemctl enable rust-dashboard-api
+sudo systemctl start rust-dashboard-scraper
+sudo systemctl start rust-dashboard-api
+```
 
 ## License
 
