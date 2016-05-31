@@ -41,9 +41,7 @@ module.exports = function(environment) {
   }
 
   if (environment === 'production') {
-    var ENV = {
-      apiBaseURL: '/api/'
-    }
+    ENV.apiBaseURL = '/api/';
   }
 
   return ENV;
