@@ -1,4 +1,5 @@
 import Ember from 'ember';
+import fetch from 'fetch';
 import ENV from 'rust-dashboard/config/environment';
 
 function fixTimestamps(data) {
@@ -10,7 +11,7 @@ function fixTimestamps(data) {
 export default Ember.Route.extend({
   model: function() {
     const summary_url = `${ENV.apiBaseURL}pullrequests`;
-    return Ember.$.getJSON(summary_url)
+    return fetch(summary_url)
       .then(metrics => {
         const prs_open_per_day = fixTimestamps(metrics.opened_per_day);
         const prs_closed_per_day = fixTimestamps(metrics.closed_per_day);
