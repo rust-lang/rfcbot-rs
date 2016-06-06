@@ -6,3 +6,12 @@
     margin-right: 8px;
     text-decoration: none;
 }
+
+.release-square {
+    float: left;
+    position: relative;
+    width: 6%;
+    padding-bottom: 6%;
+    margin: 0.2%;
+    overflow: hidden;
+}

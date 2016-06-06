@@ -110,14 +110,6 @@ fn main() {
             _ => error!("Invalid scraping source specified."),
         }
     } else {
-        let today = UTC::today().naive_utc();
-        let since = today - chrono::Duration::days(120);
-        let summary = reports::summary(since, today).unwrap();
-        debug!("{:?}", &summary);
-
-        let summary_json = serde_json::to_string_pretty(&summary).unwrap();
-        debug!("{}", summary_json);
-
         panic!("invalid subcommand -- see help message or maybe open GitHub issue");
     }
 }

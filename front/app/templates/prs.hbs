@@ -1,0 +1,15 @@
+{{outlet}}
+
+<h3><a id="pull-requests"/>Pull Requests</h3>
+<h5>
+    <a class="github-search-link"
+       href="https://github.com/rust-lang/rust/pulls?q=is%3Apr+is%3Aopen+sort%3Acreated-asc"
+       target="_blank">
+        {{model.days_open_current_mean}} days
+    </a>
+    is the mean age of currently open pull requests
+</h5>
+
+{{line-chart title='PRs Opened/Closed Per Day' data=model.open_close_per_day}}
+
+{{line-chart title='PR Days Open Before Closed' data=model.days_open_before_close}}

@@ -1,0 +1,13 @@
+{{outlet}}
+
+<h3><a id="nightlies"/>Nightly Releases</h3>
+
+<div class="row">
+    {{#each model.nightlies as |release|}}
+        {{#if release.released}}
+            <div class="release-square" style="background: #006600;" title="{{release.date}}"></div>
+        {{else}}
+            <div class="release-square" style="background: #990000;" title="{{release.date}}"></div>
+        {{/if}}
+    {{/each}}
+</div>

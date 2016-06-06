@@ -1,7 +1,6 @@
 use std::collections::BTreeMap;
 
 use chrono::{NaiveDate, NaiveDateTime};
-use crossbeam;
 use diesel::expression::dsl::*;
 use diesel::expression::AsExpression;
 use diesel::prelude::*;
@@ -12,14 +11,6 @@ use domain::releases::Release;
 use error::DashResult;
 
 pub type EpochTimestamp = i64;
-
-#[derive(Clone, Debug, Serialize)]
-pub struct DashSummary {
-    pull_requests: PullRequestSummary,
-    issues: IssueSummary,
-    buildbots: BuildbotSummary,
-    nightlies: NightlySummary,
-}
 
 #[derive(Clone, Debug, Serialize)]
 pub struct PullRequestSummary {
@@ -44,8 +35,8 @@ pub struct IssueSummary {
 }
 
 #[derive(Clone, Debug, Serialize)]
-pub struct NightlySummary {
-    releases: Vec<Release>,
+pub struct ReleaseSummary {
+    nightlies: Vec<Release>,
 }
 
 #[derive(Clone, Debug, Serialize)]
@@ -54,120 +45,70 @@ pub struct BuildbotSummary {
     per_builder_failures: Vec<(String, Vec<(EpochTimestamp, i64)>)>,
 }
 
-pub fn summary(since: NaiveDate, until: NaiveDate) -> DashResult<DashSummary> {
+pub fn issue_summary(since: NaiveDate, until: NaiveDate) -> DashResult<IssueSummary> {
     let since = since.and_hms(0, 0, 0);
     let until = until.and_hms(23, 59, 59);
 
-    // set up "landing zones" for async result propagation
-    let mut current_pr_age = None;
-    let mut prs_open_per_day = None;
-    let mut prs_close_per_day = None;
-    let mut prs_merge_per_day = None;
-    let mut pr_open_time = None;
-    let mut bors_retries = None;
-    let mut per_builder_times = None;
-    let mut per_builder_fails = None;
-    let mut current_issue_age = None;
-    let mut issue_open_time = None;
-    let mut issues_open_per_day = None;
-    let mut issues_close_per_day = None;
-    let mut num_p_high = None;
-    let mut nightly_regress = None;
-    let mut beta_regress = None;
-    let mut stable_regress = None;
-    let mut nightlies = None;
+    let current_issue_age = try!(open_issues_avg_days_old());
+    let issue_open_time = try!(issues_open_time_before_close(since, until));
+    let issues_open_per_day = try!(issues_opened_per_day(since, until));
+    let issues_close_per_day = try!(issues_closed_per_day(since, until));
+    let num_p_high = try!(open_issues_with_label("P-high"));
+    let nightly_regress = try!(open_issues_with_label("regression-from-stable-to-nightly"));
+    let beta_regress = try!(open_issues_with_label("regression-from-stable-to-beta"));
+    let stable_regress = try!(open_issues_with_label("regression-from-stable-to-stable"));
 
-    // go and get all of the results in parallel
-    crossbeam::scope(|scope| {
-        scope.spawn(|| current_pr_age = Some(open_prs_avg_days_old()));
-
-        scope.spawn(|| prs_open_per_day = Some(prs_opened_per_day(since, until)));
-
-        scope.spawn(|| prs_close_per_day = Some(prs_closed_per_day(since, until)));
-
-        scope.spawn(|| prs_merge_per_day = Some(prs_merged_per_day(since, until)));
-
-        scope.spawn(|| pr_open_time = Some(prs_open_time_before_close(since, until)));
-
-        scope.spawn(|| bors_retries = Some(bors_retries_per_pr(since, until)));
-
-        scope.spawn(|| per_builder_times = Some(buildbot_build_times(since, until)));
-
-        scope.spawn(|| per_builder_fails = Some(buildbot_failures_by_day(since, until)));
-
-        scope.spawn(|| current_issue_age = Some(open_issues_avg_days_old()));
-
-        scope.spawn(|| issue_open_time = Some(issues_open_time_before_close(since, until)));
-
-        scope.spawn(|| issues_open_per_day = Some(issues_opened_per_day(since, until)));
-
-        scope.spawn(|| issues_close_per_day = Some(issues_closed_per_day(since, until)));
-
-        scope.spawn(|| num_p_high = Some(open_issues_with_label("P-high")));
-
-        scope.spawn(|| {
-            nightly_regress = Some(open_issues_with_label("regression-from-stable-to-nightly"))
-        });
-
-        scope.spawn(|| {
-            beta_regress = Some(open_issues_with_label("regression-from-stable-to-beta"))
-        });
-
-        scope.spawn(|| {
-            stable_regress = Some(open_issues_with_label("regression-from-stable-to-stable"))
-        });
-
-        scope.spawn(|| {
-            nightlies = Some(nightly_releases(since, until));
-        });
-    });
-
-    // unwrap the options (they will be Some if the crossbeam scope ended)
-    // and return the first (if any) error out
-    let current_pr_age = try!(current_pr_age.unwrap());
-    let prs_open_per_day = try!(prs_open_per_day.unwrap());
-    let prs_close_per_day = try!(prs_close_per_day.unwrap());
-    let prs_merge_per_day = try!(prs_merge_per_day.unwrap());
-    let pr_open_time = try!(pr_open_time.unwrap());
-    let bors_retries = try!(bors_retries.unwrap());
-    let per_builder_times = try!(per_builder_times.unwrap());
-    let per_builder_fails = try!(per_builder_fails.unwrap());
-    let current_issue_age = try!(current_issue_age.unwrap());
-    let issue_open_time = try!(issue_open_time.unwrap());
-    let issues_open_per_day = try!(issues_open_per_day.unwrap());
-    let issues_close_per_day = try!(issues_close_per_day.unwrap());
-    let num_p_high = try!(num_p_high.unwrap());
-    let nightly_regress = try!(nightly_regress.unwrap());
-    let beta_regress = try!(beta_regress.unwrap());
-    let stable_regress = try!(stable_regress.unwrap());
-    let nightlies = try!(nightlies.unwrap());
-
-    // if we've made it this far, everything was successful
-    Ok(DashSummary {
-        pull_requests: PullRequestSummary {
-            opened_per_day: prs_open_per_day,
-            closed_per_day: prs_close_per_day,
-            merged_per_day: prs_merge_per_day,
-            days_open_before_close: pr_open_time,
-            current_open_age_days_mean: current_pr_age,
-            bors_retries: bors_retries,
-        },
-        issues: IssueSummary {
-            opened_per_day: issues_open_per_day,
-            closed_per_day: issues_close_per_day,
-            days_open_before_close: issue_open_time,
-            current_open_age_days_mean: current_issue_age,
-            num_open_p_high_issues: num_p_high,
-            num_open_regression_nightly_issues: nightly_regress,
-            num_open_regression_beta_issues: beta_regress,
-            num_open_regression_stable_issues: stable_regress,
-        },
-        buildbots: BuildbotSummary {
-            per_builder_times_mins: per_builder_times,
-            per_builder_failures: per_builder_fails,
-        },
-        nightlies: NightlySummary { releases: nightlies },
+    Ok(IssueSummary {
+        opened_per_day: issues_open_per_day,
+        closed_per_day: issues_close_per_day,
+        days_open_before_close: issue_open_time,
+        current_open_age_days_mean: current_issue_age,
+        num_open_p_high_issues: num_p_high,
+        num_open_regression_nightly_issues: nightly_regress,
+        num_open_regression_beta_issues: beta_regress,
+        num_open_regression_stable_issues: stable_regress,
     })
+}
+
+pub fn pr_summary(since: NaiveDate, until: NaiveDate) -> DashResult<PullRequestSummary> {
+    let since = since.and_hms(0, 0, 0);
+    let until = until.and_hms(23, 59, 59);
+
+    let current_pr_age = try!(open_prs_avg_days_old());
+    let prs_open_per_day = try!(prs_opened_per_day(since, until));
+    let prs_close_per_day = try!(prs_closed_per_day(since, until));
+    let prs_merge_per_day = try!(prs_merged_per_day(since, until));
+    let pr_open_time = try!(prs_open_time_before_close(since, until));
+    let bors_retries = try!(bors_retries_per_pr(since, until));
+
+    Ok(PullRequestSummary {
+        opened_per_day: prs_open_per_day,
+        closed_per_day: prs_close_per_day,
+        merged_per_day: prs_merge_per_day,
+        days_open_before_close: pr_open_time,
+        current_open_age_days_mean: current_pr_age,
+        bors_retries: bors_retries,
+    })
+}
+
+pub fn ci_summary(since: NaiveDate, until: NaiveDate) -> DashResult<BuildbotSummary> {
+    let since = since.and_hms(0, 0, 0);
+    let until = until.and_hms(23, 59, 59);
+
+    let per_builder_times = try!(buildbot_build_times(since, until));
+    let per_builder_fails = try!(buildbot_failures_by_day(since, until));
+
+    Ok(BuildbotSummary {
+        per_builder_times_mins: per_builder_times,
+        per_builder_failures: per_builder_fails,
+    })
+}
+
+pub fn release_summary(since: NaiveDate, until: NaiveDate) -> DashResult<ReleaseSummary> {
+    let since = since.and_hms(0, 0, 0);
+    let until = until.and_hms(23, 59, 59);
+
+    Ok(ReleaseSummary { nightlies: try!(nightly_releases(since, until)) })
 }
 
 pub fn prs_opened_per_day(since: NaiveDateTime,

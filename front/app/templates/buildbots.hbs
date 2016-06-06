@@ -1,0 +1,19 @@
+{{outlet}}
+
+<h3><a id="ci-times"/>CI Times</h3>
+
+{{line-chart title='Times of Successful CI Builds (Linux)' data=model.linux_buildbots.per_builder_times}}
+
+{{line-chart title='Times of Successful CI Builds (Mac)' data=model.mac_buildbots.per_builder_times}}
+
+{{line-chart title='Times of Successful CI Builds (Windows)' data=model.windows_buildbots.per_builder_times}}
+
+<hr/>
+
+<h3><a id="ci-failures"/>CI Failures</h3>
+
+{{line-chart title='Number of Failed CI Builds (Linux)' data=model.linux_buildbots.per_builder_fails}}
+
+{{line-chart title='Number of Failed CI Builds (Mac)' data=model.mac_buildbots.per_builder_fails}}
+
+{{line-chart title='Number of Failed CI Builds (Windows)' data=model.windows_buildbots.per_builder_fails}}

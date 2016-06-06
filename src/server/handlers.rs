@@ -12,21 +12,30 @@ use reports;
 
 const DATE_FORMAT: &'static str = "%Y%m%d";
 
-pub fn summary(req: &mut Request) -> IronResult<Response> {
+macro_rules! make_dated_endpoint {
+    ($f:ident, $g:ident) => {
+        pub fn $f(req: &mut Request) -> IronResult<Response> {
 
-    let (since, until) = match parse_dates_from_query(req) {
-        Ok((s, u)) => (s, u),
-        Err(why) => return Ok(Response::with((status::BadRequest, why.description())))
-    };
+            let (since, until) = match parse_dates_from_query(req) {
+                Ok((s, u)) => (s, u),
+                Err(why) => return Ok(Response::with((status::BadRequest, why.description())))
+            };
 
-    let summary = try!(reports::summary(since, until));
-    let summary_json = try!(ser::to_string(&summary).map_err(|e| {
-        let e: DashError = e.into();
-        e
-    }));
+            let summary = try!(reports::$g(since, until));
+            let summary_json = try!(ser::to_string(&summary).map_err(|e| {
+                let e: DashError = e.into();
+                e
+            }));
 
-    Ok(Response::with((status::Ok, summary_json)))
+            Ok(Response::with((status::Ok, summary_json)))
+        }
+    }
 }
+
+make_dated_endpoint!(pull_requests, pr_summary);
+make_dated_endpoint!(issues, issue_summary);
+make_dated_endpoint!(buildbots, ci_summary);
+make_dated_endpoint!(releases, release_summary);
 
 fn parse_dates_from_query(req: &mut Request) -> IronResult<(NaiveDate, NaiveDate)> {
     let today = UTC::today().naive_utc();
