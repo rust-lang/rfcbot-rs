@@ -76,21 +76,6 @@ export default Ember.Route.extend({
 
         });
 
-        const default_opts = {
-          chart: {
-            height: 250
-          },
-          navigator: {
-            enabled: false
-          },
-          scrollbar: {
-            enabled: false
-          },
-          rangeSelector: {
-            enabled: false
-          }
-        };
-
         const model = {
           nightlies: {
             releases: metrics.nightlies.releases
@@ -101,127 +86,47 @@ export default Ember.Route.extend({
             num_nightly_regress: metrics.issues.num_open_regression_nightly_issues,
             num_beta_regress: metrics.issues.num_open_regression_beta_issues,
             num_stable_regress: metrics.issues.num_open_regression_stable_issues,
-            open_close_per_day: {
-              data: [{
-                name: 'Issues Opened Per Day',
-                data: issues_open_per_day
-              }, {
-                name: 'Issues Closed Per Day',
-                data: issues_closed_per_day
-              }],
-              mode: 'StockChart',
-              opts: Object.assign({
-                title: {
-                  text: 'Issues Opened/Closed Per Day'
-                }
-              }, default_opts)
-            },
-            days_open_before_close: {
-              data: [{
-                name: 'Issues Days Open Before Closed (by week)',
-                data: prs_days_open_b4_close
-              }],
-              mode: 'StockChart',
-              opts: Object.assign({
-                title: {
-                  text: 'Issues Days Open Before Closed'
-                }
-              }, default_opts)
-            }
+            open_close_per_day: [{
+              name: 'Issues Opened Per Day',
+              data: issues_open_per_day
+            }, {
+              name: 'Issues Closed Per Day',
+              data: issues_closed_per_day
+            }],
+            days_open_before_close: [{
+              name: 'Issues Days Open Before Closed (by week)',
+              data: issues_days_open_b4_close
+            }]
           },
           linux_buildbots: {
-            per_builder_times: {
-              data: linux_buildbot_times,
-              mode: 'StockChart',
-              opts: Object.assign({
-                title: {
-                  text: 'Times of Successful CI Builds (Linux)'
-                }
-              }, default_opts)
-            },
-            per_builder_fails: {
-              data: linux_buildbot_fails,
-              mode: 'StockChart',
-              opts: Object.assign({
-                title: {
-                  text: 'Number of Failed CI Builds (Linux)'
-                }
-              }, default_opts)
-            }
+            per_builder_times: linux_buildbot_times,
+            per_builder_fails: linux_buildbot_fails
           },
           windows_buildbots: {
-            per_builder_times: {
-              data: win_buildbot_times,
-              mode: 'StockChart',
-              opts: Object.assign({
-                title: {
-                  text: 'Times of Successful CI Builds (Windows)'
-                }
-              }, default_opts)
-            },
-            per_builder_fails: {
-              data: win_buildbot_fails,
-              mode: 'StockChart',
-              opts: Object.assign({
-                title: {
-                  text: 'Number of Failed CI Builds (Windows)'
-                }
-              }, default_opts)
-            }
+            per_builder_times: win_buildbot_times,
+            per_builder_fails: win_buildbot_fails
           },
           mac_buildbots: {
-            per_builder_times: {
-              data: mac_buildbot_times,
-              mode: 'StockChart',
-              opts: Object.assign({
-                title: {
-                  text: 'Times of Successful CI Builds (Mac)'
-                }
-              }, default_opts)
-            },
-            per_builder_fails: {
-              data: mac_buildbot_fails,
-              mode: 'StockChart',
-              opts: Object.assign({
-                title: {
-                  text: 'Number of Failed CI Builds (Mac)'
-                }
-              }, default_opts)
-            }
+            per_builder_times: mac_buildbot_times,
+            per_builder_fails: mac_buildbot_fails
           },
           pr: {
             days_open_current_mean: metrics.pull_requests.current_open_age_days_mean.toFixed(2),
             bors_retries_per_pr: bors_retries,
-            open_per_day: {
-              data: [{
-                name: 'PRs Opened Per Day',
-                data: prs_open_per_day
-              }, {
-                name: 'PRs Closed Per Day',
-                data: prs_closed_per_day
-              }, {
-                name: 'PRs Merged Per Day',
-                data: prs_merged_per_day
-              }],
-              mode: 'StockChart',
-              opts: Object.assign({
-                title: {
-                  text: 'PRs Opened/Closed/Merged Per Day'
-                }
-              }, default_opts)
-            },
-            days_open_before_close: {
-              data: [{
-                name: 'PR Days Open Before Closed (by week)',
-                data: prs_days_open_b4_close
-              }],
-              mode: 'StockChart',
-              opts: Object.assign({
-                title: {
-                  text: 'PR Days Open Before Closed'
-                }
-              }, default_opts)
-            }
+            open_close_per_day: [{
+              name: 'PRs Opened Per Day',
+              data: prs_open_per_day
+            }, {
+              name: 'PRs Closed Per Day',
+              data: prs_closed_per_day
+            }, {
+              name: 'PRs Merged Per Day',
+              data: prs_merged_per_day
+            }],
+            days_open_before_close: [{
+              name: 'PR Days Open Before Closed (by week)',
+              data: prs_days_open_b4_close
+            }]
           }
         };
 

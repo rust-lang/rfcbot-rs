@@ -75,9 +75,9 @@
 </a>
 </h5>
 
-{{high-charts mode=model.issues.open_close_per_day.mode content=model.issues.open_close_per_day.data chartOptions=model.issues.open_close_per_day.opts }}
+{{line-chart title='Issues Opened/Closed Per Day' data=model.issues.open_close_per_day}}
 
-{{high-charts mode=model.issues.days_open_before_close.mode content=model.issues.days_open_before_close.data chartOptions=model.issues.days_open_before_close.opts }}
+{{line-chart title='Issues Days Open Before Closed' data=model.issues.days_open_before_close}}
 
 <hr/>
 
@@ -88,25 +88,26 @@
     </a>
 </h5>
 
-{{high-charts mode=model.pr.open_per_day.mode content=model.pr.open_per_day.data chartOptions=model.pr.open_per_day.opts }}
+{{line-chart title='PRs Opened/Closed Per Day' data=model.pr.open_close_per_day}}
 
-{{high-charts mode=model.pr.days_open_before_close.mode content=model.pr.days_open_before_close.data chartOptions=model.pr.days_open_before_close.opts }}
+{{line-chart title='PR Days Open Before Closed' data=model.pr.days_open_before_close}}
 
 <hr/>
 
 <h3><a id="ci-times"/>CI Times</h3>
-{{high-charts mode=model.linux_buildbots.per_builder_times.mode content=model.linux_buildbots.per_builder_times.data chartOptions=model.linux_buildbots.per_builder_times.opts }}
 
-{{high-charts mode=model.mac_buildbots.per_builder_times.mode content=model.mac_buildbots.per_builder_times.data chartOptions=model.mac_buildbots.per_builder_times.opts }}
+{{line-chart title='Times of Successful CI Builds (Linux)' data=model.linux_buildbots.per_builder_times}}
 
-{{high-charts mode=model.windows_buildbots.per_builder_times.mode content=model.windows_buildbots.per_builder_times.data chartOptions=model.windows_buildbots.per_builder_times.opts }}
+{{line-chart title='Times of Successful CI Builds (Mac)' data=model.mac_buildbots.per_builder_times}}
+
+{{line-chart title='Times of Successful CI Builds (Windows)' data=model.windows_buildbots.per_builder_times}}
 
 <hr/>
 
 <h3><a id="ci-failures"/>CI Failures</h3>
 
-{{high-charts mode=model.linux_buildbots.per_builder_fails.mode content=model.linux_buildbots.per_builder_fails.data chartOptions=model.linux_buildbots.per_builder_fails.opts }}
+{{line-chart title='Number of Failed CI Builds (Linux)' data=model.linux_buildbots.per_builder_fails}}
 
-{{high-charts mode=model.mac_buildbots.per_builder_fails.mode content=model.mac_buildbots.per_builder_fails.data chartOptions=model.mac_buildbots.per_builder_fails.opts }}
+{{line-chart title='Number of Failed CI Builds (Mac)' data=model.mac_buildbots.per_builder_fails}}
 
-{{high-charts mode=model.windows_buildbots.per_builder_fails.mode content=model.windows_buildbots.per_builder_fails.data chartOptions=model.windows_buildbots.per_builder_fails.opts }}
+{{line-chart title='Number of Failed CI Builds (Windows)' data=model.windows_buildbots.per_builder_fails}}
