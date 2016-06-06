@@ -17,6 +17,7 @@ extern crate iron;
 extern crate lazy_static;
 #[macro_use]
 extern crate log;
+extern crate logger;
 extern crate mount;
 extern crate r2d2;
 extern crate r2d2_diesel;
@@ -24,6 +25,7 @@ extern crate r2d2_diesel;
 extern crate router;
 extern crate serde;
 extern crate serde_json;
+extern crate urlencoded;
 
 mod buildbot;
 mod config;

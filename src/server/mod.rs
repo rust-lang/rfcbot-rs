@@ -1,4 +1,5 @@
 use iron::prelude::*;
+use logger::Logger;
 use mount::Mount;
 
 use config::CONFIG;
@@ -12,12 +13,22 @@ pub fn serve() {
 
     mount.mount("/summary/",
                 router!(
-        get "/" => handlers::default_summary,
-        get "/:start/:end" => handlers::summary,
+        get "/" => handlers::summary
     ));
 
-    let server_addr = format!("0.0.0.0:{}", CONFIG.server_port);
+    let mut chain = Chain::new(mount);
 
-    info!("API server running at {}", &server_addr);
-    Iron::new(mount).http(&*server_addr).unwrap();
+    let (logger_before, logger_after) = Logger::new(None);
+
+    // Link logger_before as your first before middleware.
+    chain.link_before(logger_before);
+
+    // any new middlewares go here
+
+    // Link logger_after as your *last* after middleware.
+    chain.link_after(logger_after);
+
+    let server_addr = format!("0.0.0.0:{}", CONFIG.server_port);
+    info!("Starting API server running at {}", &server_addr);
+    Iron::new(chain).http(&*server_addr).unwrap();
 }

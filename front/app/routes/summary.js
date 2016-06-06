@@ -13,13 +13,6 @@ export default Ember.Route.extend({
     return Ember.$.getJSON(summary_url)
       .then(metrics => {
 
-        const bors_retries = metrics.pull_requests.bors_retries.map(elt => {
-          return {
-            pr_number: elt[0],
-            num_retries: elt[1]
-          };
-        });
-
         // javascript timestamps are awful, and are in milliseconds
         // this is a cheap operation on the frontend, and seems truly dependent
         // on implementation details of the frontend graphing tools
@@ -51,13 +44,13 @@ export default Ember.Route.extend({
           } else {
             misc_buildbot_times.push(time);
           }
-
         });
 
         var win_buildbot_fails = [];
         var mac_buildbot_fails = [];
         var linux_buildbot_fails = [];
         var misc_buildbot_fails = [];
+
         metrics.buildbots.per_builder_failures.forEach(val => {
           const time = {
             name: val[0],
@@ -112,7 +105,6 @@ export default Ember.Route.extend({
           },
           pr: {
             days_open_current_mean: metrics.pull_requests.current_open_age_days_mean.toFixed(2),
-            bors_retries_per_pr: bors_retries,
             open_close_per_day: [{
               name: 'PRs Opened Per Day',
               data: prs_open_per_day
