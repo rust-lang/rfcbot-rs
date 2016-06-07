@@ -11,6 +11,7 @@ Router.map(function() {
   this.route('releases', { path: '/releases' });
   this.route('prs', { path: '/pullrequests' });
   this.route('buildbots', { path: '/buildbots' });
+  this.route('links', { path: '/links' });
 });
 
 export default Router;
