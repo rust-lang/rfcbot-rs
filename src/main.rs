@@ -17,7 +17,6 @@ extern crate iron;
 extern crate lazy_static;
 #[macro_use]
 extern crate log;
-extern crate logger;
 extern crate mount;
 extern crate r2d2;
 extern crate r2d2_diesel;
