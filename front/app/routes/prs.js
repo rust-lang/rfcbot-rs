@@ -9,7 +9,7 @@ function fixTimestamps(data) {
 
 export default Ember.Route.extend({
   model: function() {
-    var summary_url = ENV.apiBaseURL + 'pullrequests';
+    const summary_url = `${ENV.apiBaseURL}pullrequests`;
     return Ember.$.getJSON(summary_url)
       .then(metrics => {
         const prs_open_per_day = fixTimestamps(metrics.opened_per_day);

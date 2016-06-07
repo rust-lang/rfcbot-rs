@@ -9,7 +9,7 @@ function fixTimestamps(data) {
 
 export default Ember.Route.extend({
     model: function() {
-    var summary_url = ENV.apiBaseURL + 'issues';
+    const summary_url = ENV.apiBaseURL + 'issues';
     return Ember.$.getJSON(summary_url)
       .then(metrics => {
 

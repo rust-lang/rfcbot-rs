@@ -9,14 +9,14 @@ function fixTimestamps(data) {
 
 export default Ember.Route.extend({
   model: function() {
-    var summary_url = ENV.apiBaseURL + 'buildbots';
+    const summary_url = ENV.apiBaseURL + 'buildbots';
     return Ember.$.getJSON(summary_url)
       .then(metrics => {
 
-        var win_buildbot_times = [];
-        var mac_buildbot_times = [];
-        var linux_buildbot_times = [];
-        var misc_buildbot_times = [];
+        const win_buildbot_times = [];
+        const mac_buildbot_times = [];
+        const linux_buildbot_times = [];
+        const misc_buildbot_times = [];
         metrics.per_builder_times_mins.forEach(val => {
           const time = {
             name: val[0],
@@ -34,10 +34,10 @@ export default Ember.Route.extend({
           }
         });
 
-        var win_buildbot_fails = [];
-        var mac_buildbot_fails = [];
-        var linux_buildbot_fails = [];
-        var misc_buildbot_fails = [];
+        const win_buildbot_fails = [];
+        const mac_buildbot_fails = [];
+        const linux_buildbot_fails = [];
+        const misc_buildbot_fails = [];
 
         metrics.per_builder_failures.forEach(val => {
           const time = {
