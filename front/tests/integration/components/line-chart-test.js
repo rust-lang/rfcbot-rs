@@ -11,7 +11,7 @@ test('it renders', function(assert) {
 
   this.render(hbs`{{line-chart}}`);
 
-  assert.equal(this.$().text().trim(), '');
+  assert.equal(this.$().text().trim(), ':\nCreated with Highstock 4.2.4');
 
   // Template block usage:
   this.render(hbs`
@@ -20,5 +20,5 @@ test('it renders', function(assert) {
     {{/line-chart}}
   `);
 
-  assert.equal(this.$().text().trim(), 'template block text');
+  assert.equal(this.$().text().trim(), ':\nCreated with Highstock 4.2.4');
 });
