@@ -8,7 +8,7 @@ function fixTimestamps(data) {
 }
 
 export default Ember.Route.extend({
-    model: function() {
+  model: function() {
     const summary_url = ENV.apiBaseURL + 'issues';
     return Ember.$.getJSON(summary_url)
       .then(metrics => {
@@ -18,6 +18,7 @@ export default Ember.Route.extend({
         const issues_days_open_b4_close = fixTimestamps(metrics.days_open_before_close);
 
         const model = {
+          start: Date.now(),
           issues: {
             days_open_current_mean: metrics.current_open_age_days_mean.toFixed(2),
             num_high_priority: metrics.num_open_p_high_issues,
