@@ -364,6 +364,7 @@ pub fn buildbot_failures_by_day(since: NaiveDateTime,
         .filter(start_time.ge(since))
         .filter(start_time.le(until))
         .filter(builder_name.like("auto-%"))
+        .filter(message.not_like("%xception%nterrupted%"))
         .group_by(&name_date)
         .order((&name_date).asc())
         .load::<((String, NaiveDate), i64)>(&*conn));
@@ -395,6 +396,7 @@ pub fn buildbot_failures_last_24_hours() -> DashResult<Vec<Build>> {
         .filter(successful.ne(true))
         .filter(end_time.is_not_null())
         .filter(end_time.ge(one_day_ago))
+        .filter(message.not_like("%xception%nterrupted%"))
         .order(end_time.desc())
         .load::<Build>(&*conn)))
 }
