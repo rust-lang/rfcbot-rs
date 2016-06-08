@@ -12,6 +12,7 @@ Router.map(function() {
   this.route('prs', { path: '/pullrequests' });
   this.route('buildbots', { path: '/buildbots' });
   this.route('links', { path: '/links' });
+  this.route('triage', { path: '/triage' });
 });
 
 export default Router;
