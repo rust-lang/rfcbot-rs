@@ -1,7 +1,8 @@
 {{outlet}}
 
 <label>
-    From:  {{pikaday-input value=model.start}}
+    {{!-- TODO: switch to using `onSelect` instead of 2-way-binding --}}
+    From:  {{pikaday-input value=start}}
 </label>
 
 <hr/>
