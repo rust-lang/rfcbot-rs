@@ -1,9 +1,8 @@
 use chrono::NaiveDateTime;
-use diesel::ExpressionMethods;
-
+use diesel::prelude::*;
 use super::schema::*;
 
-#[derive(Clone, Debug, Deserialize, Eq, Ord, PartialEq, PartialOrd, Queryable)]
+#[derive(Clone, Debug, Deserialize, Eq, Ord, PartialEq, PartialOrd, Queryable, Serialize)]
 #[insertable_into(build)]
 #[changeset_for(build)]
 pub struct Build {

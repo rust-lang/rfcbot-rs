@@ -1,12 +1,14 @@
 use std::collections::BTreeMap;
 
-use chrono::{NaiveDate, NaiveDateTime};
+use chrono::{NaiveDate, NaiveDateTime, UTC};
+use chrono::duration::Duration;
 use diesel::expression::dsl::*;
 use diesel::expression::AsExpression;
 use diesel::prelude::*;
 use diesel::types::{BigInt, Date, Double, Integer, Text};
 
 use DB_POOL;
+use domain::buildbot::Build;
 use domain::releases::Release;
 use error::DashResult;
 
@@ -43,6 +45,7 @@ pub struct ReleaseSummary {
 pub struct BuildbotSummary {
     per_builder_times_mins: Vec<(String, Vec<(EpochTimestamp, f64)>)>,
     per_builder_failures: Vec<(String, Vec<(EpochTimestamp, i64)>)>,
+    failures_last_day: Vec<Build>,
 }
 
 pub fn issue_summary(since: NaiveDate, until: NaiveDate) -> DashResult<IssueSummary> {
@@ -97,10 +100,12 @@ pub fn ci_summary(since: NaiveDate, until: NaiveDate) -> DashResult<BuildbotSumm
 
     let per_builder_times = try!(buildbot_build_times(since, until));
     let per_builder_fails = try!(buildbot_failures_by_day(since, until));
+    let failures_last_day = try!(buildbot_failures_last_24_hours());
 
     Ok(BuildbotSummary {
         per_builder_times_mins: per_builder_times,
         per_builder_failures: per_builder_fails,
+        failures_last_day: failures_last_day,
     })
 }
 
@@ -371,6 +376,27 @@ pub fn buildbot_failures_by_day(since: NaiveDateTime,
     }
 
     Ok(results.into_iter().collect())
+}
+
+pub fn buildbot_failures_last_24_hours() -> DashResult<Vec<Build>> {
+    use domain::schema::build::dsl::*;
+
+    let conn = try!(DB_POOL.get());
+
+    let one_day_ago = UTC::now().naive_utc() - Duration::days(1);
+
+    Ok(try!(build.select((number,
+                 builder_name,
+                 successful,
+                 message,
+                 duration_secs,
+                 start_time,
+                 end_time))
+        .filter(successful.ne(true))
+        .filter(end_time.is_not_null())
+        .filter(end_time.ge(one_day_ago))
+        .order(end_time.desc())
+        .load::<Build>(&*conn)))
 }
 
 pub fn nightly_releases(since: NaiveDateTime, until: NaiveDateTime) -> DashResult<Vec<Release>> {

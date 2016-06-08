@@ -69,7 +69,8 @@ export default Ember.Route.extend({
           mac_buildbots: {
             per_builder_times: mac_buildbot_times,
             per_builder_fails: mac_buildbot_fails
-          }
+          },
+          recent_failures: metrics.failures_last_day
         };
 
         return model;

@@ -17,3 +17,35 @@
 {{line-chart title='Number of Failed CI Builds (Mac)' data=model.mac_buildbots.per_builder_fails}}
 
 {{line-chart title='Number of Failed CI Builds (Windows)' data=model.windows_buildbots.per_builder_fails}}
+
+<h5>Failures in the last 24 hours</h5>
+
+<h6>Note: This data is refreshed at most hourly right now.</h6>
+
+<table class="u-full-width">
+    <thead>
+        <tr>
+            <th>Build Number</th>
+            <th>Builder</th>
+            <th>Message</th>
+            <th>Start Time</th>
+            <th>End Time</th>
+        </tr>
+    </thead>
+    <tbody>
+        {{#each model.recent_failures as |build|}}
+
+        <tr>
+            <td>
+                <a href="http://buildbot.rust-lang.org/builders/{{build.builder_name}}/builds/{{build.number}}" target="_blank">
+                    {{build.number}}
+                </a>
+            </td>
+            <td>{{build.builder_name}}</td>
+            <td>{{build.message}}</td>
+            <td>{{build.start_time}}</td>
+            <td>{{build.end_time}}</td>
+        </tr>
+        {{/each}}
+    </tbody>
+</table>
