@@ -11,3 +11,26 @@
         {{/if}}
     {{/each}}
 </div>
+
+<table>
+    <thead>
+        <tr>
+            <th>Date</th>
+            <th>Released?</th>
+        </tr>
+    </thead>
+    <tbody>
+        {{#each model.nightlies as |release|}}
+        <tr>
+            <td>{{release.date}}</td>
+            <td>
+            {{#if release.released}}
+                Yes
+            {{else}}
+                No
+            {{/if}}
+        </td>
+        </tr>
+        {{/each}}
+    </tbody>
+</table>
