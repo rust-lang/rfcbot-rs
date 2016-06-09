@@ -7,7 +7,12 @@ export default Ember.Route.extend({
     return Ember.$.getJSON(summary_url)
       .then(metrics => {
         return {
-          nightlies: metrics.nightlies
+          nightlies: metrics.nightlies.map(elt => {
+            return {
+              nightly: elt[0],
+              builds: elt[1],
+            };
+          })
         };
       });
   }

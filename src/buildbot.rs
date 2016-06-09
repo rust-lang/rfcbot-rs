@@ -82,9 +82,8 @@ pub fn ingest() -> DashResult<()> {
 
     let builders = try!(serde_json::from_str::<BTreeMap<String, serde_json::Value>>(&buf));
     let builders: Vec<_> = builders.into_iter()
-                                   .map(|(b_id, _)| b_id)
-                                   .filter(|b_id| b_id.starts_with("auto-"))
-                                   .collect();
+        .map(|(b_id, _)| b_id)
+        .collect();
 
     for builder in &builders {
         let url = format!("http://buildbot.rust-lang.org/json/builders/{}/builds/_all",
@@ -99,19 +98,19 @@ pub fn ingest() -> DashResult<()> {
         let builds = try!(serde_json::from_str::<BTreeMap<String, BuildFromJson>>(&buf));
 
         let builds = builds.into_iter()
-                           .filter(|&(_, ref b)| b.results.is_some())
-                           .map(|(_, b)| b.into())
-                           .collect::<Vec<Build>>();
+            .filter(|&(_, ref b)| b.results.is_some())
+            .map(|(_, b)| b.into())
+            .collect::<Vec<Build>>();
 
         debug!("Inserting/updating records in database.");
         trace!("{:#?}", &builds);
         for b in builds {
             use domain::schema::build::dsl::*;
             let pk = build.select(id)
-                          .filter(number.eq(b.number))
-                          .filter(builder_name.eq(&b.builder_name))
-                          .first::<i32>(&*conn)
-                          .ok();
+                .filter(number.eq(b.number))
+                .filter(builder_name.eq(&b.builder_name))
+                .first::<i32>(&*conn)
+                .ok();
 
             if let Some(pk) = pk {
                 try!(diesel::update(build.find(pk)).set(&b).execute(&*conn));

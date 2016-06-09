@@ -3,34 +3,48 @@
 <h3><a id="nightlies"/>Nightly Releases</h3>
 
 <div class="row">
-    {{#each model.nightlies as |release|}}
-        {{#if release.released}}
-            <div class="release-square" style="background: #006600;" title="{{release.date}}"></div>
-        {{else}}
-            <div class="release-square" style="background: #990000;" title="{{release.date}}"></div>
-        {{/if}}
-    {{/each}}
-</div>
-
-<table>
+  <table>
     <thead>
-        <tr>
-            <th>Date</th>
-            <th>Released?</th>
-        </tr>
+      <tr>
+        <th>Date</th>
+        <th>Released?</th>
+        <th>Failed Builds</th>
+      </tr>
     </thead>
     <tbody>
-        {{#each model.nightlies as |release|}}
+      {{#each model.nightlies as |r|}}
         <tr>
-            <td>{{release.date}}</td>
+          <td>{{r.nightly.date}}</td>
+          {{#if r.nightly.released}}
+
+            <td style="background: #DFF0D8">
+              &#x2713; Yes
+            </td>
+            <td></td>
+
+          {{else}}
+
+            <td style="background: #F2DEDE">
+              <div><strong>&#x2717; No</strong></div>
+            </td>
             <td>
-            {{#if release.released}}
-                Yes
-            {{else}}
-                No
-            {{/if}}
-        </td>
+              <ul>
+                {{#each r.builds as |b|}}
+                  <li>
+                      <a href="http://buildbot.rust-lang.org/builders/{{b.builder_name}}/builds/{{b.number}}" target="_blank">
+                          {{b.builder_name}}
+                      </a>
+                  </li>
+
+          {{else}}
+            No failed builds found. Perhaps this nightly hasn't run yet?
+                {{/each}}
+              </ul>
+            </td>
+          {{/if}}
+
         </tr>
-        {{/each}}
+      {{/each}}
     </tbody>
-</table>
+  </table>
+</div>
