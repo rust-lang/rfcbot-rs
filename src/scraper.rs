@@ -13,7 +13,7 @@ pub fn start_scraping() {
     handles.push(thread::spawn(|| {
         let sleep_duration = Duration::from_secs(CONFIG.github_interval_mins * 60);
         loop {
-            if let Ok(gh_most_recent) = github::most_recent_update() {
+            if let Ok(gh_most_recent) = github::most_recent_update("rust-lang/rust") {
                 info!("scraping github activity since {:?}", gh_most_recent);
                 match github::ingest_since("rust-lang/rust", gh_most_recent) {
                     Ok(()) => info!("scraped github successfully"),

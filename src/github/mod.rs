@@ -7,7 +7,7 @@ pub mod models;
 use std::collections::BTreeSet;
 use std::cmp;
 
-use chrono::{DateTime, NaiveDateTime, UTC};
+use chrono::{DateTime, NaiveDate, NaiveDateTime, NaiveTime, UTC};
 use diesel::expression::dsl::*;
 use diesel::prelude::*;
 use diesel;
@@ -24,24 +24,35 @@ lazy_static! {
     pub static ref GH: Client = Client::new();
 }
 
-pub fn most_recent_update() -> DashResult<DateTime<UTC>> {
+pub fn most_recent_update(repo: &str) -> DashResult<DateTime<UTC>> {
     info!("finding most recent github updates");
+
+    let default_date = NaiveDateTime::new(NaiveDate::from_ymd(2015, 5, 15), NaiveTime::from_hms(0, 0, 0));
 
     let conn = try!(DB_POOL.get());
 
     let issues_updated: NaiveDateTime = {
         use domain::schema::issue::dsl::*;
-        try!(issue.select(max(updated_at)).first(&*conn))
+        match issue.select(max(updated_at)).filter(repository.eq(repo)).first(&*conn) {
+            Ok(dt) => dt,
+            Err(_) => default_date,
+        }
     };
 
     let prs_updated: NaiveDateTime = {
         use domain::schema::pullrequest::dsl::*;
-        try!(pullrequest.select(max(updated_at)).first(&*conn))
+        match pullrequest.select(max(updated_at)).filter(repository.eq(repo)).first(&*conn) {
+            Ok(dt) => dt,
+            Err(_) => default_date,
+        }
     };
 
     let comments_updated: NaiveDateTime = {
         use domain::schema::issuecomment::dsl::*;
-        try!(issuecomment.select(max(updated_at)).first(&*conn))
+        match issuecomment.select(max(updated_at)).filter(repository.eq(repo)).first(&*conn) {
+            Ok(dt) => dt,
+            Err(_) => default_date,
+        }
     };
 
     let most_recent = cmp::min(issues_updated, cmp::min(prs_updated, comments_updated));
@@ -52,8 +63,8 @@ pub fn most_recent_update() -> DashResult<DateTime<UTC>> {
 pub fn ingest_since(repo: &str, start: DateTime<UTC>) -> DashResult<()> {
     info!("fetching all {} issues and comments since {}",
           repo, start);
-    let issues = try!(GH.issues_since(start));
-    let comments = try!(GH.comments_since(start));
+    let issues = try!(GH.issues_since(repo, start));
+    let comments = try!(GH.comments_since(repo, start));
 
     let mut prs: Vec<PullRequestFromJson> = vec![];
     for issue in &issues {
