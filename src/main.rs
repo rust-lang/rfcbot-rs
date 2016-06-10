@@ -91,7 +91,7 @@ fn main() {
             "github" => {
                 info!("Bootstrapping GitHub data since {}", start);
                 info!("{:#?}",
-                      github::ingest_since(start).map(|()| "Ingestion succesful."))
+                      github::ingest_since("rust-lang/rust", start).map(|()| "Ingestion succesful."))
             }
 
             "releases" => {

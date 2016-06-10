@@ -21,7 +21,7 @@ use self::client::Client;
 use self::models::PullRequestFromJson;
 
 lazy_static! {
-    static ref GH: Client = Client::new();
+    pub static ref GH: Client = Client::new();
 }
 
 pub fn most_recent_update() -> DashResult<DateTime<UTC>> {
@@ -49,9 +49,9 @@ pub fn most_recent_update() -> DashResult<DateTime<UTC>> {
     Ok(DateTime::from_utc(most_recent, UTC))
 }
 
-pub fn ingest_since(start: DateTime<UTC>) -> DashResult<()> {
-    info!("fetching all rust-lang/rust issues and comments since {}",
-          start);
+pub fn ingest_since(repo: &str, start: DateTime<UTC>) -> DashResult<()> {
+    info!("fetching all {} issues and comments since {}",
+          repo, start);
     let issues = try!(GH.issues_since(start));
     let comments = try!(GH.comments_since(start));
 

@@ -7,13 +7,15 @@ use releases;
 use buildbot;
 
 pub fn start_scraping() {
+    let mut handles = Vec::new();
+
     // spawn the github scraper
-    let gh_scraper = thread::spawn(|| {
+    handles.push(thread::spawn(|| {
         let sleep_duration = Duration::from_secs(CONFIG.github_interval_mins * 60);
         loop {
             if let Ok(gh_most_recent) = github::most_recent_update() {
                 info!("scraping github activity since {:?}", gh_most_recent);
-                match github::ingest_since(gh_most_recent) {
+                match github::ingest_since("rust-lang/rust", gh_most_recent) {
                     Ok(()) => info!("scraped github successfully"),
                     Err(why) => error!("unable to scrape github: {:?}", why),
                 }
@@ -26,10 +28,10 @@ pub fn start_scraping() {
                   CONFIG.github_interval_mins);
             thread::sleep(sleep_duration);
         }
-    });
+    }));
 
     // spawn the nightly release scraper
-    let rel_scraper = thread::spawn(|| {
+    handles.push(thread::spawn(|| {
         let sleep_duration = Duration::from_secs(CONFIG.release_interval_mins * 60);
         loop {
             if let Ok(rel_most_recent) = releases::most_recent_update() {
@@ -47,10 +49,10 @@ pub fn start_scraping() {
                   CONFIG.release_interval_mins);
             thread::sleep(sleep_duration);
         }
-    });
+    }));
 
     // spawn the buildbot scraper
-    let bb_scraper = thread::spawn(|| {
+    handles.push(thread::spawn(|| {
         let sleep_duration = Duration::from_secs(CONFIG.buildbot_interval_mins * 60);
         loop {
             info!("scraping all buildbots...");
@@ -64,9 +66,9 @@ pub fn start_scraping() {
                   CONFIG.buildbot_interval_mins);
             thread::sleep(sleep_duration);
         }
-    });
+    }));
 
-    gh_scraper.join().unwrap();
-    rel_scraper.join().unwrap();
-    bb_scraper.join().unwrap();
+    for handle in handles.into_iter() {
+        handle.join().unwrap();
+    }
 }
