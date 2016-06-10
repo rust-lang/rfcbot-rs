@@ -42,6 +42,7 @@ impl Into<Milestone> for MilestoneFromJson {
             updated_at: self.updated_at.naive_utc(),
             closed_at: self.closed_at.map(|t| t.naive_utc()),
             due_on: self.due_on.map(|t| t.naive_utc()),
+            repository: "rust-lang/rust".to_string(),
         }
     }
 }
@@ -100,6 +101,7 @@ impl Into<(Issue, Option<Milestone>)> for IssueFromJson {
                 Some(json_labels) => json_labels.into_iter().map(|l| l.name).collect(),
                 None => vec![],
             },
+            repository: "rust-lang/rust".to_string(),
         };
 
         (issue, self.milestone.map(|m| m.into()))
@@ -119,9 +121,9 @@ pub struct CommentFromJson {
 impl Into<IssueComment> for CommentFromJson {
     fn into(self) -> IssueComment {
         let issue_id = self.html_url
-                           .split('#')
-                           .next()
-                           .map(|r| r.split('/').last().map(|n| n.parse::<i32>()));
+            .split('#')
+            .next()
+            .map(|r| r.split('/').last().map(|n| n.parse::<i32>()));
 
         let issue_id = match issue_id {
             Some(Some(Ok(n))) => n,
@@ -139,6 +141,7 @@ impl Into<IssueComment> for CommentFromJson {
             body: self.body.replace(0x00 as char, ""),
             created_at: self.created_at.naive_utc(),
             updated_at: self.updated_at.naive_utc(),
+            repository: "rust-lang/rust".to_string(),
         }
     }
 }
@@ -181,6 +184,7 @@ impl Into<PullRequest> for PullRequestFromJson {
             additions: self.additions,
             deletions: self.deletions,
             changed_files: self.changed_files,
+            repository: "rust-lang/rust".to_string(),
         }
     }
 }
