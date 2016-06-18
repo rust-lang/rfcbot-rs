@@ -73,10 +73,10 @@ fn parse_dates_from_query(req: &mut Request) -> IronResult<(NaiveDate, NaiveDate
             } else {
                 Err(IronError::new(DateParseError::WrongNumber, errmsg))
             }
-        },
+        }
         Err(why) => {
             match why {
-                UrlDecodingError::BodyError(why) => { Err(IronError::new(why, errmsg)) },
+                UrlDecodingError::BodyError(why) => Err(IronError::new(why, errmsg)),
                 UrlDecodingError::EmptyQuery => default,
             }
         }

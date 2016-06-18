@@ -27,7 +27,8 @@ lazy_static! {
 pub fn most_recent_update(repo: &str) -> DashResult<DateTime<UTC>> {
     info!("finding most recent github updates");
 
-    let default_date = NaiveDateTime::new(NaiveDate::from_ymd(2015, 5, 15), NaiveTime::from_hms(0, 0, 0));
+    let default_date = NaiveDateTime::new(NaiveDate::from_ymd(2015, 5, 15),
+                                          NaiveTime::from_hms(0, 0, 0));
 
     let conn = try!(DB_POOL.get());
 
@@ -61,8 +62,7 @@ pub fn most_recent_update(repo: &str) -> DashResult<DateTime<UTC>> {
 }
 
 pub fn ingest_since(repo: &str, start: DateTime<UTC>) -> DashResult<()> {
-    info!("fetching all {} issues and comments since {}",
-          repo, start);
+    info!("fetching all {} issues and comments since {}", repo, start);
     let issues = try!(GH.issues_since(repo, start));
     let comments = try!(GH.comments_since(repo, start));
 
@@ -134,12 +134,12 @@ pub fn ingest_since(repo: &str, start: DateTime<UTC>) -> DashResult<()> {
 
         if let Some(milestone) = milestone {
             let exists = milestone::table.find(milestone.id)
-                                         .get_result::<Milestone>(&*conn)
-                                         .is_ok();
+                .get_result::<Milestone>(&*conn)
+                .is_ok();
             if exists {
                 try!(diesel::update(milestone::table.find(milestone.id))
-                         .set(&milestone)
-                         .execute(&*conn));
+                    .set(&milestone)
+                    .execute(&*conn));
             } else {
                 try!(diesel::insert(&milestone).into(milestone::table).execute(&*conn));
             }
@@ -159,8 +159,8 @@ pub fn ingest_since(repo: &str, start: DateTime<UTC>) -> DashResult<()> {
 
         if issuecomment::table.find(comment.id).get_result::<IssueComment>(&*conn).is_ok() {
             try!(diesel::update(issuecomment::table.find(comment.id))
-                     .set(&comment)
-                     .execute(&*conn));
+                .set(&comment)
+                .execute(&*conn));
         } else {
             try!(diesel::insert(&comment).into(issuecomment::table).execute(&*conn));
         }
@@ -171,8 +171,7 @@ pub fn ingest_since(repo: &str, start: DateTime<UTC>) -> DashResult<()> {
 
         let pr: PullRequest = pr.into();
 
-        let existing_id = pullrequest
-            .select(id)
+        let existing_id = pullrequest.select(id)
             .filter(number.eq(&pr.number))
             .filter(repository.eq(&pr.repository))
             .first::<i32>(&*conn)

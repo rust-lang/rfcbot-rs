@@ -73,9 +73,9 @@ pub fn ingest_releases_since(d: DateTime<UTC>) -> DashResult<()> {
 
     for r in releases {
         let pk = release.filter(date.eq(r.date))
-                        .first::<(i32, NaiveDate, bool)>(&*conn)
-                        .map(|f| f.0)
-                        .ok();
+            .first::<(i32, NaiveDate, bool)>(&*conn)
+            .map(|f| f.0)
+            .ok();
 
         if let Some(pk) = pk {
             try!(diesel::update(release.find(pk)).set(&r).execute(&*conn));

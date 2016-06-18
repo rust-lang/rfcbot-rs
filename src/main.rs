@@ -83,7 +83,7 @@ fn main() {
     } else if let Some(args) = args.subcommand_matches("bootstrap") {
         // OK to unwrap, this has already been validated by clap
         let start = make_date_time(args.value_of("since").unwrap())
-                        .unwrap_or(UTC.ymd(2015, 5, 15).and_hms(0, 0, 0));
+            .unwrap_or(UTC.ymd(2015, 5, 15).and_hms(0, 0, 0));
 
         let source = args.value_of("source").unwrap();
 
@@ -91,7 +91,8 @@ fn main() {
             "github" => {
                 info!("Bootstrapping GitHub data since {}", start);
                 info!("{:#?}",
-                      github::ingest_since("rust-lang/rust", start).map(|()| "Ingestion succesful."))
+                      github::ingest_since("rust-lang/rust", start)
+                          .map(|()| "Ingestion succesful."))
             }
 
             "releases" => {
@@ -122,29 +123,25 @@ fn init_cli<'a>() -> ArgMatches<'a> {
     let serve = SubCommand::with_name("serve").about("serve the dashboard JSON API");
 
     let bootstrap = SubCommand::with_name("bootstrap")
-                        .about("bootstraps the database")
-                        .arg(Arg::with_name("source")
-                                 .index(1)
-                                 .required(true)
-                                 .help("Data source to scrape ('all' for all)."))
-                        .arg(Arg::with_name("since")
-                                 .index(2)
-                                 .required(true)
-                                 .help("Date in YYYY-MM-DD format.")
-                                 .validator(|d| {
-                                     match &*d {
-                                         "all" => Ok(()),
-                                         _ => {
-                                             make_date_time(&d)
-                                                 .map(|_| ())
-                                                 .map_err(|e| {
-                                                     format!("Date must be in YYYY-MM-DD format \
-                                                              ({:?})",
-                                                             e)
-                                                 })
-                                         }
-                                     }
-                                 }));
+        .about("bootstraps the database")
+        .arg(Arg::with_name("source")
+            .index(1)
+            .required(true)
+            .help("Data source to scrape ('all' for all)."))
+        .arg(Arg::with_name("since")
+            .index(2)
+            .required(true)
+            .help("Date in YYYY-MM-DD format.")
+            .validator(|d| {
+                match &*d {
+                    "all" => Ok(()),
+                    _ => {
+                        make_date_time(&d)
+                            .map(|_| ())
+                            .map_err(|e| format!("Date must be in YYYY-MM-DD format ({:?})", e))
+                    }
+                }
+            }));
 
     App::new(env!("CARGO_PKG_NAME"))
         .version(env!("CARGO_PKG_VERSION"))
