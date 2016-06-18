@@ -26,7 +26,7 @@ urlencoded = "0.3.0"
 [dependencies.diesel]
 version = "0.6.2"
 default-features = false
-features = ["postgres", "chrono"]
+features = ["postgres", "chrono", "large-tables"]
 
 [dependencies.diesel_codegen]
 version = "0.6.2"

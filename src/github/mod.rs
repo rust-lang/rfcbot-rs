@@ -167,14 +167,21 @@ pub fn ingest_since(repo: &str, start: DateTime<UTC>) -> DashResult<()> {
     }
 
     for pr in prs {
+        use domain::schema::pullrequest::dsl::*;
+
         let pr: PullRequest = pr.into();
 
-        let exists = pullrequest::table.find(pr.number).get_result::<PullRequest>(&*conn).is_ok();
+        let existing_id = pullrequest
+            .select(id)
+            .filter(number.eq(&pr.number))
+            .filter(repository.eq(&pr.repository))
+            .first::<i32>(&*conn)
+            .ok();
 
-        if exists {
-            try!(diesel::update(pullrequest::table.find(pr.number)).set(&pr).execute(&*conn));
+        if let Some(current_id) = existing_id {
+            try!(diesel::update(pullrequest.find(current_id)).set(&pr).execute(&*conn));
         } else {
-            try!(diesel::insert(&pr).into(pullrequest::table).execute(&*conn));
+            try!(diesel::insert(&pr).into(pullrequest).execute(&*conn));
         }
     }
 
