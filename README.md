@@ -10,7 +10,7 @@ Not guaranteed to be updated regularly, but last time I remembered to update thi
 
 ```bash
 $ rustc --version
-rustc 1.10.0-nightly (c2aaad4e2 2016-04-19)
+rustc 1.11.0-nightly (bb4a79b08 2016-06-15)
 ```
 
 ### Environment variables

@@ -24,11 +24,11 @@ serde_macros = "0.7.0"
 urlencoded = "0.3.0"
 
 [dependencies.diesel]
-version = "0.6.1"
+version = "0.6.2"
 default-features = false
 features = ["postgres", "chrono"]
 
 [dependencies.diesel_codegen]
-version = "0.6.1"
+version = "0.6.2"
 default-features = false
 features = ["nightly", "postgres"]
