@@ -39,6 +39,7 @@ pub struct IssueSummary {
 #[derive(Clone, Debug, Serialize)]
 pub struct ReleaseSummary {
     nightlies: Vec<(Release, Option<Vec<Build>>)>,
+    builder_times_mins: Vec<(String, Vec<(EpochTimestamp, f64)>)>,
 }
 
 #[derive(Clone, Debug, Serialize)]
@@ -98,7 +99,7 @@ pub fn ci_summary(since: NaiveDate, until: NaiveDate) -> DashResult<BuildbotSumm
     let since = since.and_hms(0, 0, 0);
     let until = until.and_hms(23, 59, 59);
 
-    let per_builder_times = try!(buildbot_build_times(since, until));
+    let per_builder_times = try!(buildbot_build_times(since, until, "auto-%"));
     let per_builder_fails = try!(buildbot_failures_by_day(since, until));
     let failures_last_day = try!(buildbot_failures_last_24_hours());
 
@@ -113,7 +114,10 @@ pub fn release_summary(since: NaiveDate, until: NaiveDate) -> DashResult<Release
     let since = since.and_hms(0, 0, 0);
     let until = until.and_hms(23, 59, 59);
 
-    Ok(ReleaseSummary { nightlies: try!(nightly_releases(since, until)) })
+    let nightlies = try!(nightly_releases(since, until));
+    let build_times = try!(buildbot_build_times(since, until, "nightly-%"));
+
+    Ok(ReleaseSummary { nightlies: nightlies, builder_times_mins: build_times })
 }
 
 pub fn prs_opened_per_day(since: NaiveDateTime,
@@ -321,7 +325,8 @@ pub fn open_issues_with_label(label: &str) -> DashResult<i64> {
 }
 
 pub fn buildbot_build_times(since: NaiveDateTime,
-                            until: NaiveDateTime)
+                            until: NaiveDateTime,
+                            builder_pattern: &str)
                             -> DashResult<Vec<(String, Vec<(EpochTimestamp, f64)>)>> {
     use domain::schema::build::dsl::*;
 
@@ -334,7 +339,7 @@ pub fn buildbot_build_times(since: NaiveDateTime,
         .filter(start_time.is_not_null())
         .filter(start_time.ge(since))
         .filter(start_time.le(until))
-        .filter(builder_name.like("auto-%"))
+        .filter(builder_name.like(builder_pattern))
         .group_by(&name_date)
         .order((&name_date).asc())
         .load::<((String, NaiveDate), f64)>(&*conn));
