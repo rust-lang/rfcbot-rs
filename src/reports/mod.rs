@@ -5,7 +5,8 @@ use chrono::duration::Duration;
 use diesel::expression::dsl::*;
 use diesel::expression::AsExpression;
 use diesel::prelude::*;
-use diesel::types::{BigInt, Date, Double, Integer, Text};
+use diesel::select;
+use diesel::types::{BigInt, Bool, Date, Double, Integer, Text, VarChar};
 
 use DB_POOL;
 use domain::buildbot::Build;
@@ -21,7 +22,16 @@ pub struct PullRequestSummary {
     merged_per_day: Vec<(EpochTimestamp, i64)>,
     days_open_before_close: Vec<(EpochTimestamp, f64)>,
     current_open_age_days_mean: f64,
-    bors_retries: Vec<(i32, i64)>,
+    bors_retries: Vec<BorsRetry>,
+}
+
+#[derive(Clone, Debug, Queryable, Serialize)]
+pub struct BorsRetry {
+    repository: String,
+    issue_num: i32,
+    comment_id: i32,
+    issue_title: String,
+    merged: bool,
 }
 
 #[derive(Clone, Debug, Serialize)]
@@ -83,7 +93,7 @@ pub fn pr_summary(since: NaiveDate, until: NaiveDate) -> DashResult<PullRequestS
     let prs_close_per_day = try!(prs_closed_per_day(since, until));
     let prs_merge_per_day = try!(prs_merged_per_day(since, until));
     let pr_open_time = try!(prs_open_time_before_close(since, until));
-    let bors_retries = try!(bors_retries_per_pr(since, until));
+    let bors_retries = try!(bors_retries_last_week());
 
     Ok(PullRequestSummary {
         opened_per_day: prs_open_per_day,
@@ -117,7 +127,10 @@ pub fn release_summary(since: NaiveDate, until: NaiveDate) -> DashResult<Release
     let nightlies = try!(nightly_releases(since, until));
     let build_times = try!(buildbot_build_times(since, until, "nightly-%"));
 
-    Ok(ReleaseSummary { nightlies: nightlies, builder_times_mins: build_times })
+    Ok(ReleaseSummary {
+        nightlies: nightlies,
+        builder_times_mins: build_times,
+    })
 }
 
 pub fn prs_opened_per_day(since: NaiveDateTime,
@@ -217,22 +230,24 @@ pub fn open_prs_avg_days_old() -> DashResult<f64> {
                        .first(&*conn)))
 }
 
-pub fn bors_retries_per_pr(since: NaiveDateTime,
-                           until: NaiveDateTime)
-                           -> DashResult<Vec<(i32, i64)>> {
-
-    use domain::schema::issuecomment::dsl::*;
+pub fn bors_retries_last_week() -> DashResult<Vec<BorsRetry>> {
     let conn = try!(DB_POOL.get());
 
-    Ok(try!(issuecomment.select(sql::<(Integer, BigInt)>("fk_issue, COUNT(*)"))
-            .filter(body.like("%@bors%retry%"))
-            .filter(created_at.ge(since))
-            .filter(created_at.le(until))
-            .group_by(fk_issue)
-            .order(count_star().desc())
-            .load(&*conn))
-        .into_iter()
-        .collect())
+    // waiting on associations to get this into proper typed queries
+
+    Ok(try!(select(
+        sql::<(VarChar, Integer, Integer, VarChar, Bool)>(
+            "i.repository, i.number, ic.id, i.title, pr.merged_at IS NOT NULL
+            FROM issuecomment ic, issue i, pullrequest pr \
+            WHERE \
+              ic.body LIKE '%@bors%retry%' AND \
+              i.id = ic.fk_issue AND \
+              i.is_pull_request AND \
+              ic.created_at > NOW() - '7 days'::interval AND \
+              pr.repository = i.repository AND \
+              pr.number = i.number \
+            ORDER BY ic.created_at DESC"))
+        .load(&*conn)))
 }
 
 pub fn issues_opened_per_day(since: NaiveDateTime,

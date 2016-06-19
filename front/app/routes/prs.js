@@ -32,7 +32,8 @@ export default Ember.Route.extend({
           days_open_before_close: [{
             name: 'PR Days Open Before Closed (by week)',
             data: prs_days_open_b4_close
-          }]
+          }],
+          bors_retries: metrics.bors_retries
         };
 
         return model;
