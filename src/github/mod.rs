@@ -130,7 +130,7 @@ pub fn ingest_since(repo: &str, start: DateTime<UTC>) -> DashResult<()> {
 
     // insert the issues, milestones, and labels
     for issue in issues {
-        let (issue, milestone) = issue.into();
+        let (i, milestone) = issue.into();
 
         if let Some(milestone) = milestone {
             let exists = milestone::table.find(milestone.id)
@@ -145,17 +145,26 @@ pub fn ingest_since(repo: &str, start: DateTime<UTC>) -> DashResult<()> {
             }
         }
 
-        let exists = issue::table.find(issue.number).get_result::<Issue>(&*conn).is_ok();
-        if exists {
-            try!(diesel::update(issue::table.find(issue.number)).set(&issue).execute(&*conn));
-        } else {
-            try!(diesel::insert(&issue).into(issue::table).execute(&*conn));
+        {
+            use domain::schema::issue::dsl::*;
+
+            let exists = issue.select(id)
+                .filter(number.eq(&i.number))
+                .filter(repository.eq(&i.repository))
+                .first::<i32>(&*conn)
+                .ok();
+
+            if let Some(current_id) = exists {
+                try!(diesel::update(issue.find(current_id)).set(&i).execute(&*conn));
+            } else {
+                try!(diesel::insert(&i).into(issue).execute(&*conn));
+            }
         }
     }
 
     // insert the comments
     for comment in comments {
-        let comment: IssueComment = comment.into();
+        let comment: IssueComment = try!(comment.build(repo));
 
         if issuecomment::table.find(comment.id).get_result::<IssueComment>(&*conn).is_ok() {
             try!(diesel::update(issuecomment::table.find(comment.id))

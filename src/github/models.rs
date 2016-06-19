@@ -6,7 +6,9 @@ use std::i32;
 
 use chrono::{DateTime, UTC};
 
+use DB_POOL;
 use domain::github::{Issue, IssueComment, Milestone, PullRequest, GitHubUser};
+use error::DashResult;
 
 #[derive(Clone, Debug, Deserialize)]
 pub struct MilestoneFromJson {
@@ -118,14 +120,17 @@ pub struct CommentFromJson {
     pub updated_at: DateTime<UTC>,
 }
 
-impl Into<IssueComment> for CommentFromJson {
-    fn into(self) -> IssueComment {
-        let issue_id = self.html_url
+impl CommentFromJson {
+    pub fn build(self, repo: &str) -> DashResult<IssueComment> {
+        use diesel::prelude::*;
+        use domain::schema::issue::dsl::*;
+
+        let issue_number = self.html_url
             .split('#')
             .next()
             .map(|r| r.split('/').last().map(|n| n.parse::<i32>()));
 
-        let issue_id = match issue_id {
+        let issue_number = match issue_number {
             Some(Some(Ok(n))) => n,
             _ => {
                 // this should never happen
@@ -134,7 +139,14 @@ impl Into<IssueComment> for CommentFromJson {
             }
         };
 
-        IssueComment {
+        let conn = try!(DB_POOL.get());
+
+        let issue_id = try!(issue.select(id)
+            .filter(number.eq(issue_number))
+            .filter(repository.eq(repo))
+            .first::<i32>(&*conn));
+
+        Ok(IssueComment {
             id: self.id,
             fk_issue: issue_id,
             fk_user: self.user.id,
@@ -142,7 +154,7 @@ impl Into<IssueComment> for CommentFromJson {
             created_at: self.created_at.naive_utc(),
             updated_at: self.updated_at.naive_utc(),
             repository: "rust-lang/rust".to_string(),
-        }
+        })
     }
 }
 
