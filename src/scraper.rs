@@ -11,11 +11,13 @@ pub fn start_scraping() {
 
     // spawn the github scraper
     handles.push(thread::spawn(|| {
+        let repo = "rust-lang/rust";
         let sleep_duration = Duration::from_secs(CONFIG.github_interval_mins * 60);
         loop {
-            if let Ok(gh_most_recent) = github::most_recent_update("rust-lang/rust") {
+            if let Ok(gh_most_recent) = github::most_recent_update(repo) {
                 info!("scraping github activity since {:?}", gh_most_recent);
-                match github::ingest_since("rust-lang/rust", gh_most_recent) {
+
+                match github::ingest_since(repo, gh_most_recent) {
                     Ok(()) => info!("scraped github successfully"),
                     Err(why) => error!("unable to scrape github: {:?}", why),
                 }

@@ -130,7 +130,7 @@ pub fn ingest_since(repo: &str, start: DateTime<UTC>) -> DashResult<()> {
 
     // insert the issues, milestones, and labels
     for issue in issues {
-        let (i, milestone) = issue.into();
+        let (i, milestone) = issue.with_repo(repo);
 
         if let Some(milestone) = milestone {
             let exists = milestone::table.find(milestone.id)
@@ -164,7 +164,7 @@ pub fn ingest_since(repo: &str, start: DateTime<UTC>) -> DashResult<()> {
 
     // insert the comments
     for comment in comments {
-        let comment: IssueComment = try!(comment.build(repo));
+        let comment: IssueComment = try!(comment.with_repo(repo));
 
         if issuecomment::table.find(comment.id).get_result::<IssueComment>(&*conn).is_ok() {
             try!(diesel::update(issuecomment::table.find(comment.id))
@@ -178,7 +178,7 @@ pub fn ingest_since(repo: &str, start: DateTime<UTC>) -> DashResult<()> {
     for pr in prs {
         use domain::schema::pullrequest::dsl::*;
 
-        let pr: PullRequest = pr.into();
+        let pr: PullRequest = pr.with_repo(repo);
 
         let existing_id = pullrequest.select(id)
             .filter(number.eq(&pr.number))
