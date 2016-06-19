@@ -3,7 +3,8 @@ import Ember from 'ember';
 export default Ember.Component.extend({
   opts: {
     chart: {
-      height: 350
+      type: 'scatter',
+      height: 250
     },
     navigator: {
       enabled: false
