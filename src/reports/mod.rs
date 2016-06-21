@@ -13,6 +13,8 @@ use domain::buildbot::Build;
 use domain::releases::Release;
 use error::DashResult;
 
+mod teams;
+
 pub type EpochTimestamp = i64;
 
 #[derive(Clone, Debug, Serialize)]
@@ -235,18 +237,23 @@ pub fn bors_retries_last_week() -> DashResult<Vec<BorsRetry>> {
 
     // waiting on associations to get this into proper typed queries
 
-    Ok(try!(select(
-        sql::<(VarChar, Integer, Integer, VarChar, Bool)>(
-            "i.repository, i.number, ic.id, i.title, pr.merged_at IS NOT NULL
-            FROM issuecomment ic, issue i, pullrequest pr \
-            WHERE \
-              ic.body LIKE '%@bors%retry%' AND \
-              i.id = ic.fk_issue AND \
-              i.is_pull_request AND \
-              ic.created_at > NOW() - '7 days'::interval AND \
-              pr.repository = i.repository AND \
-              pr.number = i.number \
-            ORDER BY ic.created_at DESC"))
+    Ok(try!(select(sql::<(VarChar, Integer, Integer, VarChar, Bool)>("i.repository, i.number, \
+                                                                      ic.id, i.title, \
+                                                                      pr.merged_at IS NOT NULL
+            \
+                                                                      FROM issuecomment ic, \
+                                                                      issue i, pullrequest pr \
+                                                                      WHERE ic.body LIKE \
+                                                                      '%@bors%retry%' AND i.id \
+                                                                      = ic.fk_issue AND \
+                                                                      i.is_pull_request AND \
+                                                                      ic.created_at > NOW() - \
+                                                                      '7 days'::interval AND \
+                                                                      pr.repository = \
+                                                                      i.repository AND \
+                                                                      pr.number = i.number \
+                                                                      ORDER BY ic.created_at \
+                                                                      DESC"))
         .load(&*conn)))
 }
 
