@@ -13,6 +13,7 @@ use domain::buildbot::Build;
 use domain::releases::Release;
 use error::DashResult;
 
+pub mod nag;
 mod teams;
 
 pub type EpochTimestamp = i64;

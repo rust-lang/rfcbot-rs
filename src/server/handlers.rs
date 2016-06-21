@@ -10,6 +10,12 @@ use urlencoded::{UrlDecodingError, UrlEncodedQuery};
 use error::DashError;
 use reports;
 
+pub fn team_members(_: &mut Request) -> IronResult<Response> {
+    Ok(Response::with((status::Ok,
+                       try!(ser::to_string(&reports::nag::all_team_members())
+                        .map_err(|e| {let e: DashError = e.into(); e})))))
+}
+
 const DATE_FORMAT: &'static str = "%Y%m%d";
 
 macro_rules! make_dated_endpoint {

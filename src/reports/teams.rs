@@ -9,7 +9,7 @@ struct Member {
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, PartialOrd, Ord)]
-struct Team {
+pub struct Team {
     name: &'static str,
     label: &'static str,
     ping: &'static str,
@@ -28,8 +28,8 @@ static acrichto: Member = Member {
     full_name: "Alex Crichton",
 };
 static aturon: Member = Member {
-    username: "Aaron Turon",
-    full_name: "aturon",
+    username: "aturon",
+    full_name: "Aaron Turon",
 };
 static bkoropoff: Member = Member {
     username: "bkoropoff",
@@ -112,7 +112,7 @@ static wycats: Member = Member {
 
 lazy_static! {
 // no community or mod team b/c they won't have nags
-    static ref MEMBERSHIP: BTreeMap<&'static str, (&'static str, Vec<Team>)> = {
+    pub static ref MEMBERSHIP: BTreeMap<&'static str, (&'static str, Vec<Team>)> = {
         let mut teams = BTreeMap::new();
 
         teams.insert(Team { name: "Core", label: "T-core", ping: "@rust-lang/core" },
