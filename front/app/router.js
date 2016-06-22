@@ -13,6 +13,8 @@ Router.map(function() {
   this.route('buildbots', { path: '/buildbots' });
   this.route('links', { path: '/links' });
   this.route('triage', { path: '/triage' });
+  this.route('nag', { path: '/nags' });
+  this.route('nag_user', { path: '/nags/:username' });
 });
 
 export default Router;
