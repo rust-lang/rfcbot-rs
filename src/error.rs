@@ -23,33 +23,23 @@ pub enum DashError {
 }
 
 impl From<hyper::error::Error> for DashError {
-    fn from(e: hyper::error::Error) -> Self {
-        DashError::Hyper(e)
-    }
+    fn from(e: hyper::error::Error) -> Self { DashError::Hyper(e) }
 }
 
 impl From<io::Error> for DashError {
-    fn from(e: io::Error) -> Self {
-        DashError::Io(e)
-    }
+    fn from(e: io::Error) -> Self { DashError::Io(e) }
 }
 
 impl From<serde_json::error::Error> for DashError {
-    fn from(e: serde_json::error::Error) -> Self {
-        DashError::Serde(e)
-    }
+    fn from(e: serde_json::error::Error) -> Self { DashError::Serde(e) }
 }
 
 impl From<r2d2::GetTimeout> for DashError {
-    fn from(e: r2d2::GetTimeout) -> Self {
-        DashError::R2d2Timeout(e)
-    }
+    fn from(e: r2d2::GetTimeout) -> Self { DashError::R2d2Timeout(e) }
 }
 
 impl From<diesel::result::Error> for DashError {
-    fn from(e: diesel::result::Error) -> Self {
-        DashError::DieselError(e)
-    }
+    fn from(e: diesel::result::Error) -> Self { DashError::DieselError(e) }
 }
 
 impl From<DashError> for iron::IronError {

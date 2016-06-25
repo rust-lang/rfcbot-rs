@@ -14,7 +14,6 @@ use domain::releases::Release;
 use error::DashResult;
 
 pub mod nag;
-mod teams;
 
 pub type EpochTimestamp = i64;
 
@@ -229,8 +228,8 @@ pub fn open_prs_avg_days_old() -> DashResult<f64> {
     let conn = try!(DB_POOL.get());
     Ok(try!(pullrequest.select(sql::<Double>("AVG(EXTRACT(EPOCH FROM (now() - created_at))) / \
                                               (60 * 60 * 24)"))
-                       .filter(closed_at.is_null())
-                       .first(&*conn)))
+        .filter(closed_at.is_null())
+        .first(&*conn)))
 }
 
 pub fn bors_retries_last_week() -> DashResult<Vec<BorsRetry>> {
@@ -238,23 +237,18 @@ pub fn bors_retries_last_week() -> DashResult<Vec<BorsRetry>> {
 
     // waiting on associations to get this into proper typed queries
 
-    Ok(try!(select(sql::<(VarChar, Integer, Integer, VarChar, Bool)>("i.repository, i.number, \
-                                                                      ic.id, i.title, \
-                                                                      pr.merged_at IS NOT NULL
-            \
-                                                                      FROM issuecomment ic, \
-                                                                      issue i, pullrequest pr \
-                                                                      WHERE ic.body LIKE \
-                                                                      '%@bors%retry%' AND i.id \
-                                                                      = ic.fk_issue AND \
-                                                                      i.is_pull_request AND \
-                                                                      ic.created_at > NOW() - \
-                                                                      '7 days'::interval AND \
-                                                                      pr.repository = \
-                                                                      i.repository AND \
-                                                                      pr.number = i.number \
-                                                                      ORDER BY ic.created_at \
-                                                                      DESC"))
+    Ok(try!(select(
+        sql::<(VarChar, Integer, Integer, VarChar, Bool)>(
+        "i.repository, i.number, ic.id, i.title, pr.merged_at IS NOT NULL \
+        FROM issuecomment ic, issue i, pullrequest pr \
+        WHERE \
+        ic.body LIKE '%@bors%retry%' AND \
+        i.id = ic.fk_issue AND \
+        i.is_pull_request AND \
+        ic.created_at > NOW() - '7 days'::interval AND \
+        pr.repository = i.repository AND \
+        pr.number = i.number \
+        ORDER BY ic.created_at DESC"))
         .load(&*conn)))
 }
 
@@ -333,8 +327,8 @@ pub fn open_issues_avg_days_old() -> DashResult<f64> {
     let conn = try!(DB_POOL.get());
     Ok(try!(issue.select(sql::<Double>("AVG(EXTRACT(EPOCH FROM (now() - created_at))) / \
                                               (60 * 60 * 24)"))
-                 .filter(closed_at.is_null())
-                 .first(&*conn)))
+        .filter(closed_at.is_null())
+        .first(&*conn)))
 }
 
 pub fn open_issues_with_label(label: &str) -> DashResult<i64> {

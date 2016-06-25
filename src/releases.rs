@@ -34,18 +34,8 @@ fn get_release_for_date(d: NaiveDate) -> DashResult<Release> {
 
     let response = try!(CLIENT.get(&url).send());
     match response.status {
-        StatusCode::Ok => {
-            Ok(Release {
-                date: d,
-                released: true,
-            })
-        }
-        _ => {
-            Ok(Release {
-                date: d,
-                released: false,
-            })
-        }
+        StatusCode::Ok => Ok(Release { date: d, released: true }),
+        _ => Ok(Release { date: d, released: false }),
     }
 }
 
