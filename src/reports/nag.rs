@@ -1,9 +1,24 @@
-use reports::teams::MEMBERSHIP;
+use diesel::expression::dsl::*;
+use diesel::prelude::*;
+use diesel::select;
+use diesel::types::VarChar;
 
-pub fn all_team_members() -> Vec<&'static str> {
-    let mut members = MEMBERSHIP.keys().map(|m| *m).collect::<Vec<_>>();
+use DB_POOL;
+use error::DashResult;
 
-    members.sort_by(|a, b| a.to_lowercase().cmp(&b.to_lowercase()));
+pub fn all_team_members() -> DashResult<Vec<String>> {
+    let conn = try!(DB_POOL.get());
 
-    members
+    // waiting on associations to get this into proper typed queries
+
+    Ok(try!(select(sql::<VarChar>("\
+        DISTINCT u.login \
+        FROM githubuser u, memberships m \
+        WHERE u.id = m.fk_member \
+        ORDER BY u.login"))
+        .load(&*conn)))
+}
+
+pub fn individual_nags(_: &str) -> DashResult<Vec<String>> {
+    Ok(Vec::new())
 }

@@ -14,8 +14,10 @@ pub fn serve() {
     mount.mount("/buildbots/", router!(get "/" => handlers::buildbots));
     mount.mount("/releases/", router!(get "/" => handlers::releases));
 
-    mount.mount("/nag/", router!(
-        get "/users" => handlers::team_members
+    mount.mount("/nag/",
+                router!(
+        get "/users" => handlers::team_members,
+        get "/:username" => handlers::member_nags
     ));
 
     let chain = Chain::new(mount);

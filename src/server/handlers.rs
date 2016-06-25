@@ -4,6 +4,7 @@ use std::fmt;
 use chrono::{NaiveDate, Duration, UTC};
 use iron::prelude::*;
 use iron::status;
+use router::Router;
 use serde_json::ser;
 use urlencoded::{UrlDecodingError, UrlEncodedQuery};
 
@@ -11,9 +12,26 @@ use error::DashError;
 use reports;
 
 pub fn team_members(_: &mut Request) -> IronResult<Response> {
+    let members = try!(reports::nag::all_team_members());
     Ok(Response::with((status::Ok,
-                       try!(ser::to_string(&reports::nag::all_team_members())
-                        .map_err(|e| {let e: DashError = e.into(); e})))))
+                       try!(ser::to_string(&members).map_err(|e| {
+        let e: DashError = e.into();
+        e
+    })))))
+}
+
+pub fn member_nags(req: &mut Request) -> IronResult<Response> {
+    let ref username = match req.extensions.get::<Router>().unwrap().find("username") {
+        Some(u) => u,
+        None => return Ok(Response::with((status::BadRequest, "Invalid team member username."))),
+    };
+
+    Ok(Response::with((status::Ok,
+                       try!(ser::to_string(&try!(reports::nag::individual_nags(username)))
+        .map_err(|e| {
+            let e: DashError = e.into();
+            e
+        })))))
 }
 
 const DATE_FORMAT: &'static str = "%Y%m%d";
@@ -95,9 +113,7 @@ enum DateParseError {
 }
 
 impl fmt::Display for DateParseError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self.description())
-    }
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result { write!(f, "{}", self.description()) }
 }
 
 impl Error for DateParseError {
