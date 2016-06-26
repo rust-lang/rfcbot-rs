@@ -6,10 +6,11 @@ use diesel::expression::dsl::*;
 use diesel::expression::AsExpression;
 use diesel::prelude::*;
 use diesel::select;
-use diesel::types::{BigInt, Bool, Date, Double, Integer, Text, VarChar};
+use diesel::types::{Array, BigInt, Bool, Date, Double, Integer, Nullable, Text, Timestamp, VarChar};
 
 use DB_POOL;
 use domain::buildbot::Build;
+use domain::github::Issue;
 use domain::releases::Release;
 use error::DashResult;
 
@@ -133,6 +134,62 @@ pub fn release_summary(since: NaiveDate, until: NaiveDate) -> DashResult<Release
         nightlies: nightlies,
         builder_times_mins: build_times,
     })
+}
+
+pub fn hottest_issues_last_month() -> DashResult<Vec<Issue>> {
+
+    let conn = try!(DB_POOL.get());
+
+    Ok(try!(select(sql::<(Integer,
+                          Nullable<Integer>,
+                          Integer,
+                          Nullable<Integer>,
+                          Bool,
+                          Bool,
+                          VarChar,
+                          VarChar,
+                          Bool,
+                          Nullable<Timestamp>,
+                          Timestamp,
+                          Timestamp,
+                          Array<VarChar>,
+                          VarChar)>(" i.number, \
+          i.fk_milestone, \
+          i.fk_user, \
+          i.fk_assignee, \
+          i.open, \
+          i.is_pull_request, \
+          i.title, \
+          i.body, \
+          i.locked, \
+          i.closed_at, \
+          i.created_at, \
+          i.updated_at, \
+          i.labels, \
+          i.repository \
+        FROM issue i, issuecomment ic \
+        WHERE \
+          i.id = ic.fk_issue AND \
+          ic.created_at >= NOW() - '14 days'::interval AND \
+          i.open \
+        GROUP BY \
+          i.number, \
+          i.fk_milestone, \
+          i.fk_user, \
+          i.fk_assignee, \
+          i.open, \
+          i.is_pull_request, \
+          i.title, \
+          i.body, \
+          i.locked, \
+          i.closed_at, \
+          i.created_at, \
+          i.updated_at, \
+          i.labels, \
+          i.repository \
+        ORDER BY COUNT(ic.*) DESC \
+        LIMIT 50"))
+        .load::<Issue>(&*conn)))
 }
 
 pub fn prs_opened_per_day(since: NaiveDateTime,

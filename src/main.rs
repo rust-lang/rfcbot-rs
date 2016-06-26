@@ -12,6 +12,7 @@ extern crate dotenv;
 extern crate env_logger;
 #[macro_use]
 extern crate hyper;
+#[macro_use]
 extern crate iron;
 #[macro_use]
 extern crate lazy_static;

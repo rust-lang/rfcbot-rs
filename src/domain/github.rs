@@ -32,7 +32,7 @@ pub struct Milestone {
     pub repository: String,
 }
 
-#[derive(Clone, Debug, Deserialize, Eq, Ord, PartialEq, PartialOrd, Queryable)]
+#[derive(Clone, Debug, Deserialize, Eq, Ord, PartialEq, PartialOrd, Queryable, Serialize)]
 #[insertable_into(issue)]
 #[changeset_for(issue, treat_none_as_null="true")]
 pub struct Issue {

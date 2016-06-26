@@ -34,6 +34,11 @@ pub fn member_nags(req: &mut Request) -> IronResult<Response> {
         })))))
 }
 
+pub fn hot_issues(_: &mut Request) -> IronResult<Response> {
+    Ok(Response::with((status::Ok,
+                       itry!(ser::to_string(&try!(reports::hottest_issues_last_month()))))))
+}
+
 const DATE_FORMAT: &'static str = "%Y%m%d";
 
 macro_rules! make_dated_endpoint {

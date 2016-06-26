@@ -19,6 +19,4 @@ pub fn all_team_members() -> DashResult<Vec<String>> {
         .load(&*conn)))
 }
 
-pub fn individual_nags(_: &str) -> DashResult<Vec<String>> {
-    Ok(Vec::new())
-}
+pub fn individual_nags(_: &str) -> DashResult<Vec<String>> { Ok(Vec::new()) }

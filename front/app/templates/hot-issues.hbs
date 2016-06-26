@@ -1,0 +1,31 @@
+{{outlet}}
+
+<h3>Most discussed open issues &amp; PRs in the last 2 weeks</h3>
+
+<table>
+    <thead>
+        <tr>
+            <th>Repository</th>
+            <th>Title</th>
+        </tr>
+    </thead>
+
+    <tbody>
+        {{#each model.issues as |i|}}
+        <tr>
+            <td>{{i.repository}}</td>
+            <td>
+                {{#if i.is_pull_request}}
+                <a href="https://github.com/{{i.repository}}/pull/{{i.number}}" target="_blank">
+                    {{i.title}}
+                </a>
+                {{else}}
+                <a href="https://github.com/{{i.repository}}/issues/{{i.number}}" target="_blank">
+                    {{i.title}}
+                </a>
+                {{/if}}
+            </td>
+        </tr>
+        {{/each}}
+    </tbody>
+</table>

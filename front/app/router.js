@@ -15,6 +15,7 @@ Router.map(function() {
   this.route('triage', { path: '/triage' });
   this.route('nag', { path: '/nags' });
   this.route('nag_user', { path: '/nags/:username' });
+  this.route('hot-issues');
 });
 
 export default Router;
