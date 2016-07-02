@@ -27,7 +27,7 @@ pub fn most_recent_update() -> DashResult<DateTime<UTC>> {
 }
 
 fn get_release_for_date(d: NaiveDate) -> DashResult<Release> {
-    let url = format!("https://static.rust-lang.org/dist/{}-{:02}-{:02}/index.html",
+    let url = format!("https://static.rust-lang.org/dist/{}-{:02}-{:02}/channel-rust-nightly.toml",
                       d.year(),
                       d.month(),
                       d.day());
