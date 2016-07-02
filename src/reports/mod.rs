@@ -173,7 +173,8 @@ pub fn hottest_issues_last_month() -> DashResult<Vec<Issue>> {
           ic.created_at >= NOW() - '14 days'::interval AND \
           i.open AND \
           ic.fk_user = u.id AND \
-          u.login != 'bors' \
+          u.login != 'bors' AND \
+          ic.body NOT LIKE '%@bors%' \
         GROUP BY \
           i.number, \
           i.fk_milestone, \
