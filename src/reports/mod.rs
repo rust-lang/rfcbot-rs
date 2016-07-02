@@ -167,11 +167,13 @@ pub fn hottest_issues_last_month() -> DashResult<Vec<Issue>> {
           i.updated_at, \
           i.labels, \
           i.repository \
-        FROM issue i, issuecomment ic \
+        FROM issue i, issuecomment ic, githubuser u \
         WHERE \
           i.id = ic.fk_issue AND \
           ic.created_at >= NOW() - '14 days'::interval AND \
-          i.open \
+          i.open AND \
+          ic.fk_user = u.id AND \
+          u.login != 'bors' \
         GROUP BY \
           i.number, \
           i.fk_milestone, \
