@@ -147,7 +147,7 @@ pub fn release_summary(since: NaiveDate, until: NaiveDate) -> DashResult<Release
 
 pub fn hot_issues_summary() -> DashResult<HotIssueSummary> {
     let issues = try!(hottest_issues_last_month());
-    let words = try!(issues_word_cloud(&issues));
+    let words = try!(issues_word_cloud());
 
     Ok(HotIssueSummary {
         issues: issues,
@@ -155,9 +155,7 @@ pub fn hot_issues_summary() -> DashResult<HotIssueSummary> {
     })
 }
 
-pub fn issues_word_cloud(issues: &[Issue]) -> DashResult<Vec<(String, u32)>> {
-    use domain::schema::{githubuser, issue, issuecomment};
-
+pub fn issues_word_cloud() -> DashResult<Vec<(String, u32)>> {
     let mut buf = String::new();
     let conn = try!(DB_POOL.get());
 
