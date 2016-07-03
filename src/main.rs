@@ -21,6 +21,7 @@ extern crate log;
 extern crate mount;
 extern crate r2d2;
 extern crate r2d2_diesel;
+extern crate regex;
 #[macro_use]
 extern crate router;
 extern crate serde;
