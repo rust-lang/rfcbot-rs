@@ -33,3 +33,7 @@ features = ["postgres", "chrono", "large-tables"]
 version = "0.6.2"
 default-features = false
 features = ["nightly", "postgres"]
+
+[profile.release]
+debug = false
+lto = true
