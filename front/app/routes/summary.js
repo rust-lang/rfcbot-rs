@@ -3,7 +3,7 @@ import Ember from 'ember';
 function stableReleases() {
   var previousDate = new Date('2015-12-11');
   var nextDate = new Date('2016-01-22');
-  var nextNextDate = new Date('2016-02-04');
+  var nextNextDate = new Date('2016-03-04');
 
   var prevRelease = 5;
   var nextRelease = 6;
@@ -12,7 +12,7 @@ function stableReleases() {
   while (Date.now() > nextDate) {
     previousDate = new Date(nextDate);
     nextDate.setDate(nextDate.getDate() + (7 * 6));
-    nextNextDate.setDate(nextDate.getDate() + (7 * 6)); // yay mutable state
+    nextNextDate.setDate(nextNextDate.getDate() + (7 * 6));
 
     prevRelease += 1;
     nextRelease += 1;
