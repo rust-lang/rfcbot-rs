@@ -13,6 +13,7 @@ export default Ember.Route.extend({
     return Ember.$.getJSON(summary_url)
       .then(metrics => {
         return {
+          streak: metrics.streak_summary,
           nightlies: metrics.nightlies.map(elt => {
             return {
               nightly: elt[0],
