@@ -2,6 +2,55 @@
 
 Deployed to http://rusty-dash.com right now. Some basic metrics about Rust development.
 
+## Development
+
+A development environment is available using Vagrant. [Install Vagrant](https://www.vagrantup.com/docs/installation/) along with a VM provider (tested with VirtualBox). It's a good idea to install the [vagrant-vbguest](https://github.com/dotless-de/vagrant-vbguest) plugin, as well. Once Vagrant and a VM provider are installed, you'll need to configure a couple of environment variables, (potentially) run DB migrations, and start the server processes. If you run into any issues provisioning the development environment, please file an issue!
+
+### Configuring environment variables
+
+Most of the configuration has some default set (see [vagrant_env.sh](https://github.com/dikaiosune/rust-dashboard/blob/master/vagrant_env.sh)), but you'll need to configure access to the GitHub API for testing the scraper. Something like this in the root project directory should suffice:
+
+```
+$ touch .env
+$ echo "GITHUB_ACCESS_TOKEN=your_github_access_token_see_config_section_for_details" >> .env
+$ echo "GITHUB_USER_AGENT=your_github_username" >> .env
+```
+
+**NOTE:** While the dashboard doesn't require any permissions boxes to be checked in access token creation, and the code makes every effort to avoid modifying any state through GitHub's API, there's always a risk with handing 3rd-party code your API credentials.
+
+### Running server processes in Vagrant
+
+There are three daemons to run, one each for the front-end development server, the back-end API server, and the scraper. It's recommended to run these in three separate terminal windows/tabs/sessions. Assuming the VM is already running (`vagrant up`), you'll need to run `vagrant ssh` in each terminal session to access the VM.
+
+You may need to run database migrations if the bootstrap SQL file is stale:
+
+```
+$ cd /vagrant && diesel migration run
+```
+
+To run the back-end API server:
+
+```
+$ cd /vagrant && cargo run -- serve
+```
+
+To run the scraper daemon:
+
+```
+$ cd /vagrant && cargo run -- scrape
+```
+
+**NOTE:** The API server and scraper processes need to be manually restarted whenever you want to see code changes reflected in their behavior, or whenever you run migrations on the test database. A `Ctrl+C` followed by `Up` and `Enter` usually works if running them through cargo.
+
+To install dependencies for the front-end development server and run it:
+
+```
+$ cd /vagrant/front && npm install && bower install
+$ ember server --proxy=http://localhost:8080
+```
+
+You can then browse (on your host machine) to `http://localhost:4040` to view the development server output.
+
 ## Configuration
 
 ### Rust Version
