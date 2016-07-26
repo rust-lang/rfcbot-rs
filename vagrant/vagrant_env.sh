@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # default dashboard config
-export DATABASE_URL=postgres://vagrant:foobar@localhost/dashboard
+export DATABASE_URL=postgres://vagrant:hunter2@localhost/dashboard
 export DATABASE_POOL_SIZE=10
 export RUST_LOG=debug,hyper=info,rustc=error,cargo=error
 export GITHUB_SCRAPE_INTERVAL=10

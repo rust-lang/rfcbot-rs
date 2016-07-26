@@ -53,7 +53,7 @@ You can then browse (on your host machine) to `http://localhost:4040` to view th
 
 ### Database Connection
 
-Assuming that the VM provisions correctly (a little bit of an "if"), you should be able to connect to the PostgreSQL database on the host machine's port `4050`, using user: `vagrant` and password: `foobar`.
+Assuming that the VM provisions correctly (a little bit of an "if"), you should be able to connect to the PostgreSQL database on the host machine's port `4050`, using user: `vagrant` and password: `hunter2`.
 
 ## Configuration
 

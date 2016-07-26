@@ -8,7 +8,7 @@ sudo -u postgres pg_createcluster --locale en_US.UTF-8 -e UTF8 --start $PGVERSIO
 
 sudo -u postgres createuser -s --createdb vagrant
 createdb -E UTF8 -l en_US.UTF8 -T template0 -O vagrant dashboard
-sudo -u postgres echo "ALTER ROLE vagrant WITH PASSWORD 'foobar'" | psql -d dashboard
+sudo -u postgres echo "ALTER ROLE vagrant WITH PASSWORD 'hunter2'" | psql -d dashboard
 psql -d dashboard -f /vagrant/bootstrap.sql
 
 sudo cp /vagrant/vagrant/pg_hba.conf /etc/postgresql/9.5/main/
