@@ -1,6 +1,21 @@
 # rust-dashboard
 
-Deployed to http://rusty-dash.com right now. Some basic metrics about Rust development.
+Deployed to http://rusty-dash.com right now.
+
+## ToC
+
+* [Development](#development)
+  * [Configuring environment variables](#configuring-environment-variables)
+  * [Running server processes in Vagrant](#running-server-processes-in-vagrant)
+  * [Database Connection](#database-connection)
+* [Configuration](#configuration)
+  * [Rust Version](#rust-version)
+  * [Environment variables](#environment-variables)
+* [Database](#database)
+* [Bootstrapping](#bootstrapping)
+* [Scraping](#scraping)
+* [Deployment](#deployment)
+* [License](#license)
 
 ## Development
 
