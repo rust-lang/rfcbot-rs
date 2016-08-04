@@ -27,25 +27,15 @@ pub fn most_recent_update() -> DashResult<DateTime<UTC>> {
 }
 
 fn get_release_for_date(d: NaiveDate) -> DashResult<Release> {
-    let url = format!("https://static.rust-lang.org/dist/{}-{:02}-{:02}/index.html",
+    let url = format!("https://static.rust-lang.org/dist/{}-{:02}-{:02}/channel-rust-nightly.toml",
                       d.year(),
                       d.month(),
                       d.day());
 
     let response = try!(CLIENT.get(&url).send());
     match response.status {
-        StatusCode::Ok => {
-            Ok(Release {
-                date: d,
-                released: true,
-            })
-        }
-        _ => {
-            Ok(Release {
-                date: d,
-                released: false,
-            })
-        }
+        StatusCode::Ok => Ok(Release { date: d, released: true }),
+        _ => Ok(Release { date: d, released: false }),
     }
 }
 
@@ -73,9 +63,9 @@ pub fn ingest_releases_since(d: DateTime<UTC>) -> DashResult<()> {
 
     for r in releases {
         let pk = release.filter(date.eq(r.date))
-                        .first::<(i32, NaiveDate, bool)>(&*conn)
-                        .map(|f| f.0)
-                        .ok();
+            .first::<(i32, NaiveDate, bool)>(&*conn)
+            .map(|f| f.0)
+            .ok();
 
         if let Some(pk) = pk {
             try!(diesel::update(release.find(pk)).set(&r).execute(&*conn));

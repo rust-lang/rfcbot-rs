@@ -14,10 +14,10 @@ hyper = "0.8.0"
 iron = "0.3.0"
 lazy_static = "0.2.0"
 log = "0.3.6"
-logger = "0.0.3"
 mount = "0.1.0"
 r2d2 = "0.7.0"
 r2d2-diesel = "0.6.0"
+regex = "0.1"
 router = "0.1.1"
 serde = "0.7.0"
 serde_json = "0.7.0"
@@ -25,11 +25,15 @@ serde_macros = "0.7.0"
 urlencoded = "0.3.0"
 
 [dependencies.diesel]
-version = "0.6.1"
+version = "0.6.2"
 default-features = false
-features = ["postgres", "chrono"]
+features = ["postgres", "chrono", "large-tables"]
 
 [dependencies.diesel_codegen]
-version = "0.6.1"
+version = "0.6.2"
 default-features = false
 features = ["nightly", "postgres"]
+
+[profile.release]
+debug = false
+lto = true

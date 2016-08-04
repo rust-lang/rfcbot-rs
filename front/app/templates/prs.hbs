@@ -13,3 +13,27 @@
 {{line-chart title='PRs Opened/Closed Per Day' data=model.open_close_per_day}}
 
 {{line-chart title='PR Days Open Before Closed' data=model.days_open_before_close}}
+
+<h5>@bors retries in the last 7 days:</h5>
+
+<div class="row">
+  <table>
+    <thead>
+        <tr>
+            <th>PR</th>
+            <th>Merged?</th>
+        </tr>
+    </thead>
+    <tbody>
+      {{#each model.bors_retries as |r|}}
+        <tr>
+          <td>
+            <a href="https://github.com/{{r.repository}}/pull/{{r.issue_num}}#issuecomment-{{r.comment_id}}"
+               target="_blank">{{r.issue_title}}</a>
+          </td>
+          <td>{{#if r.merged}}Yes{{else}}No{{/if}}</td>
+        </tr>
+      {{/each}}
+    </tbody>
+  </table>
+</div>

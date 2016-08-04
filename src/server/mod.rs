@@ -1,5 +1,4 @@
 use iron::prelude::*;
-use logger::Logger;
 use mount::Mount;
 
 use config::CONFIG;
@@ -9,22 +8,22 @@ mod handlers;
 pub fn serve() {
     let mut mount = Mount::new();
 
-    mount.mount("/pullrequests/", router!(get "/" => handlers::pull_requests));
+    mount.mount("/pullrequests/",
+                router!(get "/" => handlers::pull_requests));
     mount.mount("/issues/", router!(get "/" => handlers::issues));
     mount.mount("/buildbots/", router!(get "/" => handlers::buildbots));
-    mount.mount("/releases/", router!(get "/" => handlers::releases)); 
+    mount.mount("/releases/", router!(get "/" => handlers::releases));
+    mount.mount("/hot-issues/", router!(get "/" => handlers::hot_issues));
 
-    let mut chain = Chain::new(mount);
+    mount.mount("/nag/",
+                router!(
+        get "/users" => handlers::team_members,
+        get "/:username" => handlers::member_nags
+    ));
 
-    let (logger_before, logger_after) = Logger::new(None);
+    let chain = Chain::new(mount);
 
-    // Link logger_before as your first before middleware.
-    chain.link_before(logger_before);
-
-    // any new middlewares go here
-
-    // Link logger_after as your *last* after middleware.
-    chain.link_after(logger_after);
+    // middleware goes here
 
     let server_addr = format!("0.0.0.0:{}", CONFIG.server_port);
     info!("Starting API server running at {}", &server_addr);

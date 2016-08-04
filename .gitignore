@@ -2,3 +2,5 @@ target
 *.bk
 .env
 *.deb
+.vagrant
+*.log

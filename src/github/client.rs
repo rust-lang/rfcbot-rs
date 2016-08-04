@@ -18,8 +18,6 @@ use error::{DashError, DashResult};
 use github::models::{CommentFromJson, IssueFromJson, PullRequestFromJson, PullRequestUrls};
 
 pub const BASE_URL: &'static str = "https://api.github.com";
-pub const REPO_OWNER: &'static str = "rust-lang";
-pub const REPO: &'static str = "rust";
 
 pub const DELAY: u64 = 300;
 
@@ -58,9 +56,38 @@ impl Client {
         }
     }
 
-    pub fn issues_since(&self, start: DateTime<UTC>) -> DashResult<Vec<IssueFromJson>> {
+    pub fn org_repos(&self, org: &str) -> DashResult<Vec<String>> {
+        let url = format!("{}/orgs/{}/repos", BASE_URL, org);
 
-        let url = format!("{}/repos/{}/{}/issues", BASE_URL, REPO_OWNER, REPO);
+        let vals: Vec<serde_json::Value> = try!(self.get_models(&url, &ParameterMap::new()));
+
+        let mut repos = Vec::new();
+        for v in vals {
+
+            let v = match v.as_object() {
+                Some(v) => v,
+                None => return Err(DashError::Misc),
+            };
+
+            let repo = match v.get("name") {
+                Some(n) => {
+                    match n.as_string() {
+                        Some(s) => format!("{}/{}", org, s),
+                        None => return Err(DashError::Misc),
+                    }
+                }
+                None => return Err(DashError::Misc),
+            };
+
+            repos.push(repo);
+
+        }
+        Ok(repos)
+    }
+
+    pub fn issues_since(&self, repo: &str, start: DateTime<UTC>) -> DashResult<Vec<IssueFromJson>> {
+
+        let url = format!("{}/repos/{}/issues", BASE_URL, repo);
         let mut params = ParameterMap::new();
 
         params.insert("state", "all".to_string());
@@ -70,11 +97,14 @@ impl Client {
         params.insert("direction", "asc".to_string());
 
         // make the request
-        self.models_since(&url, &params)
+        self.get_models(&url, &params)
     }
 
-    pub fn comments_since(&self, start: DateTime<UTC>) -> DashResult<Vec<CommentFromJson>> {
-        let url = format!("{}/repos/{}/{}/issues/comments", BASE_URL, REPO_OWNER, REPO);
+    pub fn comments_since(&self,
+                          repo: &str,
+                          start: DateTime<UTC>)
+                          -> DashResult<Vec<CommentFromJson>> {
+        let url = format!("{}/repos/{}/issues/comments", BASE_URL, repo);
         let mut params = ParameterMap::new();
 
         params.insert("sort", "created".to_string());
@@ -82,13 +112,13 @@ impl Client {
         params.insert("since", format!("{:?}", start));
         params.insert("per_page", format!("{}", PER_PAGE));
 
-        self.models_since(&url, &params)
+        self.get_models(&url, &params)
     }
 
-    fn models_since<M: Deserialize>(&self,
-                                    start_url: &str,
-                                    params: &ParameterMap)
-                                    -> DashResult<Vec<M>> {
+    fn get_models<M: Deserialize>(&self,
+                                  start_url: &str,
+                                  params: &ParameterMap)
+                                  -> DashResult<Vec<M>> {
         let mut res = try!(self.request(start_url, Some(&params)));
 
         // let's try deserializing!

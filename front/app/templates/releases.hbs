@@ -1,13 +1,64 @@
 {{outlet}}
 
-<h3><a id="nightlies"/>Nightly Releases</h3>
+<h3>Nightly Releases</h3>
+
+{{#with model.streak as |s|}}
+  <h4>
+      It's been <strong>{{s.current_length_days}} days</strong> since a failed nightly
+      build{{#if s.last_failure}} (since {{s.last_failure}}){{/if}}.
+  </h4>
+
+  <h5>
+      Longest streak of successful nightly builds was <strong>{{s.longest_length_days}} days</strong>
+      (from {{s.longest_start}} to {{s.longest_end}}).
+  </h5>
+{{/with}}
+
+{{line-chart title='Times of Successful Nightly Builds' data=model.build_times}}
 
 <div class="row">
-    {{#each model.nightlies as |release|}}
-        {{#if release.released}}
-            <div class="release-square" style="background: #006600;" title="{{release.date}}"></div>
-        {{else}}
-            <div class="release-square" style="background: #990000;" title="{{release.date}}"></div>
-        {{/if}}
-    {{/each}}
+  <table>
+    <thead>
+      <tr>
+        <th>Date</th>
+        <th>Released?</th>
+        <th>Failed Builds</th>
+      </tr>
+    </thead>
+    <tbody>
+      {{#each model.nightlies as |r|}}
+        <tr>
+          <td>{{r.nightly.date}}</td>
+          {{#if r.nightly.released}}
+
+            <td style="background: #DFF0D8">
+              &#x2713; Yes
+            </td>
+            <td></td>
+
+          {{else}}
+
+            <td style="background: #F2DEDE">
+              <div><strong>&#x2717; No</strong></div>
+            </td>
+            <td>
+              <ul>
+                {{#each r.builds as |b|}}
+                  <li>
+                      <a href="http://buildbot.rust-lang.org/builders/{{b.builder_name}}/builds/{{b.number}}" target="_blank">
+                          {{b.builder_name}}
+                      </a>
+                  </li>
+
+          {{else}}
+            No failed builds found. Perhaps this nightly hasn't run yet?
+                {{/each}}
+              </ul>
+            </td>
+          {{/if}}
+
+        </tr>
+      {{/each}}
+    </tbody>
+  </table>
 </div>

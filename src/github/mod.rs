@@ -7,7 +7,7 @@ pub mod models;
 use std::collections::BTreeSet;
 use std::cmp;
 
-use chrono::{DateTime, NaiveDateTime, UTC};
+use chrono::{DateTime, NaiveDate, NaiveDateTime, NaiveTime, UTC};
 use diesel::expression::dsl::*;
 use diesel::prelude::*;
 use diesel;
@@ -21,27 +21,39 @@ use self::client::Client;
 use self::models::PullRequestFromJson;
 
 lazy_static! {
-    static ref GH: Client = Client::new();
+    pub static ref GH: Client = Client::new();
 }
 
-pub fn most_recent_update() -> DashResult<DateTime<UTC>> {
+pub fn most_recent_update(repo: &str) -> DashResult<DateTime<UTC>> {
     info!("finding most recent github updates");
+
+    let default_date = NaiveDateTime::new(NaiveDate::from_ymd(2015, 5, 15),
+                                          NaiveTime::from_hms(0, 0, 0));
 
     let conn = try!(DB_POOL.get());
 
     let issues_updated: NaiveDateTime = {
         use domain::schema::issue::dsl::*;
-        try!(issue.select(max(updated_at)).first(&*conn))
+        match issue.select(max(updated_at)).filter(repository.eq(repo)).first(&*conn) {
+            Ok(dt) => dt,
+            Err(_) => default_date,
+        }
     };
 
     let prs_updated: NaiveDateTime = {
         use domain::schema::pullrequest::dsl::*;
-        try!(pullrequest.select(max(updated_at)).first(&*conn))
+        match pullrequest.select(max(updated_at)).filter(repository.eq(repo)).first(&*conn) {
+            Ok(dt) => dt,
+            Err(_) => default_date,
+        }
     };
 
     let comments_updated: NaiveDateTime = {
         use domain::schema::issuecomment::dsl::*;
-        try!(issuecomment.select(max(updated_at)).first(&*conn))
+        match issuecomment.select(max(updated_at)).filter(repository.eq(repo)).first(&*conn) {
+            Ok(dt) => dt,
+            Err(_) => default_date,
+        }
     };
 
     let most_recent = cmp::min(issues_updated, cmp::min(prs_updated, comments_updated));
@@ -49,11 +61,10 @@ pub fn most_recent_update() -> DashResult<DateTime<UTC>> {
     Ok(DateTime::from_utc(most_recent, UTC))
 }
 
-pub fn ingest_since(start: DateTime<UTC>) -> DashResult<()> {
-    info!("fetching all rust-lang/rust issues and comments since {}",
-          start);
-    let issues = try!(GH.issues_since(start));
-    let comments = try!(GH.comments_since(start));
+pub fn ingest_since(repo: &str, start: DateTime<UTC>) -> DashResult<()> {
+    info!("fetching all {} issues and comments since {}", repo, start);
+    let issues = try!(GH.issues_since(repo, start));
+    let comments = try!(GH.comments_since(repo, start));
 
     let mut prs: Vec<PullRequestFromJson> = vec![];
     for issue in &issues {
@@ -119,51 +130,66 @@ pub fn ingest_since(start: DateTime<UTC>) -> DashResult<()> {
 
     // insert the issues, milestones, and labels
     for issue in issues {
-        let (issue, milestone) = issue.into();
+        let (i, milestone) = issue.with_repo(repo);
 
         if let Some(milestone) = milestone {
             let exists = milestone::table.find(milestone.id)
-                                         .get_result::<Milestone>(&*conn)
-                                         .is_ok();
+                .get_result::<Milestone>(&*conn)
+                .is_ok();
             if exists {
                 try!(diesel::update(milestone::table.find(milestone.id))
-                         .set(&milestone)
-                         .execute(&*conn));
+                    .set(&milestone)
+                    .execute(&*conn));
             } else {
                 try!(diesel::insert(&milestone).into(milestone::table).execute(&*conn));
             }
         }
 
-        let exists = issue::table.find(issue.number).get_result::<Issue>(&*conn).is_ok();
-        if exists {
-            try!(diesel::update(issue::table.find(issue.number)).set(&issue).execute(&*conn));
-        } else {
-            try!(diesel::insert(&issue).into(issue::table).execute(&*conn));
+        {
+            use domain::schema::issue::dsl::*;
+
+            let exists = issue.select(id)
+                .filter(number.eq(&i.number))
+                .filter(repository.eq(&i.repository))
+                .first::<i32>(&*conn)
+                .ok();
+
+            if let Some(current_id) = exists {
+                try!(diesel::update(issue.find(current_id)).set(&i).execute(&*conn));
+            } else {
+                try!(diesel::insert(&i).into(issue).execute(&*conn));
+            }
         }
     }
 
     // insert the comments
     for comment in comments {
-        let comment: IssueComment = comment.into();
+        let comment: IssueComment = try!(comment.with_repo(repo));
 
         if issuecomment::table.find(comment.id).get_result::<IssueComment>(&*conn).is_ok() {
             try!(diesel::update(issuecomment::table.find(comment.id))
-                     .set(&comment)
-                     .execute(&*conn));
+                .set(&comment)
+                .execute(&*conn));
         } else {
             try!(diesel::insert(&comment).into(issuecomment::table).execute(&*conn));
         }
     }
 
     for pr in prs {
-        let pr: PullRequest = pr.into();
+        use domain::schema::pullrequest::dsl::*;
 
-        let exists = pullrequest::table.find(pr.number).get_result::<PullRequest>(&*conn).is_ok();
+        let pr: PullRequest = pr.with_repo(repo);
 
-        if exists {
-            try!(diesel::update(pullrequest::table.find(pr.number)).set(&pr).execute(&*conn));
+        let existing_id = pullrequest.select(id)
+            .filter(number.eq(&pr.number))
+            .filter(repository.eq(&pr.repository))
+            .first::<i32>(&*conn)
+            .ok();
+
+        if let Some(current_id) = existing_id {
+            try!(diesel::update(pullrequest.find(current_id)).set(&pr).execute(&*conn));
         } else {
-            try!(diesel::insert(&pr).into(pullrequest::table).execute(&*conn));
+            try!(diesel::insert(&pr).into(pullrequest).execute(&*conn));
         }
     }
 

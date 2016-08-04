@@ -29,9 +29,10 @@ pub struct Milestone {
     pub updated_at: NaiveDateTime,
     pub closed_at: Option<NaiveDateTime>,
     pub due_on: Option<NaiveDateTime>,
+    pub repository: String,
 }
 
-#[derive(Clone, Debug, Deserialize, Eq, Ord, PartialEq, PartialOrd, Queryable)]
+#[derive(Clone, Debug, Deserialize, Eq, Ord, PartialEq, PartialOrd, Queryable, Serialize)]
 #[insertable_into(issue)]
 #[changeset_for(issue, treat_none_as_null="true")]
 pub struct Issue {
@@ -48,6 +49,7 @@ pub struct Issue {
     pub created_at: NaiveDateTime,
     pub updated_at: NaiveDateTime,
     pub labels: Vec<String>,
+    pub repository: String,
 }
 
 #[derive(Clone, Debug, Deserialize, Eq, Ord, PartialEq, PartialOrd, Queryable)]
@@ -60,6 +62,7 @@ pub struct IssueComment {
     pub body: String,
     pub created_at: NaiveDateTime,
     pub updated_at: NaiveDateTime,
+    pub repository: String,
 }
 
 #[derive(Clone, Debug, Deserialize, Eq, Ord, PartialEq, PartialOrd, Queryable)]
@@ -81,4 +84,5 @@ pub struct PullRequest {
     pub additions: i32,
     pub deletions: i32,
     pub changed_files: i32,
+    pub repository: String,
 }

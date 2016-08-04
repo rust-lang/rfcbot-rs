@@ -1,14 +1,23 @@
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashMap};
 
-use chrono::{NaiveDate, NaiveDateTime};
+use chrono::{NaiveDate, NaiveDateTime, UTC};
+use chrono::duration::Duration;
 use diesel::expression::dsl::*;
 use diesel::expression::AsExpression;
 use diesel::prelude::*;
-use diesel::types::{BigInt, Date, Double, Integer, Text};
+use diesel::select;
+use diesel::types::{Array, BigInt, Bool, Date, Double, Integer, Nullable, Text, Timestamp, VarChar};
+use regex::Regex;
 
 use DB_POOL;
+use domain::buildbot::Build;
+use domain::github::Issue;
 use domain::releases::Release;
 use error::DashResult;
+use reports::stopwords::STOPWORDS;
+
+pub mod nag;
+mod stopwords;
 
 pub type EpochTimestamp = i64;
 
@@ -19,7 +28,16 @@ pub struct PullRequestSummary {
     merged_per_day: Vec<(EpochTimestamp, i64)>,
     days_open_before_close: Vec<(EpochTimestamp, f64)>,
     current_open_age_days_mean: f64,
-    bors_retries: Vec<(i32, i64)>,
+    bors_retries: Vec<BorsRetry>,
+}
+
+#[derive(Clone, Debug, Queryable, Serialize)]
+pub struct BorsRetry {
+    repository: String,
+    issue_num: i32,
+    comment_id: i32,
+    issue_title: String,
+    merged: bool,
 }
 
 #[derive(Clone, Debug, Serialize)]
@@ -36,13 +54,31 @@ pub struct IssueSummary {
 
 #[derive(Clone, Debug, Serialize)]
 pub struct ReleaseSummary {
-    nightlies: Vec<Release>,
+    nightlies: Vec<(Release, Option<Vec<Build>>)>,
+    builder_times_mins: Vec<(String, Vec<(EpochTimestamp, f64)>)>,
+    streak_summary: NightlyStreakSummary,
 }
 
 #[derive(Clone, Debug, Serialize)]
 pub struct BuildbotSummary {
     per_builder_times_mins: Vec<(String, Vec<(EpochTimestamp, f64)>)>,
     per_builder_failures: Vec<(String, Vec<(EpochTimestamp, i64)>)>,
+    failures_last_day: Vec<Build>,
+}
+
+#[derive(Clone, Debug, Serialize)]
+pub struct NightlyStreakSummary {
+    longest_length_days: u32,
+    longest_start: NaiveDate,
+    longest_end: NaiveDate,
+    current_length_days: u32,
+    last_failure: Option<NaiveDate>,
+}
+
+#[derive(Clone, Debug, Serialize)]
+pub struct HotIssueSummary {
+    issues: Vec<Issue>,
+    word_counts: Vec<(String, u32)>,
 }
 
 pub fn issue_summary(since: NaiveDate, until: NaiveDate) -> DashResult<IssueSummary> {
@@ -79,7 +115,7 @@ pub fn pr_summary(since: NaiveDate, until: NaiveDate) -> DashResult<PullRequestS
     let prs_close_per_day = try!(prs_closed_per_day(since, until));
     let prs_merge_per_day = try!(prs_merged_per_day(since, until));
     let pr_open_time = try!(prs_open_time_before_close(since, until));
-    let bors_retries = try!(bors_retries_per_pr(since, until));
+    let bors_retries = try!(bors_retries_last_week());
 
     Ok(PullRequestSummary {
         opened_per_day: prs_open_per_day,
@@ -95,12 +131,14 @@ pub fn ci_summary(since: NaiveDate, until: NaiveDate) -> DashResult<BuildbotSumm
     let since = since.and_hms(0, 0, 0);
     let until = until.and_hms(23, 59, 59);
 
-    let per_builder_times = try!(buildbot_build_times(since, until));
+    let per_builder_times = try!(buildbot_build_times(since, until, "auto-%"));
     let per_builder_fails = try!(buildbot_failures_by_day(since, until));
+    let failures_last_day = try!(buildbot_failures_last_24_hours());
 
     Ok(BuildbotSummary {
         per_builder_times_mins: per_builder_times,
         per_builder_failures: per_builder_fails,
+        failures_last_day: failures_last_day,
     })
 }
 
@@ -108,7 +146,129 @@ pub fn release_summary(since: NaiveDate, until: NaiveDate) -> DashResult<Release
     let since = since.and_hms(0, 0, 0);
     let until = until.and_hms(23, 59, 59);
 
-    Ok(ReleaseSummary { nightlies: try!(nightly_releases(since, until)) })
+    let nightlies = try!(nightly_releases(since, until));
+    let build_times = try!(buildbot_build_times(since, until, "nightly-%"));
+    let streaks = try!(streaks());
+
+    Ok(ReleaseSummary {
+        nightlies: nightlies,
+        builder_times_mins: build_times,
+        streak_summary: streaks,
+    })
+}
+
+pub fn hot_issues_summary() -> DashResult<HotIssueSummary> {
+    let issues = try!(hottest_issues_last_month());
+    let words = try!(issues_word_cloud());
+
+    Ok(HotIssueSummary {
+        issues: issues,
+        word_counts: words,
+    })
+}
+
+pub fn issues_word_cloud() -> DashResult<Vec<(String, u32)>> {
+    let mut buf = String::new();
+    let conn = try!(DB_POOL.get());
+
+    let recent_issues = try!(select(sql::<(VarChar, VarChar)>("
+    DISTINCT i.title, i.body
+    FROM issue i, issuecomment ic, githubuser u
+    WHERE
+      u.login != 'bors' AND
+      ic.fk_user = u.id AND
+      ic.fk_issue = i.id AND
+      (ic.created_at > NOW() - '2 weeks'::interval OR
+       i.created_at > NOW() - '2 weeks'::interval)"))
+        .load::<(String, String)>(&*conn));
+
+    for (title, body) in recent_issues {
+        buf.push_str(&title);
+        buf.push_str(&body);
+    }
+
+    // all issue/comment bodies are now in the buffer
+
+    let mut counts = HashMap::new();
+
+    // replace all non alphabetic characters, split into words
+    let nonalpha = Regex::new(r"[^A-Za-z ]").expect("Invalid regex literal. Adam is stupid.");
+    let no_alpha = nonalpha.replace_all(&buf, " ");
+    let words = no_alpha.split(' ')
+        .map(|w| w.trim())
+        .filter(|w| w.len() > 1 && !STOPWORDS.contains(w))
+        .map(|w| w.to_lowercase());
+
+    for w in words {
+        let count = counts.entry(w).or_insert(0);
+        *count += 1;
+    }
+
+    let mut counts = counts.into_iter().collect::<Vec<_>>();
+
+    counts.sort_by(|&(_, a), &(_, b)| b.cmp(&a));
+    counts.truncate(300);
+
+    Ok(counts)
+}
+
+pub fn hottest_issues_last_month() -> DashResult<Vec<Issue>> {
+
+    let conn = try!(DB_POOL.get());
+
+    Ok(try!(select(sql::<(Integer,
+                          Nullable<Integer>,
+                          Integer,
+                          Nullable<Integer>,
+                          Bool,
+                          Bool,
+                          VarChar,
+                          VarChar,
+                          Bool,
+                          Nullable<Timestamp>,
+                          Timestamp,
+                          Timestamp,
+                          Array<VarChar>,
+                          VarChar)>("i.number, \
+          i.fk_milestone, \
+          i.fk_user, \
+          i.fk_assignee, \
+          i.open, \
+          i.is_pull_request, \
+          i.title, \
+          i.body, \
+          i.locked, \
+          i.closed_at, \
+          i.created_at, \
+          i.updated_at, \
+          i.labels, \
+          i.repository \
+        FROM issue i, issuecomment ic, githubuser u \
+        WHERE \
+          i.id = ic.fk_issue AND \
+          ic.created_at >= NOW() - '14 days'::interval AND \
+          i.open AND \
+          ic.fk_user = u.id AND \
+          u.login != 'bors' AND \
+          ic.body NOT LIKE '%@bors%' \
+        GROUP BY \
+          i.number, \
+          i.fk_milestone, \
+          i.fk_user, \
+          i.fk_assignee, \
+          i.open, \
+          i.is_pull_request, \
+          i.title, \
+          i.body, \
+          i.locked, \
+          i.closed_at, \
+          i.created_at, \
+          i.updated_at, \
+          i.labels, \
+          i.repository \
+        ORDER BY COUNT(ic.*) DESC \
+        LIMIT 50"))
+        .load::<Issue>(&*conn)))
 }
 
 pub fn prs_opened_per_day(since: NaiveDateTime,
@@ -204,26 +364,28 @@ pub fn open_prs_avg_days_old() -> DashResult<f64> {
     let conn = try!(DB_POOL.get());
     Ok(try!(pullrequest.select(sql::<Double>("AVG(EXTRACT(EPOCH FROM (now() - created_at))) / \
                                               (60 * 60 * 24)"))
-                       .filter(closed_at.is_null())
-                       .first(&*conn)))
+        .filter(closed_at.is_null())
+        .first(&*conn)))
 }
 
-pub fn bors_retries_per_pr(since: NaiveDateTime,
-                           until: NaiveDateTime)
-                           -> DashResult<Vec<(i32, i64)>> {
-
-    use domain::schema::issuecomment::dsl::*;
+pub fn bors_retries_last_week() -> DashResult<Vec<BorsRetry>> {
     let conn = try!(DB_POOL.get());
 
-    Ok(try!(issuecomment.select(sql::<(Integer, BigInt)>("fk_issue, COUNT(*)"))
-            .filter(body.like("%@bors%retry%"))
-            .filter(created_at.ge(since))
-            .filter(created_at.le(until))
-            .group_by(fk_issue)
-            .order(count_star().desc())
-            .load(&*conn))
-        .into_iter()
-        .collect())
+    // waiting on associations to get this into proper typed queries
+
+    Ok(try!(select(
+        sql::<(VarChar, Integer, Integer, VarChar, Bool)>(
+        "i.repository, i.number, ic.id, i.title, pr.merged_at IS NOT NULL \
+        FROM issuecomment ic, issue i, pullrequest pr \
+        WHERE \
+        ic.body LIKE '%@bors%retry%' AND \
+        i.id = ic.fk_issue AND \
+        i.is_pull_request AND \
+        ic.created_at > NOW() - '7 days'::interval AND \
+        pr.repository = i.repository AND \
+        pr.number = i.number \
+        ORDER BY ic.created_at DESC"))
+        .load(&*conn)))
 }
 
 pub fn issues_opened_per_day(since: NaiveDateTime,
@@ -301,8 +463,8 @@ pub fn open_issues_avg_days_old() -> DashResult<f64> {
     let conn = try!(DB_POOL.get());
     Ok(try!(issue.select(sql::<Double>("AVG(EXTRACT(EPOCH FROM (now() - created_at))) / \
                                               (60 * 60 * 24)"))
-                 .filter(closed_at.is_null())
-                 .first(&*conn)))
+        .filter(closed_at.is_null())
+        .first(&*conn)))
 }
 
 pub fn open_issues_with_label(label: &str) -> DashResult<i64> {
@@ -316,7 +478,8 @@ pub fn open_issues_with_label(label: &str) -> DashResult<i64> {
 }
 
 pub fn buildbot_build_times(since: NaiveDateTime,
-                            until: NaiveDateTime)
+                            until: NaiveDateTime,
+                            builder_pattern: &str)
                             -> DashResult<Vec<(String, Vec<(EpochTimestamp, f64)>)>> {
     use domain::schema::build::dsl::*;
 
@@ -329,7 +492,7 @@ pub fn buildbot_build_times(since: NaiveDateTime,
         .filter(start_time.is_not_null())
         .filter(start_time.ge(since))
         .filter(start_time.le(until))
-        .filter(builder_name.like("auto-%"))
+        .filter(builder_name.like(builder_pattern))
         .group_by(&name_date)
         .order((&name_date).asc())
         .load::<((String, NaiveDate), f64)>(&*conn));
@@ -359,6 +522,7 @@ pub fn buildbot_failures_by_day(since: NaiveDateTime,
         .filter(start_time.ge(since))
         .filter(start_time.le(until))
         .filter(builder_name.like("auto-%"))
+        .filter(message.not_like("%xception%nterrupted%"))
         .group_by(&name_date)
         .order((&name_date).asc())
         .load::<((String, NaiveDate), i64)>(&*conn));
@@ -373,14 +537,128 @@ pub fn buildbot_failures_by_day(since: NaiveDateTime,
     Ok(results.into_iter().collect())
 }
 
-pub fn nightly_releases(since: NaiveDateTime, until: NaiveDateTime) -> DashResult<Vec<Release>> {
+pub fn buildbot_failures_last_24_hours() -> DashResult<Vec<Build>> {
+    use domain::schema::build::dsl::*;
+
+    let conn = try!(DB_POOL.get());
+
+    let one_day_ago = UTC::now().naive_utc() - Duration::days(1);
+
+    Ok(try!(build.select((number,
+                 builder_name,
+                 successful,
+                 message,
+                 duration_secs,
+                 start_time,
+                 end_time))
+        .filter(successful.ne(true))
+        .filter(end_time.is_not_null())
+        .filter(end_time.ge(one_day_ago))
+        .filter(message.not_like("%xception%nterrupted%"))
+        .order(end_time.desc())
+        .load::<Build>(&*conn)))
+}
+
+pub fn nightly_releases(since: NaiveDateTime,
+                        until: NaiveDateTime)
+                        -> DashResult<Vec<(Release, Option<Vec<Build>>)>> {
+
+    use domain::schema::build::dsl::{build, number, builder_name, successful, message,
+                                     duration_secs, start_time, end_time};
     use domain::schema::release::dsl::*;
 
     let conn = try!(DB_POOL.get());
 
-    Ok(try!(release.select((date, released))
+    let releases = try!(release.select((date, released))
         .filter(date.gt(since.date()))
         .filter(date.le(until.date()))
         .order(date.desc())
-        .load::<Release>(&*conn)))
+        .load::<Release>(&*conn));
+
+    let mut releases_and_builds = Vec::with_capacity(releases.len());
+
+    for r in releases.into_iter() {
+        let builds = try!(build.select((number,
+                     builder_name,
+                     successful,
+                     message,
+                     duration_secs,
+                     start_time,
+                     end_time))
+            .filter(builder_name.like("nightly-%"))
+            .filter(successful.ne(true))
+            .filter(sql::<Date>("start_time::date")
+                .eq(r.date)
+                .or(sql::<Date>("end_time::date").eq(r.date)))
+            .order(builder_name.asc())
+            .load::<Build>(&*conn));
+
+        if builds.len() > 0 {
+            releases_and_builds.push((r, Some(builds)));
+        } else {
+            releases_and_builds.push((r, None));
+        }
+    }
+
+    Ok(releases_and_builds)
+}
+
+fn streaks() -> DashResult<NightlyStreakSummary> {
+    let conn = try!(DB_POOL.get());
+
+    let all_nightlies: Vec<(NaiveDate, bool, i64)> = try!(select(sql::<(Date, Bool, BigInt)>("
+        r.date, r.released, COUNT(build_date) as num_failed
+        FROM release r
+        LEFT JOIN (SELECT end_time::date as build_date FROM build b
+        WHERE
+          NOT b.successful AND
+          b.builder_name LIKE 'nightly%') AS build_date
+        ON build_date = r.date
+        GROUP BY r.date, r.released
+        ORDER BY r.date ASC"))
+        .load(&*conn));
+
+    // get current streak info from other function results
+    let mut current_start = None;
+    let mut current_length = 0;
+
+    for &(reldate, released, num_failed_builds) in all_nightlies.iter().rev() {
+        if !released && num_failed_builds > 0 {
+            break;
+        }
+
+        current_start = Some(reldate);
+        current_length += 1;
+    }
+
+    // find the longest streak
+    let mut longest_streak = 0;
+    let mut longest_streak_start = all_nightlies[0].0;
+    let mut longest_streak_end = longest_streak_start;
+
+    let mut failures =
+        all_nightlies.iter().filter(|&&(_, r, b)| !r && b > 0).map(|&(d, _, _)| d).peekable();
+
+    while let Some(date) = failures.next() {
+        let next = match failures.peek() {
+            Some(&d) => d,
+            None => UTC::today().naive_utc() + Duration::days(1),
+        };
+
+        let this_streak = (next - date).num_days();
+
+        if this_streak > longest_streak {
+            longest_streak = this_streak;
+            longest_streak_start = date + Duration::days(1);
+            longest_streak_end = next - Duration::days(1);
+        }
+    }
+
+    Ok(NightlyStreakSummary {
+        longest_length_days: longest_streak as u32,
+        longest_start: longest_streak_start,
+        longest_end: longest_streak_end,
+        current_length_days: current_length,
+        last_failure: current_start.map(|d| d - Duration::days(1)),
+    })
 }

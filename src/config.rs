@@ -67,8 +67,8 @@ pub fn init() -> Result<Config, Vec<&'static str>> {
     let all_found = vars.iter().all(|(_, v)| v.is_ok());
     if all_found {
         let mut vars = vars.into_iter()
-                           .map(|(k, v)| (k, v.unwrap()))
-                           .collect::<BTreeMap<_, _>>();
+            .map(|(k, v)| (k, v.unwrap()))
+            .collect::<BTreeMap<_, _>>();
 
         let port = vars.remove(SERVER_PORT).unwrap();
         let port = match port.parse::<u32>() {
@@ -118,9 +118,9 @@ pub fn init() -> Result<Config, Vec<&'static str>> {
     } else {
 
         Err(vars.iter()
-                .filter(|&(_, v)| v.is_err())
-                .map(|(&k, _)| k)
-                .collect())
+            .filter(|&(_, v)| v.is_err())
+            .map(|(&k, _)| k)
+            .collect())
 
     }
 }

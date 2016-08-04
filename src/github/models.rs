@@ -1,12 +1,13 @@
 // Copyright 2016 Adam Perry. Dual-licensed MIT and Apache 2.0 (see LICENSE files for details).
 
 use std::collections::BTreeMap;
-use std::convert::Into;
 use std::i32;
 
 use chrono::{DateTime, UTC};
 
+use DB_POOL;
 use domain::github::{Issue, IssueComment, Milestone, PullRequest, GitHubUser};
+use error::DashResult;
 
 #[derive(Clone, Debug, Deserialize)]
 pub struct MilestoneFromJson {
@@ -24,8 +25,8 @@ pub struct MilestoneFromJson {
     pub due_on: Option<DateTime<UTC>>,
 }
 
-impl Into<Milestone> for MilestoneFromJson {
-    fn into(self) -> Milestone {
+impl MilestoneFromJson {
+    pub fn with_repo(self, repo: &str) -> Milestone {
         Milestone {
             id: self.id,
             number: self.number,
@@ -42,6 +43,7 @@ impl Into<Milestone> for MilestoneFromJson {
             updated_at: self.updated_at.naive_utc(),
             closed_at: self.closed_at.map(|t| t.naive_utc()),
             due_on: self.due_on.map(|t| t.naive_utc()),
+            repository: repo.to_string(),
         }
     }
 }
@@ -73,8 +75,8 @@ pub struct IssueFromJson {
     pub comments_url: String,
 }
 
-impl Into<(Issue, Option<Milestone>)> for IssueFromJson {
-    fn into(self) -> (Issue, Option<Milestone>) {
+impl IssueFromJson {
+    pub fn with_repo(self, repo: &str) -> (Issue, Option<Milestone>) {
         let milestone_id = match self.milestone {
             Some(ref m) => Some(m.id),
             None => None,
@@ -100,9 +102,10 @@ impl Into<(Issue, Option<Milestone>)> for IssueFromJson {
                 Some(json_labels) => json_labels.into_iter().map(|l| l.name).collect(),
                 None => vec![],
             },
+            repository: repo.to_string(),
         };
 
-        (issue, self.milestone.map(|m| m.into()))
+        (issue, self.milestone.map(|m| m.with_repo(repo)))
     }
 }
 
@@ -116,14 +119,17 @@ pub struct CommentFromJson {
     pub updated_at: DateTime<UTC>,
 }
 
-impl Into<IssueComment> for CommentFromJson {
-    fn into(self) -> IssueComment {
-        let issue_id = self.html_url
-                           .split('#')
-                           .next()
-                           .map(|r| r.split('/').last().map(|n| n.parse::<i32>()));
+impl CommentFromJson {
+    pub fn with_repo(self, repo: &str) -> DashResult<IssueComment> {
+        use diesel::prelude::*;
+        use domain::schema::issue::dsl::*;
 
-        let issue_id = match issue_id {
+        let issue_number = self.html_url
+            .split('#')
+            .next()
+            .map(|r| r.split('/').last().map(|n| n.parse::<i32>()));
+
+        let issue_number = match issue_number {
             Some(Some(Ok(n))) => n,
             _ => {
                 // this should never happen
@@ -132,14 +138,22 @@ impl Into<IssueComment> for CommentFromJson {
             }
         };
 
-        IssueComment {
+        let conn = try!(DB_POOL.get());
+
+        let issue_id = try!(issue.select(id)
+            .filter(number.eq(issue_number))
+            .filter(repository.eq(repo))
+            .first::<i32>(&*conn));
+
+        Ok(IssueComment {
             id: self.id,
             fk_issue: issue_id,
             fk_user: self.user.id,
             body: self.body.replace(0x00 as char, ""),
             created_at: self.created_at.naive_utc(),
             updated_at: self.updated_at.naive_utc(),
-        }
+            repository: repo.to_string(),
+        })
     }
 }
 
@@ -163,8 +177,8 @@ pub struct PullRequestFromJson {
     pub changed_files: i32,
 }
 
-impl Into<PullRequest> for PullRequestFromJson {
-    fn into(self) -> PullRequest {
+impl PullRequestFromJson {
+    pub fn with_repo(self, repo: &str) -> PullRequest {
         PullRequest {
             number: self.number,
             state: self.state.replace(0x00 as char, ""),
@@ -181,6 +195,7 @@ impl Into<PullRequest> for PullRequestFromJson {
             additions: self.additions,
             deletions: self.deletions,
             changed_files: self.changed_files,
+            repository: repo.to_string(),
         }
     }
 }
