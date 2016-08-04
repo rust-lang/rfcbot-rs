@@ -2,13 +2,10 @@ import Ember from 'ember';
 import ENV from 'rust-dashboard/config/environment';
 
 export default Ember.Route.extend({
-  model: function() {
+  model() {
     const url = `${ENV.apiBaseURL}nag/users`;
-    return Ember.$.getJSON(url)
-      .then(members => {
-        return {
-          users: members
-        };
-      });
+    return fetch(url)
+      .then(response => response.json())
+      .then(({ users }) => ({ users }));
   }
 });
