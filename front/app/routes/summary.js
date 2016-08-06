@@ -1,13 +1,13 @@
 import Ember from 'ember';
 
 function stableReleases() {
-  var previousDate = new Date('2015-12-11');
-  var nextDate = new Date('2016-01-22');
-  var nextNextDate = new Date('2016-03-04');
+  let previousDate = new Date('2015-12-11');
+  const nextDate = new Date('2016-01-22');
+  const nextNextDate = new Date('2016-03-04');
 
-  var prevRelease = 5;
-  var nextRelease = 6;
-  var nextNextRelease = 7;
+  let prevRelease = 5;
+  let nextRelease = 6;
+  let nextNextRelease = 7;
 
   while (Date.now() > nextDate) {
     previousDate = new Date(nextDate);
@@ -30,7 +30,7 @@ function stableReleases() {
 }
 
 export default Ember.Route.extend({
-  model: function() {
+  model() {
     return { stable: stableReleases() };
   }
 });

@@ -1,4 +1,5 @@
 import Ember from 'ember';
+import fetch from 'fetch';
 import ENV from 'rust-dashboard/config/environment';
 
 function fixTimestamps(data) {
@@ -8,11 +9,11 @@ function fixTimestamps(data) {
 }
 
 export default Ember.Route.extend({
-  model: function() {
-    const summary_url = ENV.apiBaseURL + 'buildbots';
-    return Ember.$.getJSON(summary_url)
+  model() {
+    const summary_url = `${ENV.apiBaseURL}buildbots`;
+    return fetch(summary_url)
+      .then(response => response.json())
       .then(metrics => {
-
         const win_buildbot_times = [];
         const mac_buildbot_times = [];
         const linux_buildbot_times = [];

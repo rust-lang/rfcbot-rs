@@ -1,4 +1,5 @@
 import Ember from 'ember';
+import fetch from 'fetch';
 import ENV from 'rust-dashboard/config/environment';
 
 function fixTimestamps(data) {
@@ -8,22 +9,22 @@ function fixTimestamps(data) {
 }
 
 export default Ember.Route.extend({
-  model: function() {
+  model() {
     const summary_url = `${ENV.apiBaseURL}releases`;
-    return Ember.$.getJSON(summary_url)
-      .then(metrics => {
-        return {
-          streak: metrics.streak_summary,
-          nightlies: metrics.nightlies.map(elt => {
-            return {
-              nightly: elt[0],
-              builds: elt[1],
-            };
-          }),
-          build_times: metrics.builder_times_mins.map(series => {
-            return { name: series[0], data: fixTimestamps(series[1]) };
-          })
-        };
-      });
+    return fetch(summary_url)
+      .then(response => response.json())
+      .then(({ streak_summary, nightlies, builder_times_mins }) => ({
+        streak: streak_summary,
+        nightlies: nightlies.map(elt => {
+          return {
+            nightly: elt[0],
+            builds: elt[1],
+          };
+        }),
+        build_times: builder_times_mins.map(series => ({ 
+          name: series[0],
+          data: fixTimestamps(series[1])
+        }))
+      }));
   }
 });

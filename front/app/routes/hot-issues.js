@@ -4,33 +4,28 @@ import d3 from 'd3';
 import cloud from 'npm:d3-cloud';
 
 export default Ember.Route.extend({
-  model: function() {
+  model() {
     const url = `${ENV.apiBaseURL}hot-issues`;
-    return Ember.$.getJSON(url)
-      .then(resp => {
-        const words = resp.word_counts.sort((a, b) => (b[1] < a[1]) ? -1 : ((b[1] > a[1]) ? 1 : 0));
+    return fetch(url)
+      .then(response => response.json())
+      .then(({ word_counts, issues }) => { 
+        const words = word_counts.sort((a, b) => (b[1] < a[1]) ? -1 : ((b[1] > a[1]) ? 1 : 0));
 
-        Ember.run.scheduleOnce('afterRender', this, function() {
+        Ember.run.scheduleOnce('afterRender', this, () => {
           console.log('rendering word cloud');
 
-          var fill = d3.scaleOrdinal(d3.schemeCategory20c);
+          const fill = d3.scaleOrdinal(d3.schemeCategory20c);
 
           const width = document.getElementById("wordCloud")
             .clientWidth;
 
-          var layout = cloud()
+          const layout = cloud()
             .size([width, 500])
-            .words(words.map(function(d) {
-              return { text: d[0], size: d[1], test: "haha" };
-            }))
+            .words(words.map(d => ({ text: d[0], size: d[1], test: "haha" })))
             .padding(5)
-            .rotate(function() {
-              return 0;
-            })
+            .rotate(() => 0)
             .font("sans-serif")
-            .fontSize(function(d) {
-              return Math.sqrt(d.size * 1.5) * 2;
-            })
+            .fontSize(d => Math.sqrt(d.size * 1.5) * 2)
             .on("end", draw);
 
           layout.start();
@@ -46,25 +41,17 @@ export default Ember.Route.extend({
               .data(words)
               .enter()
               .append("text")
-              .style("font-size", function(d) {
-                return d.size + "px";
-              })
+              .style("font-size", d => d.size + "px")
               .style("font-family", "sans-serif")
-              .style("fill", function(d, i) {
-                return fill(i);
-              })
+              .style("fill", (d, i) => fill(i))
               .attr("text-anchor", "middle")
-              .attr("transform", function(d) {
-                return "translate(" + [d.x, d.y] + ")rotate(" + d.rotate + ")";
-              })
-              .text(function(d) {
-                return d.text;
-              });
+              .attr("transform", d => `translate(${[d.x, d.y]})rotate(${d.rotate})`)
+              .text(d => d.text);
           }
         });
 
         return {
-          issues: resp.issues,
+          issues: issues,
           word_counts: words
         };
       });
