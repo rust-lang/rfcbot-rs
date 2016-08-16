@@ -199,7 +199,7 @@ pub fn ingest_since(repo: &str, start: DateTime<UTC>) -> DashResult<()> {
     }
 
     // now that all updates have been registered, update any applicable nags
-    try!(nag::update_nags(&domain_comments));
+    try!(nag::update_nags(domain_comments));
 
     Ok(())
 }

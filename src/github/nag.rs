@@ -8,11 +8,14 @@ use domain::github::{GitHubUser, Issue, IssueComment, Membership, Team};
 use domain::schema::*;
 use error::*;
 
-pub fn update_nags(comments: &[IssueComment]) -> DashResult<()> {
+pub fn update_nags(mut comments: Vec<IssueComment>) -> DashResult<()> {
+
+    // make sure we process the new comments in creation order
+    comments.sort_by_key(|c| c.created_at);
 
     // let mut changed_rfcs = BTreeSet::new();
 
-    for comment in comments {
+    for comment in &comments {
 
         if comment.body.starts_with(&CONFIG.rfc_bot_mention) {
 
@@ -21,20 +24,20 @@ pub fn update_nags(comments: &[IssueComment]) -> DashResult<()> {
                 continue;
             }
 
+            // TODO check the nag (fcp merge/close/postpone/cancel, concern, resolve, reviewed, f?)
+
+            // TODO if fcp merge/close/postpone/cancel, create/cancel the nag
+
+            // TODO if fcp concern, add a new concern
+
+            // TODO if fcp resolve, mark concern resolved
+
 
         } else {
 
             // TODO check to see if we need to complete any feedback requests
 
         }
-
-        // TODO if it is, check the nag (fcp merge/close/postpone/cancel, concern, resolve, reviewed, f?)
-
-        // TODO if fcp merge/close/postpone/cancel, create/cancel the nag
-
-        // TODO if fcp concern, add a new concern
-
-        // TODO if fcp resolve, mark concern resolved
     }
 
     // TODO after processing all concerns/resolves check to see if any FCPs are changed
