@@ -3,6 +3,8 @@
 use std::collections::BTreeMap;
 use std::env;
 
+pub const RFC_BOT_MENTION: &'static str = "@rfcbot";
+
 lazy_static! {
     pub static ref CONFIG: Config = {
         match init() {
@@ -28,7 +30,6 @@ pub struct Config {
     pub github_interval_mins: u64,
     pub release_interval_mins: u64,
     pub buildbot_interval_mins: u64,
-    pub rfc_bot_mention: String,
 }
 
 impl Config {
@@ -46,7 +47,6 @@ const GITHUB_UA: &'static str = "GITHUB_USER_AGENT";
 const GITHUB_INTERVAL: &'static str = "GITHUB_SCRAPE_INTERVAL";
 const RELEASES_INTERVAL: &'static str = "RELEASES_SCRAPE_INTERVAL";
 const BUILDBOT_INTERVAL: &'static str = "BUILDBOT_SCRAPE_INTERVAL";
-const RFC_BOT_MENTION: &'static str = "RFC_BOT_MENTION";
 
 // this is complex, but we'll shortly need a lot more config items
 // so checking them automagically seems like a nice solution
@@ -60,8 +60,7 @@ pub fn init() -> Result<Config, Vec<&'static str>> {
                     GITHUB_UA,
                     GITHUB_INTERVAL,
                     RELEASES_INTERVAL,
-                    BUILDBOT_INTERVAL,
-                    RFC_BOT_MENTION];
+                    BUILDBOT_INTERVAL];
 
     for var in keys.into_iter() {
         vars.insert(var, env::var(var));
@@ -107,8 +106,6 @@ pub fn init() -> Result<Config, Vec<&'static str>> {
             Err(_) => return Err(vec![BUILDBOT_INTERVAL]),
         };
 
-        let bot_mention = vars.remove(RFC_BOT_MENTION).unwrap();
-
         Ok(Config {
             server_port: port,
             db_url: db_url,
@@ -118,7 +115,6 @@ pub fn init() -> Result<Config, Vec<&'static str>> {
             github_interval_mins: gh_interval,
             release_interval_mins: rel_interval,
             buildbot_interval_mins: bb_interval,
-            rfc_bot_mention: bot_mention, 
         })
 
     } else {
