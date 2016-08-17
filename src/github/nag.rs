@@ -15,39 +15,62 @@ pub fn update_nags(mut comments: Vec<IssueComment>) -> DashResult<()> {
 
     for comment in &comments {
 
+        let (is_by_subteam_member, author, issue) = is_by_subteam_member(comment)?;
+
         // attempt to parse a command out of the comment
         if let Ok(command) = RfcBotCommand::from_str(&comment.body) {
-
-            let (is_by_subteam_member, author) = is_by_subteam_member(comment)?;
 
             // don't accept bot commands from non-subteam members
             if !is_by_subteam_member {
                 continue;
             }
 
-            // TODO check the nag (fcp merge/close/postpone/cancel, concern, resolve, reviewed, f?)
-
-            // TODO if fcp merge/close/postpone/cancel, create/cancel the nag
-
-            // TODO if fcp concern, add a new concern
-
-            // TODO if fcp resolve, mark concern resolved
-
+            process_command(command, &author, &issue, comment)?;
 
         } else {
-
-            // TODO check to see if we need to complete any feedback requests
-
+            resolve_applicable_feedback_requests(&author, &issue, comment)?;
         }
     }
 
-    // TODO after processing all concerns/resolves check to see if any FCPs are changed
+    evaluate_nags()?;
+
+    Ok(())
+}
+
+fn evaluate_nags() -> DashResult<()> {
+
+    // TODO check to see if any FCPs are changed
+
+    Ok(())
+}
+
+fn process_command(command: RfcBotCommand,
+                   author: &GitHubUser,
+                   issue: &Issue,
+                   comment: &IssueComment)
+                   -> DashResult<()> {
+    // TODO check the nag (fcp merge/close/postpone/cancel, concern, resolve, reviewed, f?)
+
+    // TODO if fcp merge/close/postpone/cancel, create/cancel the nag
+
+    // TODO if fcp concern, add a new concern
+
+    // TODO if fcp resolve, mark concern resolved
+
+    Ok(())
+}
+
+fn resolve_applicable_feedback_requests(author: &GitHubUser,
+                                        issue: &Issue,
+                                        comment: &IssueComment)
+                                        -> DashResult<()> {
+    // TODO check for any open feedback requests, close them if no longer applicable
 
     Ok(())
 }
 
 /// Check if an issue comment is written by a member of one of the subteams labelled on the issue.
-fn is_by_subteam_member(comment: &IssueComment) -> DashResult<(bool, GitHubUser)> {
+fn is_by_subteam_member(comment: &IssueComment) -> DashResult<(bool, GitHubUser, Issue)> {
     let conn = &*DB_POOL.get()?;
 
     let issue = issue::table.find(comment.fk_issue).first::<Issue>(conn)?;
@@ -61,11 +84,11 @@ fn is_by_subteam_member(comment: &IssueComment) -> DashResult<(bool, GitHubUser)
         let team = teams::table.find(membership.fk_team).first::<Team>(conn)?;
 
         if issue.labels.contains(&team.label) {
-            return Ok((true, user));
+            return Ok((true, user, issue));
         }
     }
 
-    Ok((false, user))
+    Ok((false, user, issue))
 }
 
 #[derive(Debug, Eq, PartialEq)]
@@ -121,9 +144,7 @@ impl<'a> RfcBotCommand<'a> {
                 Ok(RfcBotCommand::ResolveConcern(first_line[name_start..].trim()))
 
             }
-            "reviewed" => {
-                Ok(RfcBotCommand::Reviewed)
-            }
+            "reviewed" => Ok(RfcBotCommand::Reviewed),
             "f?" => {
 
                 let user = tokens.next().ok_or(DashError::Misc)?;
@@ -134,7 +155,7 @@ impl<'a> RfcBotCommand<'a> {
 
                 Ok(RfcBotCommand::FeedbackRequest(&user[1..]))
             }
-            _ => Err(DashError::Misc)
+            _ => Err(DashError::Misc),
         }
     }
 }
