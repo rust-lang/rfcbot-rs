@@ -6,6 +6,8 @@ use domain::github::{GitHubUser, Issue, IssueComment, Membership, Team};
 use domain::schema::*;
 use error::*;
 
+// TODO set up easy posting of comments to GitHub issues
+
 pub fn update_nags(mut comments: Vec<IssueComment>) -> DashResult<()> {
 
     // make sure we process the new comments in creation order
@@ -25,7 +27,7 @@ pub fn update_nags(mut comments: Vec<IssueComment>) -> DashResult<()> {
                 continue;
             }
 
-            process_command(command, &author, &issue, comment)?;
+            command.process(&author, &issue, comment)?;
 
         } else {
             resolve_applicable_feedback_requests(&author, &issue, comment)?;
@@ -39,23 +41,9 @@ pub fn update_nags(mut comments: Vec<IssueComment>) -> DashResult<()> {
 
 fn evaluate_nags() -> DashResult<()> {
 
-    // TODO check to see if any FCPs are changed
-
-    Ok(())
-}
-
-fn process_command(command: RfcBotCommand,
-                   author: &GitHubUser,
-                   issue: &Issue,
-                   comment: &IssueComment)
-                   -> DashResult<()> {
-    // TODO check the nag (fcp merge/close/postpone/cancel, concern, resolve, reviewed, f?)
-
-    // TODO if fcp merge/close/postpone/cancel, create/cancel the nag
-
-    // TODO if fcp concern, add a new concern
-
-    // TODO if fcp resolve, mark concern resolved
+    // TODO go through all open FCP proposals
+    // TODO get associated concerns and reviews
+    // TODO see if all concerns resolved and all subteam members reviewed
 
     Ok(())
 }
@@ -104,6 +92,56 @@ pub enum RfcBotCommand<'a> {
 }
 
 impl<'a> RfcBotCommand<'a> {
+    pub fn process(self,
+                   author: &GitHubUser,
+                   issue: &Issue,
+                   comment: &IssueComment)
+                   -> DashResult<()> {
+
+        match self {
+            RfcBotCommand::FcpMerge => {
+                // TODO check for existing FCP
+                // TODO if not exists, create new FCP proposal with merge disposition
+                // TODO if exists, either ignore or change disposition (pending feedback from aturon)
+            },
+            RfcBotCommand::FcpClose => {
+                // TODO check for existing FCP
+                // TODO if not exists, create new FCP proposal with close disposition
+                // TODO if exists, either ignore or change disposition (pending feedback from aturon)
+            },
+            RfcBotCommand::FcpPostpone => {
+                // TODO check for existing FCP
+                // TODO if not exists, create new FCP proposal with postpone disposition
+                // TODO if exists, either ignore or change disposition (pending feedback from aturon)
+            },
+            RfcBotCommand::FcpCancel => {
+                // TODO check for existing FCP
+                // TODO if exists delete FCP with associated concerns, reviews, feedback requests
+                // TODO if not exists, leave comment telling author they were wrong
+            },
+            RfcBotCommand::Reviewed => {
+                // TODO set a reviewed entry for the comment author on this issue
+            },
+            RfcBotCommand::NewConcern(concern_name) => {
+                // TODO check for existing concern
+                // TODO if exists, leave comment with existing concerns
+                // TODO if not exists, create new concern with this author as creator
+            },
+            RfcBotCommand::ResolveConcern(concern_name) => {
+                // TODO check for existing concern
+                // TODO if exists and user is original creator of concern, resolve concern
+                // TODO if exists but user isn't creator, leave comment explaining
+                // TODO if not exists, leave comment with existing concerns
+            },
+            RfcBotCommand::FeedbackRequest(username) => {
+                // TODO check for existing feedback request
+                // TODO create feedback request
+            },
+        }
+
+        Ok(())
+    }
+
     pub fn from_str(command: &'a str) -> DashResult<RfcBotCommand<'a>> {
 
         if &command[..RFC_BOT_MENTION.len()] != RFC_BOT_MENTION {
