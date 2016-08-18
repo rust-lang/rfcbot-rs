@@ -1,8 +1,10 @@
 use diesel::prelude::*;
+use diesel;
 
 use config::RFC_BOT_MENTION;
 use DB_POOL;
 use domain::github::{GitHubUser, Issue, IssueComment, Membership, Team};
+use domain::rfcbot::{NewFcpProposal};
 use domain::schema::*;
 use error::*;
 
@@ -81,14 +83,29 @@ fn is_by_subteam_member(comment: &IssueComment) -> DashResult<(bool, GitHubUser,
 
 #[derive(Debug, Eq, PartialEq)]
 pub enum RfcBotCommand<'a> {
-    FcpMerge,
-    FcpClose,
-    FcpPostpone,
+    FcpPropose(FcpDisposition),
     FcpCancel,
     Reviewed,
     NewConcern(&'a str),
     ResolveConcern(&'a str),
     FeedbackRequest(&'a str),
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum FcpDisposition {
+    Merge,
+    Close,
+    Postpone,
+}
+
+impl FcpDisposition {
+    pub fn repr(self) -> &'static str {
+        match self {
+            FcpDisposition::Merge => "merge",
+            FcpDisposition::Close => "close",
+            FcpDisposition::Postpone => "postpone",
+        }
+    }
 }
 
 impl<'a> RfcBotCommand<'a> {
@@ -98,20 +115,12 @@ impl<'a> RfcBotCommand<'a> {
                    comment: &IssueComment)
                    -> DashResult<()> {
 
+        let conn = &*DB_POOL.get()?;
+
         match self {
-            RfcBotCommand::FcpMerge => {
+            RfcBotCommand::FcpPropose(disposition) => {
                 // TODO check for existing FCP
                 // TODO if not exists, create new FCP proposal with merge disposition
-                // TODO if exists, either ignore or change disposition (pending feedback from aturon)
-            },
-            RfcBotCommand::FcpClose => {
-                // TODO check for existing FCP
-                // TODO if not exists, create new FCP proposal with close disposition
-                // TODO if exists, either ignore or change disposition (pending feedback from aturon)
-            },
-            RfcBotCommand::FcpPostpone => {
-                // TODO check for existing FCP
-                // TODO if not exists, create new FCP proposal with postpone disposition
                 // TODO if exists, either ignore or change disposition (pending feedback from aturon)
             },
             RfcBotCommand::FcpCancel => {
@@ -162,9 +171,9 @@ impl<'a> RfcBotCommand<'a> {
                 let subcommand = tokens.next().ok_or(DashError::Misc)?;
 
                 match subcommand {
-                    "merge" => Ok(RfcBotCommand::FcpMerge),
-                    "close" => Ok(RfcBotCommand::FcpClose),
-                    "postpone" => Ok(RfcBotCommand::FcpPostpone),
+                    "merge" => Ok(RfcBotCommand::FcpPropose(FcpDisposition::Merge)),
+                    "close" => Ok(RfcBotCommand::FcpPropose(FcpDisposition::Close)),
+                    "postpone" => Ok(RfcBotCommand::FcpPropose(FcpDisposition::Postpone)),
                     "cancel" => Ok(RfcBotCommand::FcpCancel),
                     _ => Err(DashError::Misc),
                 }
