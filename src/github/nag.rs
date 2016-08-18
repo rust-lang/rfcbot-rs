@@ -4,7 +4,7 @@ use diesel;
 use config::RFC_BOT_MENTION;
 use DB_POOL;
 use domain::github::{GitHubUser, Issue, IssueComment, Membership, Team};
-use domain::rfcbot::{NewFcpProposal};
+use domain::rfcbot::{FcpProposal, NewFcpProposal};
 use domain::schema::*;
 use error::*;
 
@@ -118,46 +118,71 @@ impl<'a> RfcBotCommand<'a> {
         let conn = &*DB_POOL.get()?;
 
         match self {
-            RfcBotCommand::FcpPropose(disposition) => {
-                // TODO check for existing FCP
-                // TODO if exists, either ignore or change disposition (pending feedback from aturon)
+            RfcBotCommand::FcpPropose(disp) => {
+                use domain::schema::fcp_proposal::dsl::*;
 
-                // if not exists, create new FCP proposal with merge disposition
-                let proposal = NewFcpProposal {
-                    fk_issue: issue.id,
-                    fk_initiator: author.id,
-                    fk_initiating_comment: comment.id,
-                    disposition: disposition.repr(),
-                };
+                // check for existing FCP
+                let existing = fcp_proposal.filter(fk_issue.eq(issue.id))
+                    .first::<FcpProposal>(conn)
+                    .ok();
 
-                use domain::schema::fcp_proposal;
-                try!(diesel::insert(&proposal).into(fcp_proposal::table).execute(conn));
+                if let Some(existing) = existing {
+                    // TODO if exists, either ignore or change disposition (pending feedback)
 
-                // TODO leave github comment stating that FCP is proposed, ping reviewers
-            },
+                } else {
+                    // if not exists, create new FCP proposal with merge disposition
+                    let proposal = NewFcpProposal {
+                        fk_issue: issue.id,
+                        fk_initiator: author.id,
+                        fk_initiating_comment: comment.id,
+                        disposition: disp.repr(),
+                    };
+
+                    diesel::insert(&proposal).into(fcp_proposal).execute(conn)?;
+
+                    // TODO generate review requests for all relevant subteam members
+
+                    // TODO leave github comment stating that FCP is proposed, ping reviewers
+                }
+            }
             RfcBotCommand::FcpCancel => {
-                // TODO check for existing FCP
-                // TODO if exists delete FCP with associated concerns, reviews, feedback requests
-                // TODO if not exists, leave comment telling author they were wrong
-            },
+                // check for existing FCP
+                use domain::schema::fcp_proposal::dsl::*;
+
+                // check for existing FCP
+                let existing = fcp_proposal.filter(fk_issue.eq(issue.id))
+                    .first::<FcpProposal>(conn)
+                    .ok();
+
+                if let Some(existing) = existing {
+                    // if exists delete FCP with associated concerns, reviews, feedback requests
+                    // db schema has ON DELETE CASCADE
+                    diesel::delete(fcp_proposal.filter(id.eq(existing.id))).execute(conn)?;
+
+                    // TODO leave github comment stating that FCP proposal cancelled
+
+                } else {
+                    // TODO if not exists, leave comment telling author they were wrong
+                }
+            }
             RfcBotCommand::Reviewed => {
                 // TODO set a reviewed entry for the comment author on this issue
-            },
+            }
             RfcBotCommand::NewConcern(concern_name) => {
                 // TODO check for existing concern
                 // TODO if exists, leave comment with existing concerns
                 // TODO if not exists, create new concern with this author as creator
-            },
+            }
             RfcBotCommand::ResolveConcern(concern_name) => {
                 // TODO check for existing concern
                 // TODO if exists and user is original creator of concern, resolve concern
                 // TODO if exists but user isn't creator, leave comment explaining
                 // TODO if not exists, leave comment with existing concerns
-            },
+            }
             RfcBotCommand::FeedbackRequest(username) => {
                 // TODO check for existing feedback request
                 // TODO create feedback request
-            },
+            }
         }
 
         Ok(())
