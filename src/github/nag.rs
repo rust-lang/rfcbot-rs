@@ -55,7 +55,21 @@ fn resolve_applicable_feedback_requests(author: &GitHubUser,
                                         issue: &Issue,
                                         comment: &IssueComment)
                                         -> DashResult<()> {
-    // TODO check for any open feedback requests, close them if no longer applicable
+
+    use domain::schema::rfc_feedback_request::dsl::*;
+    let conn = &*DB_POOL.get()?;
+
+    // check for an open feedback request, close since no longer applicable
+    let existing_request =
+        rfc_feedback_request.filter(fk_requested.eq(author.id))
+            .filter(fk_issue.eq(issue.id))
+            .first::<FeedbackRequest>(conn)
+            .optional()?;
+
+    if let Some(mut request) = existing_request {
+        request.fk_feedback_comment = Some(comment.id);
+        diesel::update(rfc_feedback_request.find(request.id)).set(&request).execute(conn)?;
+    }
 
     Ok(())
 }
