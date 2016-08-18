@@ -8,7 +8,7 @@ use std::u32;
 
 use chrono::{DateTime, UTC};
 use hyper;
-use hyper::client::{RedirectPolicy, Response};
+use hyper::client::{RedirectPolicy, RequestBuilder, Response};
 use hyper::header::Headers;
 use serde::Deserialize;
 use serde_json;
@@ -119,7 +119,7 @@ impl Client {
                                   start_url: &str,
                                   params: &ParameterMap)
                                   -> DashResult<Vec<M>> {
-        let mut res = try!(self.request(start_url, Some(&params)));
+        let mut res = try!(self.get(start_url, Some(&params)));
 
         // let's try deserializing!
         let mut buf = String::new();
@@ -132,7 +132,7 @@ impl Client {
             // TODO figure out a better rate limit
             sleep(Duration::from_millis(DELAY));
             let url = next_url.unwrap();
-            let mut next_res = try!(self.request(&url, None));
+            let mut next_res = try!(self.get(&url, None));
 
             buf.clear();
             try!(next_res.read_to_string(&mut buf));
@@ -149,7 +149,7 @@ impl Client {
         let url = pr_info.get("url");
 
         if let Some(url) = url {
-            let mut res = try!(self.request(url, None));
+            let mut res = try!(self.get(url, None));
             let mut buf = String::new();
             try!(res.read_to_string(&mut buf));
 
@@ -179,10 +179,27 @@ impl Client {
         None
     }
 
-    fn request<'a>(&self,
-                   url: &'a str,
-                   params: Option<&ParameterMap>)
-                   -> Result<Response, hyper::error::Error> {
+    pub fn new_comment(&self, repo: &str, issue_num: u32, text: &str) -> DashResult<()> {
+        let url = format!("{}/repos/{}/issues/{}/comments", BASE_URL, repo, issue_num);
+
+        let mut obj = BTreeMap::new();
+        obj.insert("body", text);
+
+        let payload = serde_json::to_string(&obj)?;
+
+        self.post(&url, &payload)?;
+
+        Ok(())
+    }
+
+    fn post<'a>(&self, url: &str, payload: &str) -> Result<Response, hyper::error::Error> {
+        self.set_headers(self.client.post(url).body(payload)).send()
+    }
+
+    fn get<'a>(&self,
+               url: &'a str,
+               params: Option<&ParameterMap>)
+               -> Result<Response, hyper::error::Error> {
 
         let qp_string = match params {
             Some(p) => {
@@ -202,13 +219,14 @@ impl Client {
 
         debug!("GETing: {}", &url);
 
-        self.client
-            .get(&url)
-            .header(Auth(format!("token {}", &self.token)))
+        self.set_headers(self.client.get(&url))
+            .send()
+    }
+
+    fn set_headers<'a>(&self, req: RequestBuilder<'a>) -> RequestBuilder<'a> {
+        req.header(Auth(format!("token {}", &self.token)))
             .header(UA(self.ua.clone()))
             .header(TZ("UTC".to_string()))
             .header(Accept("application/vnd.github.v3".to_string()))
-            .header(hyper::header::Connection::close())
-            .send()
     }
 }
