@@ -8,8 +8,7 @@ use domain::rfcbot::{FcpConcern, FcpProposal, FcpReviewRequest, FeedbackRequest,
                      NewFcpConcern, NewFeedbackRequest};
 use domain::schema::*;
 use error::*;
-
-// TODO set up easy posting of comments to GitHub issues
+use super::GH;
 
 pub fn update_nags(mut comments: Vec<IssueComment>) -> DashResult<()> {
 
