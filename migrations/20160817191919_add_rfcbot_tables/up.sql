@@ -1,6 +1,6 @@
 CREATE TABLE fcp_proposal (
     id SERIAL PRIMARY KEY,
-    fk_issue INTEGER NOT NULL REFERENCES issue (id),
+    fk_issue INTEGER UNIQUE NOT NULL REFERENCES issue (id),
     fk_initiator INTEGER NOT NULL REFERENCES githubuser (id),
     fk_initiating_comment INTEGER NOT NULL REFERENCES issuecomment (id),
     disposition VARCHAR NOT NULL
@@ -25,5 +25,6 @@ CREATE TABLE rfc_feedback_request (
     id SERIAL PRIMARY KEY,
     fk_initiator INTEGER NOT NULL REFERENCES githubuser (id),
     fk_requested INTEGER NOT NULL REFERENCES githubuser (id),
+    fk_issue INTEGER NOT NULL REFERENCES issue (id),
     fk_feedback_comment INTEGER REFERENCES issuecomment (id)
 );

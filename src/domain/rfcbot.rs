@@ -64,6 +64,7 @@ pub struct FcpConcern {
 pub struct NewFeedbackRequest {
     pub fk_initiator: i32,
     pub fk_requested: i32,
+    pub fk_issue: i32,
     pub fk_feedback_comment: Option<i32>,
 }
 
@@ -73,5 +74,6 @@ pub struct FeedbackRequest {
     pub id: i32,
     pub fk_initiator: i32,
     pub fk_requested: i32,
+    pub fk_issue: i32,
     pub fk_feedback_comment: Option<i32>,
 }
