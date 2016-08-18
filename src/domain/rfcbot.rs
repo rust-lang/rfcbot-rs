@@ -2,8 +2,6 @@ use diesel::{ExpressionMethods, FilterDsl, LoadDsl, Queryable, SaveChangesDsl, T
 
 use super::schema::*;
 
-// TODO setup disposition enum with fromsql/tosql impls
-
 #[derive(Clone, Debug, Eq, Ord, PartialEq, PartialOrd)]
 #[insertable_into(fcp_proposal)]
 pub struct NewFcpProposal<'a> {
