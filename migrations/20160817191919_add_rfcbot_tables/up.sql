@@ -10,7 +10,8 @@ CREATE TABLE fcp_review_request (
     id SERIAL PRIMARY KEY,
     fk_proposal INTEGER NOT NULL REFERENCES fcp_proposal (id) ON DELETE CASCADE,
     fk_reviewer INTEGER NOT NULL REFERENCES githubuser (id),
-    fk_reviewed_comment INTEGER REFERENCES issuecomment (id)
+    fk_reviewed_comment INTEGER REFERENCES issuecomment (id),
+    UNIQUE (fk_proposal, fk_reviewer)
 );
 
 CREATE TABLE fcp_concern (
