@@ -120,8 +120,20 @@ impl<'a> RfcBotCommand<'a> {
         match self {
             RfcBotCommand::FcpPropose(disposition) => {
                 // TODO check for existing FCP
-                // TODO if not exists, create new FCP proposal with merge disposition
                 // TODO if exists, either ignore or change disposition (pending feedback from aturon)
+
+                // if not exists, create new FCP proposal with merge disposition
+                let proposal = NewFcpProposal {
+                    fk_issue: issue.id,
+                    fk_initiator: author.id,
+                    fk_initiating_comment: comment.id,
+                    disposition: disposition.repr(),
+                };
+
+                use domain::schema::fcp_proposal;
+                try!(diesel::insert(&proposal).into(fcp_proposal::table).execute(conn));
+
+                // TODO leave github comment stating that FCP is proposed, ping reviewers
             },
             RfcBotCommand::FcpCancel => {
                 // TODO check for existing FCP
