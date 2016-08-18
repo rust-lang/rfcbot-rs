@@ -4,7 +4,7 @@ use diesel;
 use config::RFC_BOT_MENTION;
 use DB_POOL;
 use domain::github::{GitHubUser, Issue, IssueComment, Membership, Team};
-use domain::rfcbot::{FcpProposal, NewFcpProposal};
+use domain::rfcbot::{FcpProposal, FcpReviewRequest, NewFcpProposal};
 use domain::schema::*;
 use error::*;
 
@@ -117,16 +117,20 @@ impl<'a> RfcBotCommand<'a> {
 
         let conn = &*DB_POOL.get()?;
 
+        // check for existing FCP
+        let existing_proposal = {
+            use domain::schema::fcp_proposal::dsl::*;
+
+            fcp_proposal.filter(fk_issue.eq(issue.id))
+                .first::<FcpProposal>(conn)
+                .optional()?
+        };
+
         match self {
             RfcBotCommand::FcpPropose(disp) => {
                 use domain::schema::fcp_proposal::dsl::*;
 
-                // check for existing FCP
-                let existing = fcp_proposal.filter(fk_issue.eq(issue.id))
-                    .first::<FcpProposal>(conn)
-                    .ok();
-
-                if let Some(existing) = existing {
+                if let Some(_) = existing_proposal {
                     // TODO if exists, either ignore or change disposition (pending feedback)
 
                 } else {
@@ -146,15 +150,9 @@ impl<'a> RfcBotCommand<'a> {
                 }
             }
             RfcBotCommand::FcpCancel => {
-                // check for existing FCP
                 use domain::schema::fcp_proposal::dsl::*;
 
-                // check for existing FCP
-                let existing = fcp_proposal.filter(fk_issue.eq(issue.id))
-                    .first::<FcpProposal>(conn)
-                    .ok();
-
-                if let Some(existing) = existing {
+                if let Some(existing) = existing_proposal {
                     // if exists delete FCP with associated concerns, reviews, feedback requests
                     // db schema has ON DELETE CASCADE
                     diesel::delete(fcp_proposal.filter(id.eq(existing.id))).execute(conn)?;
@@ -166,7 +164,31 @@ impl<'a> RfcBotCommand<'a> {
                 }
             }
             RfcBotCommand::Reviewed => {
-                // TODO set a reviewed entry for the comment author on this issue
+                // set a reviewed entry for the comment author on this issue
+
+                use domain::schema::fcp_review_request::dsl::*;
+
+                if let Some(proposal) = existing_proposal {
+
+                    let review_request = fcp_review_request
+                        .filter(fk_proposal.eq(proposal.id))
+                        .filter(fk_reviewer.eq(author.id))
+                        .first::<FcpReviewRequest>(conn)
+                        .optional()?;
+
+                    if let Some(mut review_request) = review_request {
+                        // store an FK to the comment marking for review (not null fk here means
+                        // reviewed)
+                        review_request.fk_reviewed_comment = Some(comment.id);
+
+                        diesel::update(fcp_review_request.find(review_request.id))
+                            .set(&review_request)
+                            .execute(conn)?;
+                    }
+
+                } else {
+                    // TODO post github comment letting reviewer know that no FCP proposal is active
+                }
             }
             RfcBotCommand::NewConcern(concern_name) => {
                 // TODO check for existing concern
