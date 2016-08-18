@@ -5,12 +5,13 @@ use config::RFC_BOT_MENTION;
 use DB_POOL;
 use domain::github::{GitHubUser, Issue, IssueComment, Membership, Team};
 use domain::rfcbot::{FcpConcern, FcpProposal, FcpReviewRequest, FeedbackRequest, NewFcpProposal,
-                     NewFcpConcern, NewFeedbackRequest};
+                     NewFcpConcern, NewFcpReviewRequest, NewFeedbackRequest};
 use domain::schema::*;
 use error::*;
 use super::GH;
 
 pub fn update_nags(mut comments: Vec<IssueComment>) -> DashResult<()> {
+    let conn = &*DB_POOL.get()?;
 
     // make sure we process the new comments in creation order
     comments.sort_by_key(|c| c.created_at);
@@ -19,17 +20,19 @@ pub fn update_nags(mut comments: Vec<IssueComment>) -> DashResult<()> {
 
     for comment in &comments {
 
-        let (is_by_subteam_member, author, issue) = is_by_subteam_member(comment)?;
+        let issue = issue::table.find(comment.fk_issue).first::<Issue>(conn)?;
+        let author = githubuser::table.find(comment.fk_user).first::<GitHubUser>(conn)?;
+        let subteam_members = subteam_members(&issue)?;
 
         // attempt to parse a command out of the comment
         if let Ok(command) = RfcBotCommand::from_str(&comment.body) {
 
             // don't accept bot commands from non-subteam members
-            if !is_by_subteam_member {
+            if subteam_members.iter().find(|&u| u == &author).is_none() {
                 continue;
             }
 
-            command.process(&author, &issue, comment)?;
+            command.process(&author, &issue, comment, &subteam_members)?;
 
         } else {
             resolve_applicable_feedback_requests(&author, &issue, comment)?;
@@ -59,11 +62,10 @@ fn resolve_applicable_feedback_requests(author: &GitHubUser,
     let conn = &*DB_POOL.get()?;
 
     // check for an open feedback request, close since no longer applicable
-    let existing_request =
-        rfc_feedback_request.filter(fk_requested.eq(author.id))
-            .filter(fk_issue.eq(issue.id))
-            .first::<FeedbackRequest>(conn)
-            .optional()?;
+    let existing_request = rfc_feedback_request.filter(fk_requested.eq(author.id))
+        .filter(fk_issue.eq(issue.id))
+        .first::<FeedbackRequest>(conn)
+        .optional()?;
 
     if let Some(mut request) = existing_request {
         request.fk_feedback_comment = Some(comment.id);
@@ -74,25 +76,28 @@ fn resolve_applicable_feedback_requests(author: &GitHubUser,
 }
 
 /// Check if an issue comment is written by a member of one of the subteams labelled on the issue.
-fn is_by_subteam_member(comment: &IssueComment) -> DashResult<(bool, GitHubUser, Issue)> {
+fn subteam_members(issue: &Issue) -> DashResult<Vec<GitHubUser>> {
+    use diesel::pg::expression::dsl::any;
+    use domain::schema::{teams, memberships, githubuser};
+
     let conn = &*DB_POOL.get()?;
 
-    let issue = issue::table.find(comment.fk_issue).first::<Issue>(conn)?;
-    let user = githubuser::table.find(comment.fk_user).first::<GitHubUser>(conn)?;
+    // retrieve all of the teams tagged on this issue
+    let team = teams::table.filter(teams::label.eq(any(&issue.labels))).load::<Team>(conn)?;
 
-    use domain::schema::memberships::dsl::*;
+    let team_ids = team.into_iter().map(|t| t.id).collect::<Vec<_>>();
 
-    let many_to_many = memberships.filter(fk_member.eq(user.id)).load::<Membership>(&*conn)?;
+    // get all the members of those teams
+    let members = memberships::table.filter(memberships::fk_team.eq(any(team_ids)))
+        .load::<Membership>(conn)?;
 
-    for membership in many_to_many {
-        let team = teams::table.find(membership.fk_team).first::<Team>(conn)?;
+    let member_ids = members.into_iter().map(|m| m.fk_member).collect::<Vec<_>>();
 
-        if issue.labels.contains(&team.label) {
-            return Ok((true, user, issue));
-        }
-    }
+    // resolve each member into an actual user
+    let users = githubuser::table.filter(githubuser::id.eq(any(member_ids)))
+        .load::<GitHubUser>(conn)?;
 
-    Ok((false, user, issue))
+    Ok(users)
 }
 
 #[derive(Debug, Eq, PartialEq)]
@@ -126,7 +131,8 @@ impl<'a> RfcBotCommand<'a> {
     pub fn process(self,
                    author: &GitHubUser,
                    issue: &Issue,
-                   comment: &IssueComment)
+                   comment: &IssueComment,
+                   issue_subteam_members: &[GitHubUser])
                    -> DashResult<()> {
 
         let conn = &*DB_POOL.get()?;
@@ -143,6 +149,7 @@ impl<'a> RfcBotCommand<'a> {
         match self {
             RfcBotCommand::FcpPropose(disp) => {
                 use domain::schema::fcp_proposal::dsl::*;
+                use domain::schema::fcp_review_request;
 
                 if let Some(_) = existing_proposal {
                     // TODO if exists, either ignore or change disposition (pending feedback)
@@ -156,9 +163,22 @@ impl<'a> RfcBotCommand<'a> {
                         disposition: disp.repr(),
                     };
 
-                    diesel::insert(&proposal).into(fcp_proposal).execute(conn)?;
+                    let proposal = diesel::insert(&proposal)
+                        .into(fcp_proposal)
+                        .get_result::<FcpProposal>(conn)?;
 
-                    // TODO generate review requests for all relevant subteam members
+                    // generate review requests for all relevant subteam members
+                    for member in issue_subteam_members {
+                        let review_request = NewFcpReviewRequest {
+                            fk_proposal: proposal.id,
+                            fk_reviewer: member.id,
+                            fk_reviewed_comment: None,
+                        };
+
+                        diesel::insert(&review_request)
+                            .into(fcp_review_request::table)
+                            .execute(conn)?;
+                    }
 
                     // TODO leave github comment stating that FCP is proposed, ping reviewers
                 }
