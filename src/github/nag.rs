@@ -193,7 +193,7 @@ impl<'a> RfcBotCommand<'a> {
             RfcBotCommand::NewConcern(concern_name) => {
 
                 if let Some(proposal) = existing_proposal {
-                    // TODO check for existing concern
+                    // check for existing concern
                     use domain::schema::fcp_concern::dsl::*;
 
                     let existing_concern = fcp_concern
@@ -225,10 +225,34 @@ impl<'a> RfcBotCommand<'a> {
 
             }
             RfcBotCommand::ResolveConcern(concern_name) => {
-                // TODO check for existing concern
-                // TODO if exists and user is original creator of concern, resolve concern
-                // TODO if exists but user isn't creator, leave comment explaining
-                // TODO if not exists, leave comment with existing concerns
+
+                if let Some(proposal) = existing_proposal {
+                    // check for existing concern
+                    use domain::schema::fcp_concern::dsl::*;
+
+                    let existing_concern = fcp_concern
+                        .filter(fk_proposal.eq(proposal.id))
+                        .filter(fk_initiator.eq(author.id))
+                        .filter(name.eq(concern_name))
+                        .first::<FcpConcern>(conn)
+                        .optional()?;
+
+                    if let Some(mut concern) = existing_concern {
+
+                        // mark concern as resolved by adding resolved_comment
+                        concern.fk_resolved_comment = Some(comment.id);
+
+                        diesel::update(fcp_concern.find(concern.id))
+                            .set(&concern)
+                            .execute(conn)?;
+
+                    } else {
+                        // TODO if not exists, leave comment with existing concerns & authors
+                    }
+
+                } else {
+                    // TODO post github comment letting concern initiator know no proposal active
+                }
             }
             RfcBotCommand::FeedbackRequest(username) => {
                 // TODO check for existing feedback request
