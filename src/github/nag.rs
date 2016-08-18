@@ -4,7 +4,7 @@ use diesel;
 use config::RFC_BOT_MENTION;
 use DB_POOL;
 use domain::github::{GitHubUser, Issue, IssueComment, Membership, Team};
-use domain::rfcbot::{FcpProposal, FcpReviewRequest, NewFcpProposal};
+use domain::rfcbot::{FcpConcern, FcpProposal, FcpReviewRequest, NewFcpProposal, NewFcpConcern};
 use domain::schema::*;
 use error::*;
 
@@ -191,9 +191,38 @@ impl<'a> RfcBotCommand<'a> {
                 }
             }
             RfcBotCommand::NewConcern(concern_name) => {
-                // TODO check for existing concern
-                // TODO if exists, leave comment with existing concerns
-                // TODO if not exists, create new concern with this author as creator
+
+                if let Some(proposal) = existing_proposal {
+                    // TODO check for existing concern
+                    use domain::schema::fcp_concern::dsl::*;
+
+                    let existing_concern = fcp_concern
+                        .filter(fk_proposal.eq(proposal.id))
+                        .filter(name.eq(concern_name))
+                        .first::<FcpConcern>(conn)
+                        .optional()?;
+
+                    if let Some(_) = existing_concern {
+                        // TODO if exists, leave comment with existing concerns
+                    } else {
+                        // if not exists, create new concern with this author as creator
+
+                        let new_concern = NewFcpConcern {
+                            fk_proposal: proposal.id,
+                            fk_initiator: author.id,
+                            fk_resolved_comment: None,
+                            name: concern_name,
+                        };
+
+                        diesel::insert(&new_concern).into(fcp_concern).execute(conn)?;
+
+                        // TODO post github comment with list of existing concerns
+                    }
+
+                } else {
+                    // TODO post github comment letting concern initiator know no proposal active
+                }
+
             }
             RfcBotCommand::ResolveConcern(concern_name) => {
                 // TODO check for existing concern
