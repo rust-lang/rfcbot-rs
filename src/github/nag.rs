@@ -4,7 +4,8 @@ use diesel;
 use config::RFC_BOT_MENTION;
 use DB_POOL;
 use domain::github::{GitHubUser, Issue, IssueComment, Membership, Team};
-use domain::rfcbot::{FcpConcern, FcpProposal, FcpReviewRequest, NewFcpProposal, NewFcpConcern};
+use domain::rfcbot::{FcpConcern, FcpProposal, FcpReviewRequest, FeedbackRequest, NewFcpProposal,
+                     NewFcpConcern, NewFeedbackRequest};
 use domain::schema::*;
 use error::*;
 
@@ -170,8 +171,7 @@ impl<'a> RfcBotCommand<'a> {
 
                 if let Some(proposal) = existing_proposal {
 
-                    let review_request = fcp_review_request
-                        .filter(fk_proposal.eq(proposal.id))
+                    let review_request = fcp_review_request.filter(fk_proposal.eq(proposal.id))
                         .filter(fk_reviewer.eq(author.id))
                         .first::<FcpReviewRequest>(conn)
                         .optional()?;
@@ -196,8 +196,7 @@ impl<'a> RfcBotCommand<'a> {
                     // check for existing concern
                     use domain::schema::fcp_concern::dsl::*;
 
-                    let existing_concern = fcp_concern
-                        .filter(fk_proposal.eq(proposal.id))
+                    let existing_concern = fcp_concern.filter(fk_proposal.eq(proposal.id))
                         .filter(name.eq(concern_name))
                         .first::<FcpConcern>(conn)
                         .optional()?;
@@ -230,8 +229,7 @@ impl<'a> RfcBotCommand<'a> {
                     // check for existing concern
                     use domain::schema::fcp_concern::dsl::*;
 
-                    let existing_concern = fcp_concern
-                        .filter(fk_proposal.eq(proposal.id))
+                    let existing_concern = fcp_concern.filter(fk_proposal.eq(proposal.id))
                         .filter(fk_initiator.eq(author.id))
                         .filter(name.eq(concern_name))
                         .first::<FcpConcern>(conn)
@@ -255,8 +253,35 @@ impl<'a> RfcBotCommand<'a> {
                 }
             }
             RfcBotCommand::FeedbackRequest(username) => {
-                // TODO check for existing feedback request
-                // TODO create feedback request
+
+                use domain::schema::githubuser;
+                use domain::schema::rfc_feedback_request::dsl::*;
+
+                // we'll just assume that this user exists...it's very unlikely that someone
+                // will request feedback from a user who's *never* commented or committed
+                // on/to a rust-lang* repo
+                let requested_user = githubuser::table.filter(githubuser::login.eq(username))
+                    .first::<GitHubUser>(conn)?;
+
+                // check for existing feedback request
+                let existing_request =
+                    rfc_feedback_request.filter(fk_requested.eq(requested_user.id))
+                        .filter(fk_issue.eq(issue.id))
+                        .first::<FeedbackRequest>(conn)
+                        .optional()?;
+
+                if existing_request.is_none() {
+                    // create feedback request
+
+                    let new_request = NewFeedbackRequest {
+                        fk_initiator: author.id,
+                        fk_requested: requested_user.id,
+                        fk_issue: issue.id,
+                        fk_feedback_comment: None,
+                    };
+
+                    diesel::insert(&new_request).into(rfc_feedback_request).execute(conn)?;
+                }
             }
         }
 
