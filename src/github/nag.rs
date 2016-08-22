@@ -16,8 +16,6 @@ pub fn update_nags(mut comments: Vec<IssueComment>) -> DashResult<()> {
     // make sure we process the new comments in creation order
     comments.sort_by_key(|c| c.created_at);
 
-    // let mut changed_rfcs = BTreeSet::new();
-
     for comment in &comments {
 
         let issue = issue::table.find(comment.fk_issue).first::<Issue>(conn)?;

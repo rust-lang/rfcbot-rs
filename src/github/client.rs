@@ -179,6 +179,8 @@ impl Client {
         None
     }
 
+    // TODO set up global flag for whether bot interactions should happen
+
     pub fn new_comment(&self, repo: &str, issue_num: u32, text: &str) -> DashResult<()> {
         let url = format!("{}/repos/{}/issues/{}/comments", BASE_URL, repo, issue_num);
 
