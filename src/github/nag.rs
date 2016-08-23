@@ -93,6 +93,7 @@ fn subteam_members(issue: &Issue) -> DashResult<Vec<GitHubUser>> {
 
     // resolve each member into an actual user
     let users = githubuser::table.filter(githubuser::id.eq(any(member_ids)))
+        .order(githubuser::login)
         .load::<GitHubUser>(conn)?;
 
     Ok(users)
@@ -161,24 +162,33 @@ impl<'a> RfcBotCommand<'a> {
                         disposition: disp.repr(),
                     };
 
-                    let proposal = diesel::insert(&proposal)
-                        .into(fcp_proposal)
+                    let proposal = diesel::insert(&proposal).into(fcp_proposal)
                         .get_result::<FcpProposal>(conn)?;
 
                     // generate review requests for all relevant subteam members
                     for member in issue_subteam_members {
+
+                        // don't generate a review request for the person who initiated the FCP
+                        if member == author {
+                            continue;
+                        }
+
                         let review_request = NewFcpReviewRequest {
                             fk_proposal: proposal.id,
                             fk_reviewer: member.id,
                             fk_reviewed_comment: None,
                         };
 
-                        diesel::insert(&review_request)
-                            .into(fcp_review_request::table)
+                        diesel::insert(&review_request).into(fcp_review_request::table)
                             .execute(conn)?;
                     }
 
-                    // TODO leave github comment stating that FCP is proposed, ping reviewers
+                    // leave github comment stating that FCP is proposed, ping reviewers
+                    let comment =
+                        RfcBotComment::new(author,
+                                           issue,
+                                           CommentType::FcpProposed(disp, issue_subteam_members));
+                    comment.post();
                 }
             }
             RfcBotCommand::FcpCancel => {
@@ -189,10 +199,15 @@ impl<'a> RfcBotCommand<'a> {
                     // db schema has ON DELETE CASCADE
                     diesel::delete(fcp_proposal.filter(id.eq(existing.id))).execute(conn)?;
 
-                    // TODO leave github comment stating that FCP proposal cancelled
+                    // leave github comment stating that FCP proposal cancelled
+                    let comment =
+                        RfcBotComment::new(author, issue, CommentType::FcpProposalCancelled);
+                    comment.post();
 
                 } else {
-                    // TODO if not exists, leave comment telling author they were wrong
+                    // if not exists, leave comment telling author they were wrong
+                    let comment = RfcBotComment::new(author, issue, CommentType::FcpNoProposal);
+                    comment.post();
                 }
             }
             RfcBotCommand::Reviewed => {
@@ -218,7 +233,9 @@ impl<'a> RfcBotCommand<'a> {
                     }
 
                 } else {
-                    // TODO post github comment letting reviewer know that no FCP proposal is active
+                    // post github comment letting reviewer know that no FCP proposal is active
+                    let comment = RfcBotComment::new(author, issue, CommentType::FcpNoProposal);
+                    comment.post();
                 }
             }
             RfcBotCommand::NewConcern(concern_name) => {
@@ -233,7 +250,15 @@ impl<'a> RfcBotCommand<'a> {
                         .optional()?;
 
                     if let Some(_) = existing_concern {
-                        // TODO if exists, leave comment with existing concerns
+                        // if exists, leave comment with existing concerns
+
+                        let concerns_w_authors =
+                            self.list_active_concerns_with_authors(proposal.id)?;
+
+                        let comment = RfcBotComment::new(author, issue,
+                            CommentType::FcpDuplicateConcern(&concerns_w_authors));
+                        comment.post();
+
                     } else {
                         // if not exists, create new concern with this author as creator
 
@@ -246,11 +271,14 @@ impl<'a> RfcBotCommand<'a> {
 
                         diesel::insert(&new_concern).into(fcp_concern).execute(conn)?;
 
-                        // TODO post github comment with list of existing concerns
+                        let comment = RfcBotComment::new(author,
+                                                         issue,
+                                                         CommentType::FcpNewConcern(concern_name));
+                        comment.post();
                     }
 
                 } else {
-                    // TODO post github comment letting concern initiator know no proposal active
+                    RfcBotComment::new(author, issue, CommentType::FcpNoProposal).post();
                 }
 
             }
@@ -271,16 +299,35 @@ impl<'a> RfcBotCommand<'a> {
                         // mark concern as resolved by adding resolved_comment
                         concern.fk_resolved_comment = Some(comment.id);
 
-                        diesel::update(fcp_concern.find(concern.id))
-                            .set(&concern)
+                        diesel::update(fcp_concern.find(concern.id)).set(&concern)
                             .execute(conn)?;
 
+                        // list all the remaining concerns
+                        let concerns_w_authors =
+                            self.list_active_concerns_with_authors(proposal.id)?;
+
+                        RfcBotComment::new(author,
+                                           issue,
+                                           CommentType::FcpResolvedConcern(&concern,
+                                                                           &concerns_w_authors))
+                            .post();
+
                     } else {
-                        // TODO if not exists, leave comment with existing concerns & authors
+                        // if not exists, leave comment with existing concerns & authors
+
+                        let concerns_w_authors =
+                            self.list_active_concerns_with_authors(proposal.id)?;
+
+                        let comment =
+                            RfcBotComment::new(author,
+                                               issue,
+                                               CommentType::FcpMissingConcern(&concerns_w_authors));
+                        comment.post();
                     }
 
                 } else {
-                    // TODO post github comment letting concern initiator know no proposal active
+                    let comment = RfcBotComment::new(author, issue, CommentType::FcpNoProposal);
+                    comment.post();
                 }
             }
             RfcBotCommand::FeedbackRequest(username) => {
@@ -319,7 +366,33 @@ impl<'a> RfcBotCommand<'a> {
         Ok(())
     }
 
+    fn list_active_concerns_with_authors(&self,
+                                         proposal_id: i32)
+                                         -> DashResult<Vec<(FcpConcern, GitHubUser)>> {
+        use domain::schema::{fcp_concern, githubuser};
+
+        let conn = &*DB_POOL.get()?;
+
+        let concerns = fcp_concern::table.filter(fcp_concern::fk_proposal.eq(proposal_id))
+            .filter(fcp_concern::fk_resolved_comment.is_null())
+            .order(fcp_concern::name)
+            .load::<FcpConcern>(conn)?;
+
+        let mut w_authors = Vec::with_capacity(concerns.len());
+
+        for c in concerns {
+            let initiator = githubuser::table.filter(githubuser::id.eq(c.fk_initiator))
+                .first::<GitHubUser>(conn)?;
+
+            w_authors.push((c, initiator));
+        }
+
+        Ok(w_authors)
+    }
+
     pub fn from_str(command: &'a str) -> DashResult<RfcBotCommand<'a>> {
+
+        // TODO support commands on any line
 
         if &command[..RFC_BOT_MENTION.len()] != RFC_BOT_MENTION {
             return Err(DashError::Misc);
@@ -371,6 +444,148 @@ impl<'a> RfcBotCommand<'a> {
                 Ok(RfcBotCommand::FeedbackRequest(&user[1..]))
             }
             _ => Err(DashError::Misc),
+        }
+    }
+}
+
+struct RfcBotComment<'a> {
+    author: &'a GitHubUser,
+    repository: &'a str,
+    issue_num: i32,
+    comment_type: CommentType<'a>,
+}
+
+enum CommentType<'a> {
+    FcpProposed(FcpDisposition, &'a [GitHubUser]),
+    FcpProposalCancelled,
+    FcpNoProposal,
+    FcpNewConcern(&'a str),
+    FcpDuplicateConcern(&'a [(FcpConcern, GitHubUser)]),
+    FcpMissingConcern(&'a [(FcpConcern, GitHubUser)]),
+    FcpResolvedConcern(&'a FcpConcern, &'a [(FcpConcern, GitHubUser)]),
+}
+
+impl<'a> RfcBotComment<'a> {
+    fn new(command_author: &'a GitHubUser,
+           issue: &'a Issue,
+           comment_type: CommentType<'a>)
+           -> RfcBotComment<'a> {
+
+        RfcBotComment {
+            author: command_author,
+            repository: &issue.repository,
+            issue_num: issue.number,
+            comment_type: comment_type,
+        }
+    }
+
+    fn format(&self) -> DashResult<String> {
+
+        match self.comment_type {
+            CommentType::FcpProposed(disposition, reviewers) => {
+                let mut msg = format!("FCP proposed (with disposition to {}). Review requested from:
+
+",
+                                      disposition.repr());
+
+                for member in reviewers {
+                    msg.push_str("* @");
+                    msg.push_str(&member.login);
+                    msg.push('\n');
+                }
+
+                Ok(msg)
+            }
+            CommentType::FcpProposalCancelled => {
+                Ok(format!("@{} FCP proposal cancelled.", &self.author.login))
+            }
+            CommentType::FcpNoProposal => {
+                Ok(format!("@{} no FCP proposal is active on this issue.",
+                           &self.author.login))
+            }
+            CommentType::FcpDuplicateConcern(concerns) => {
+                let mut msg = format!("@{} this looks like a duplicate concern. Existing concerns:
+
+",
+                                      &self.author.login);
+
+                self.build_list_of_concerns(&mut msg, concerns);
+
+                Ok(msg)
+            }
+            CommentType::FcpMissingConcern(concerns) => {
+                let mut msg = format!("@{} this doesn't look like an existing concern on this issue.
+
+Existing concerns:
+
+",
+                                      &self.author.login);
+                self.build_list_of_concerns(&mut msg, concerns);
+
+                Ok(msg)
+            }
+            CommentType::FcpResolvedConcern(resolved, remaining_concerns) => {
+                let mut msg = format!("@{} concern \"{}\" marked as resolved.
+
+",
+                                      &self.author.login,
+                                      resolved.name);
+
+                if remaining_concerns.len() > 0 {
+                    self.build_list_of_concerns(&mut msg, remaining_concerns);
+                } else {
+                    msg.push_str("No remaining concerns currently registered.");
+                }
+
+                Ok(msg)
+            }
+            CommentType::FcpNewConcern(name) => Ok(format!("Added concern \"{}\".", name)),
+        }
+    }
+
+    fn build_list_of_concerns(&self, msg: &mut String, concerns: &[(FcpConcern, GitHubUser)]) {
+        for &(ref concern, ref originator) in concerns {
+            msg.push_str("* ");
+            msg.push_str(&concern.name);
+            msg.push_str(" (from ");
+            msg.push_str(&originator.login);
+            msg.push_str(")\n");
+        }
+    }
+
+    fn post(&self) {
+        use config::CONFIG;
+
+        if CONFIG.post_comments {
+
+            let text = match self.format() {
+                Ok(t) => t,
+                Err(why) => {
+                    error!("Problem formatting bot comment: {:?}", why);
+                    return;
+                }
+            };
+
+            match GH.new_comment(self.repository, self.issue_num, &text) {
+
+                Ok(()) => {
+                    info!("Posted a comment to {}#{}.",
+                          self.repository,
+                          self.issue_num)
+                }
+
+                Err(why) => {
+                    error!("Unabled to post a comment to {}#{}: {:?}",
+                           self.repository,
+                           self.issue_num,
+                           why)
+                }
+            }
+
+        } else {
+            info!("Skipping comment to {}#{}, comment posts are disabled.",
+                  self.repository,
+                  self.issue_num);
         }
     }
 }

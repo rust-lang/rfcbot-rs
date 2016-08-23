@@ -30,6 +30,7 @@ pub struct Config {
     pub github_interval_mins: u64,
     pub release_interval_mins: u64,
     pub buildbot_interval_mins: u64,
+    pub post_comments: bool,
 }
 
 impl Config {
@@ -47,6 +48,7 @@ const GITHUB_UA: &'static str = "GITHUB_USER_AGENT";
 const GITHUB_INTERVAL: &'static str = "GITHUB_SCRAPE_INTERVAL";
 const RELEASES_INTERVAL: &'static str = "RELEASES_SCRAPE_INTERVAL";
 const BUILDBOT_INTERVAL: &'static str = "BUILDBOT_SCRAPE_INTERVAL";
+const POST_COMMENTS: &'static str = "POST_COMMENTS";
 
 // this is complex, but we'll shortly need a lot more config items
 // so checking them automagically seems like a nice solution
@@ -60,7 +62,8 @@ pub fn init() -> Result<Config, Vec<&'static str>> {
                     GITHUB_UA,
                     GITHUB_INTERVAL,
                     RELEASES_INTERVAL,
-                    BUILDBOT_INTERVAL];
+                    BUILDBOT_INTERVAL,
+                    POST_COMMENTS];
 
     for var in keys.into_iter() {
         vars.insert(var, env::var(var));
@@ -106,6 +109,12 @@ pub fn init() -> Result<Config, Vec<&'static str>> {
             Err(_) => return Err(vec![BUILDBOT_INTERVAL]),
         };
 
+        let post_comments = vars.remove(POST_COMMENTS).unwrap();
+        let post_comments = match post_comments.parse::<bool>() {
+            Ok(pc) => pc,
+            Err(_) => return Err(vec![POST_COMMENTS]),
+        };
+
         Ok(Config {
             server_port: port,
             db_url: db_url,
@@ -115,6 +124,7 @@ pub fn init() -> Result<Config, Vec<&'static str>> {
             github_interval_mins: gh_interval,
             release_interval_mins: rel_interval,
             buildbot_interval_mins: bb_interval,
+            post_comments: post_comments,
         })
 
     } else {
