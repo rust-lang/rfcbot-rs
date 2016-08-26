@@ -10,6 +10,8 @@ use domain::schema::*;
 use error::*;
 use super::GH;
 
+// TODO check if new subteam label added for existing proposals
+
 pub fn update_nags(mut comments: Vec<IssueComment>) -> DashResult<()> {
     let conn = &*DB_POOL.get()?;
 
@@ -284,6 +286,8 @@ impl<'a> RfcBotCommand<'a> {
             }
             RfcBotCommand::ResolveConcern(concern_name) => {
 
+                debug!("Command is to resolve a concern ({}).", concern_name);
+
                 if let Some(proposal) = existing_proposal {
                     // check for existing concern
                     use domain::schema::fcp_concern::dsl::*;
@@ -295,6 +299,8 @@ impl<'a> RfcBotCommand<'a> {
                         .optional()?;
 
                     if let Some(mut concern) = existing_concern {
+
+                        debug!("Found a matching concern ({})", concern_name);
 
                         // mark concern as resolved by adding resolved_comment
                         concern.fk_resolved_comment = Some(comment.id);
@@ -315,6 +321,8 @@ impl<'a> RfcBotCommand<'a> {
                     } else {
                         // if not exists, leave comment with existing concerns & authors
 
+                        debug!("Not able to find concern ({})", concern_name);
+
                         let concerns_w_authors =
                             self.list_active_concerns_with_authors(proposal.id)?;
 
@@ -326,6 +334,7 @@ impl<'a> RfcBotCommand<'a> {
                     }
 
                 } else {
+                    debug!("No proposal found.");
                     let comment = RfcBotComment::new(author, issue, CommentType::FcpNoProposal);
                     comment.post();
                 }
@@ -411,6 +420,8 @@ impl<'a> RfcBotCommand<'a> {
             "fcp" => {
                 let subcommand = tokens.next().ok_or(DashError::Misc)?;
 
+                debug!("Parsed command as new FCP proposal");
+
                 match subcommand {
                     "merge" => Ok(RfcBotCommand::FcpPropose(FcpDisposition::Merge)),
                     "close" => Ok(RfcBotCommand::FcpPropose(FcpDisposition::Close)),
@@ -423,11 +434,15 @@ impl<'a> RfcBotCommand<'a> {
 
                 let name_start = first_line.find("concern").unwrap() + "concern".len();
 
+                debug!("Parsed command as NewConcern");
+
                 Ok(RfcBotCommand::NewConcern(first_line[name_start..].trim()))
             }
             "resolved" => {
 
                 let name_start = first_line.find("resolved").unwrap() + "resolved".len();
+
+                debug!("Parsed command as ResolveConcern");
 
                 Ok(RfcBotCommand::ResolveConcern(first_line[name_start..].trim()))
 
@@ -589,6 +604,8 @@ Existing concerns:
         }
     }
 }
+
+// FIXME add test for parsing commands in the middle/end of commands
 
 #[cfg(test)]
 mod test {

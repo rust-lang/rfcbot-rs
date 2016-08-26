@@ -187,6 +187,8 @@ impl Client {
 
         let payload = serde_json::to_string(&obj)?;
 
+        // FIXME propagate an error if it's a 404 or other error
+
         self.post(&url, &payload)?;
 
         Ok(())
@@ -228,5 +230,6 @@ impl Client {
             .header(UA(self.ua.clone()))
             .header(TZ("UTC".to_string()))
             .header(Accept("application/vnd.github.v3".to_string()))
+            .header(hyper::header::Connection::close())
     }
 }

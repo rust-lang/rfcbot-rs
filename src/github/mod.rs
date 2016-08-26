@@ -175,9 +175,10 @@ pub fn ingest_since(repo: &str, start: DateTime<UTC>) -> DashResult<()> {
                 .execute(&*conn));
         } else {
             try!(diesel::insert(&comment).into(issuecomment::table).execute(&*conn));
-        }
 
-        domain_comments.push(comment);
+            // we don't want to double-process comments
+            domain_comments.push(comment);
+        }
     }
 
     for pr in prs {
