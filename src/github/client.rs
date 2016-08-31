@@ -179,7 +179,11 @@ impl Client {
         None
     }
 
-    pub fn new_comment(&self, repo: &str, issue_num: i32, text: &str) -> DashResult<()> {
+    pub fn new_comment(&self,
+                       repo: &str,
+                       issue_num: i32,
+                       text: &str)
+                       -> DashResult<CommentFromJson> {
         let url = format!("{}/repos/{}/issues/{}/comments", BASE_URL, repo, issue_num);
 
         let mut obj = BTreeMap::new();
@@ -189,9 +193,38 @@ impl Client {
 
         // FIXME propagate an error if it's a 404 or other error
 
-        self.post(&url, &payload)?;
+        let mut body = String::new();
+        self.post(&url, &payload)?.read_to_string(&mut body)?;
 
-        Ok(())
+        let comment = serde_json::from_str::<CommentFromJson>(&body)?;
+
+        Ok(comment)
+    }
+
+    pub fn edit_comment(&self,
+                        repo: &str,
+                        comment_num: i32,
+                        text: &str)
+                        -> DashResult<CommentFromJson> {
+        let url = format!("{}/repos/{}/issues/comments/{}", BASE_URL, repo, comment_num);
+
+        let mut obj = BTreeMap::new();
+        obj.insert("body", text);
+
+        let payload = serde_json::to_string(&obj)?;
+
+        // FIXME propagate an error if it's a 404 or other error
+
+        let mut body = String::new();
+        self.patch(&url, &payload)?.read_to_string(&mut body)?;
+
+        let comment = serde_json::from_str::<CommentFromJson>(&body)?;
+
+        Ok(comment)
+    }
+
+    fn patch<'a>(&self, url: &str, payload: &str) -> Result<Response, hyper::error::Error> {
+        self.set_headers(self.client.patch(url).body(payload)).send()
     }
 
     fn post<'a>(&self, url: &str, payload: &str) -> Result<Response, hyper::error::Error> {

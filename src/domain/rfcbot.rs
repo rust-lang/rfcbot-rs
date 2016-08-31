@@ -9,6 +9,7 @@ pub struct NewFcpProposal<'a> {
     pub fk_initiator: i32,
     pub fk_initiating_comment: i32,
     pub disposition: &'a str,
+    pub fk_bot_tracking_comment: i32,
 }
 
 #[derive(Clone, Debug, Deserialize, Eq, Ord, PartialEq, PartialOrd, Queryable)]
@@ -19,6 +20,7 @@ pub struct FcpProposal {
     pub fk_initiator: i32,
     pub fk_initiating_comment: i32,
     pub disposition: String,
+    pub fk_bot_tracking_comment: i32,
 }
 
 #[derive(Clone, Debug, Eq, Ord, PartialEq, PartialOrd)]
@@ -26,7 +28,7 @@ pub struct FcpProposal {
 pub struct NewFcpReviewRequest {
     pub fk_proposal: i32,
     pub fk_reviewer: i32,
-    pub fk_reviewed_comment: Option<i32>,
+    pub reviewed: bool,
 }
 
 #[derive(Clone, Debug, Deserialize, Eq, Ord, PartialEq, PartialOrd, Queryable)]
@@ -35,7 +37,7 @@ pub struct FcpReviewRequest {
     pub id: i32,
     pub fk_proposal: i32,
     pub fk_reviewer: i32,
-    pub fk_reviewed_comment: Option<i32>,
+    pub reviewed: bool,
 }
 
 #[derive(Clone, Debug, Eq, Ord, PartialEq, PartialOrd)]
