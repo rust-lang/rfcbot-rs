@@ -200,7 +200,11 @@ pub fn ingest_since(repo: &str, start: DateTime<UTC>) -> DashResult<()> {
     }
 
     // now that all updates have been registered, update any applicable nags
-    try!(nag::update_nags(domain_comments));
-
-    Ok(())
+    match nag::update_nags(domain_comments) {
+        Ok(()) => Ok(()),
+        Err(why) => {
+            error!("Problem updating FCPs: {:?}", &why);
+            Err(why)
+        }
+    }
 }

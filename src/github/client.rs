@@ -223,6 +223,17 @@ impl Client {
         Ok(comment)
     }
 
+    pub fn get_comment(&self, repo: &str, comment_num: i32) -> DashResult<CommentFromJson> {
+        let url = format!("{}/repos/{}/issues/comments/{}", BASE_URL, repo, comment_num);
+
+        let mut body = String::new();
+        self.get(&url, None)?.read_to_string(&mut body)?;
+
+        let comment = serde_json::from_str::<CommentFromJson>(&body)?;
+
+        Ok(comment)
+    }
+
     fn patch<'a>(&self, url: &str, payload: &str) -> Result<Response, hyper::error::Error> {
         self.set_headers(self.client.patch(url).body(payload)).send()
     }

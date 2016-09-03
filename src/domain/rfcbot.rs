@@ -1,3 +1,4 @@
+use chrono::NaiveDateTime;
 use diesel::{ExpressionMethods, FilterDsl, LoadDsl, Queryable, SaveChangesDsl, Table};
 
 use super::schema::*;
@@ -10,6 +11,8 @@ pub struct NewFcpProposal<'a> {
     pub fk_initiating_comment: i32,
     pub disposition: &'a str,
     pub fk_bot_tracking_comment: i32,
+    pub fcp_start: Option<NaiveDateTime>,
+    pub fcp_closed: bool,
 }
 
 #[derive(Clone, Debug, Deserialize, Eq, Ord, PartialEq, PartialOrd, Queryable)]
@@ -21,6 +24,8 @@ pub struct FcpProposal {
     pub fk_initiating_comment: i32,
     pub disposition: String,
     pub fk_bot_tracking_comment: i32,
+    pub fcp_start: Option<NaiveDateTime>,
+    pub fcp_closed: bool, 
 }
 
 #[derive(Clone, Debug, Eq, Ord, PartialEq, PartialOrd)]
