@@ -3,6 +3,7 @@
 
 pub mod client;
 pub mod models;
+mod nag;
 
 use std::collections::BTreeSet;
 use std::cmp;
@@ -155,12 +156,14 @@ pub fn ingest_since(repo: &str, start: DateTime<UTC>) -> DashResult<()> {
                 .ok();
 
             if let Some(current_id) = exists {
-                try!(diesel::update(issue.find(current_id)).set(&i).execute(&*conn));
+                try!(diesel::update(issue.find(current_id)).set(&i.complete(current_id)).execute(&*conn));
             } else {
                 try!(diesel::insert(&i).into(issue).execute(&*conn));
             }
         }
     }
+
+    let mut domain_comments = Vec::new();
 
     // insert the comments
     for comment in comments {
@@ -172,6 +175,9 @@ pub fn ingest_since(repo: &str, start: DateTime<UTC>) -> DashResult<()> {
                 .execute(&*conn));
         } else {
             try!(diesel::insert(&comment).into(issuecomment::table).execute(&*conn));
+
+            // we don't want to double-process comments
+            domain_comments.push(comment);
         }
     }
 
@@ -193,5 +199,12 @@ pub fn ingest_since(repo: &str, start: DateTime<UTC>) -> DashResult<()> {
         }
     }
 
-    Ok(())
+    // now that all updates have been registered, update any applicable nags
+    match nag::update_nags(domain_comments) {
+        Ok(()) => Ok(()),
+        Err(why) => {
+            error!("Problem updating FCPs: {:?}", &why);
+            Err(why)
+        }
+    }
 }

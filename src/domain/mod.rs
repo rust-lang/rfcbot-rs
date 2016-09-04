@@ -2,4 +2,5 @@
 pub mod buildbot;
 pub mod github;
 pub mod releases;
+pub mod rfcbot;
 pub mod schema;

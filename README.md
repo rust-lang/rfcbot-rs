@@ -29,6 +29,7 @@ Most of the configuration has some default set (see [vagrant_env.sh](https://git
 $ touch .env
 $ echo "GITHUB_ACCESS_TOKEN=your_github_access_token_see_config_section_for_details" >> .env
 $ echo "GITHUB_USER_AGENT=your_github_username" >> .env
+$ echo "POST_COMMENTS=false" >> .env
 ```
 
 **NOTE:** While the dashboard doesn't require any permissions boxes to be checked in access token creation, and the code makes every effort to avoid modifying any state through GitHub's API, there's always a risk with handing 3rd-party code your API credentials.
@@ -92,6 +93,7 @@ rustc 1.11.0-nightly (bb4a79b08 2016-06-15)
 * `RELEASES_SCRAPE_INTERVAL`: time (in minutes) to wait in between nightly release scrapes
 * `BUILDBOT_SCRAPE_INTERVAL`: time (in minutes) to wait in between buildbot scrapes
 * `SERVER_PORT`: port on which the API server should listen
+* `POST_COMMENTS`: whether to post RFC bot comments on issues -- either `true` or `false`. Be very careful setting to true when testing -- it will post comments using whatever account is associated with the GitHub API key you provide.
 
 ## Database
 

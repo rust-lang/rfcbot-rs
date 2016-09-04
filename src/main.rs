@@ -1,6 +1,6 @@
 // Copyright 2016 Adam Perry. Dual-licensed MIT and Apache 2.0 (see LICENSE files for details).
 
-#![feature(custom_attribute, custom_derive, plugin)]
+#![feature(custom_attribute, custom_derive, plugin, question_mark)]
 #![plugin(diesel_codegen, dotenv_macros, serde_macros)]
 
 extern crate chrono;

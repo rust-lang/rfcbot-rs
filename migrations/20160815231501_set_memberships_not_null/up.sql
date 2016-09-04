@@ -1,0 +1,3 @@
+ALTER TABLE memberships
+  ALTER COLUMN fk_member SET NOT NULL,
+  ALTER COLUMN fk_team SET NOT NULL

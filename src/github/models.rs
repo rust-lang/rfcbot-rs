@@ -6,7 +6,7 @@ use std::i32;
 use chrono::{DateTime, UTC};
 
 use DB_POOL;
-use domain::github::{Issue, IssueComment, Milestone, PullRequest, GitHubUser};
+use domain::github::{IssueComment, IssuePartial, Milestone, PullRequest, GitHubUser};
 use error::DashResult;
 
 #[derive(Clone, Debug, Deserialize)]
@@ -76,13 +76,13 @@ pub struct IssueFromJson {
 }
 
 impl IssueFromJson {
-    pub fn with_repo(self, repo: &str) -> (Issue, Option<Milestone>) {
+    pub fn with_repo(self, repo: &str) -> (IssuePartial, Option<Milestone>) {
         let milestone_id = match self.milestone {
             Some(ref m) => Some(m.id),
             None => None,
         };
 
-        let issue = Issue {
+        let issue = IssuePartial {
             number: self.number,
             fk_milestone: milestone_id,
             fk_user: self.user.id,

@@ -217,6 +217,7 @@ pub fn hottest_issues_last_month() -> DashResult<Vec<Issue>> {
     let conn = try!(DB_POOL.get());
 
     Ok(try!(select(sql::<(Integer,
+                          Integer,
                           Nullable<Integer>,
                           Integer,
                           Nullable<Integer>,
@@ -229,7 +230,8 @@ pub fn hottest_issues_last_month() -> DashResult<Vec<Issue>> {
                           Timestamp,
                           Timestamp,
                           Array<VarChar>,
-                          VarChar)>("i.number, \
+                          VarChar)>("i.id, \
+          i.number, \
           i.fk_milestone, \
           i.fk_user, \
           i.fk_assignee, \

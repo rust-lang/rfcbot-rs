@@ -75,7 +75,7 @@ pub fn ingest() -> DashResult<()> {
     let conn = try!(DB_POOL.get());
     let c = Client::new();
 
-    let mut resp = try!(c.get("http://buildbot.rust-lang.org/json/builders/").send());
+    let mut resp = try!(c.get("https://buildbot.rust-lang.org/json/builders/").send());
 
     let mut buf = String::new();
     try!(resp.read_to_string(&mut buf));
@@ -86,7 +86,7 @@ pub fn ingest() -> DashResult<()> {
         .collect();
 
     for builder in &builders {
-        let url = format!("http://buildbot.rust-lang.org/json/builders/{}/builds/_all",
+        let url = format!("https://buildbot.rust-lang.org/json/builders/{}/builds/_all",
                           builder);
         debug!("GETing {}", &url);
 
