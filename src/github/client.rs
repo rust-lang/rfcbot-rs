@@ -125,7 +125,13 @@ impl Client {
         let mut buf = String::new();
         try!(res.read_to_string(&mut buf));
 
-        let mut models = try!(serde_json::from_str::<Vec<M>>(&buf));
+        let mut models = match serde_json::from_str::<Vec<M>>(&buf) {
+            Ok(m) => m,
+            Err(why) => {
+                error!("Unable to parse from JSON ({:?}): {}", &why, buf);
+                return Err(why.into());
+            }
+        };
 
         let mut next_url = Self::next_page(&res.headers);
         while next_url.is_some() {
@@ -137,7 +143,13 @@ impl Client {
             buf.clear();
             try!(next_res.read_to_string(&mut buf));
 
-            models.extend(try!(serde_json::from_str::<Vec<M>>(&buf)));
+            models.extend(match serde_json::from_str::<Vec<M>>(&buf) {
+                Ok(m) => m,
+                Err(why) => {
+                    error!("Unable to parse from JSON ({:?}): {}", &why, buf);
+                    return Err(why.into());
+                }
+            });
 
             next_url = Self::next_page(&next_res.headers);
         }
