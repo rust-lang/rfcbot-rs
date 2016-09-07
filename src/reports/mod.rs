@@ -254,6 +254,7 @@ pub fn hottest_issues_last_month() -> DashResult<Vec<Issue>> {
           u.login != 'bors' AND \
           ic.body NOT LIKE '%@bors%' \
         GROUP BY \
+          i.id, \
           i.number, \
           i.fk_milestone, \
           i.fk_user, \
