@@ -1,3 +1,4 @@
+use std::collections::BTreeMap;
 use std::error::Error;
 use std::fmt;
 
@@ -13,15 +14,19 @@ use reports;
 
 pub fn team_members(_: &mut Request) -> IronResult<Response> {
     let members = try!(reports::nag::all_team_members());
+
+    let mut resp = BTreeMap::new();
+    resp.insert("users", members);
+
     Ok(Response::with((status::Ok,
-                       try!(ser::to_string(&members).map_err(|e| {
+                       try!(ser::to_string(&resp).map_err(|e| {
         let e: DashError = e.into();
         e
     })))))
 }
 
 pub fn member_nags(req: &mut Request) -> IronResult<Response> {
-    let ref username = match req.extensions.get::<Router>().unwrap().find("username") {
+    let username = match req.extensions.get::<Router>().unwrap().find("username") {
         Some(u) => u,
         None => return Ok(Response::with((status::BadRequest, "Invalid team member username."))),
     };
