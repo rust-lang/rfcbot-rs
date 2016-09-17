@@ -643,6 +643,10 @@ impl<'a> RfcBotComment<'a> {
                     }
                 }
 
+                msg.push_str("\nSee [this document](");
+                msg.push_str("https://github.com/dikaiosune/rust-dashboard/blob/master/RFCBOT.md");
+                msg.push_str(") for info about what commands tagged team members can give me.");
+
                 Ok(msg)
             }
             CommentType::FcpProposalCancelled(initiator) => {
