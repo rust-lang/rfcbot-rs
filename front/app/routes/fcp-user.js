@@ -7,9 +7,9 @@ export default Ember.Route.extend({
 
     return fetch(url)
       .then(response => response.json())
-      .then(({ username, full_name }) => ({
-          user: username,
-          fullName: full_name,
+      .then(response => ({
+          user: response[0],
+          fcps: response[1],
       }));
   }
 });

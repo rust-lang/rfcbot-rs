@@ -40,8 +40,7 @@ pub fn member_nags(req: &mut Request) -> IronResult<Response> {
 }
 
 pub fn hot_issues(_: &mut Request) -> IronResult<Response> {
-    Ok(Response::with((status::Ok,
-                       itry!(ser::to_string(&try!(reports::hot_issues_summary()))))))
+    Ok(Response::with((status::Ok, itry!(ser::to_string(&try!(reports::hot_issues_summary()))))))
 }
 
 const DATE_FORMAT: &'static str = "%Y%m%d";

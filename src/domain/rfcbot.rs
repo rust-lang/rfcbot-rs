@@ -15,7 +15,7 @@ pub struct NewFcpProposal<'a> {
     pub fcp_closed: bool,
 }
 
-#[derive(Clone, Debug, Deserialize, Eq, Ord, PartialEq, PartialOrd, Queryable)]
+#[derive(Clone, Debug, Deserialize, Eq, Ord, PartialEq, PartialOrd, Queryable, Serialize)]
 #[changeset_for(fcp_proposal, treat_none_as_null="true")]
 pub struct FcpProposal {
     pub id: i32,
@@ -25,10 +25,10 @@ pub struct FcpProposal {
     pub disposition: String,
     pub fk_bot_tracking_comment: i32,
     pub fcp_start: Option<NaiveDateTime>,
-    pub fcp_closed: bool, 
+    pub fcp_closed: bool,
 }
 
-#[derive(Clone, Debug, Eq, Ord, PartialEq, PartialOrd)]
+#[derive(Clone, Debug, Eq, Ord, PartialEq, PartialOrd, Serialize)]
 #[insertable_into(fcp_review_request)]
 pub struct NewFcpReviewRequest {
     pub fk_proposal: i32,
@@ -36,7 +36,7 @@ pub struct NewFcpReviewRequest {
     pub reviewed: bool,
 }
 
-#[derive(Clone, Debug, Deserialize, Eq, Ord, PartialEq, PartialOrd, Queryable)]
+#[derive(Clone, Debug, Deserialize, Eq, Ord, PartialEq, PartialOrd, Queryable, Serialize)]
 #[changeset_for(fcp_review_request, treat_none_as_null="true")]
 pub struct FcpReviewRequest {
     pub id: i32,

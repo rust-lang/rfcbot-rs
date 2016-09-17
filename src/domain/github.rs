@@ -5,7 +5,7 @@ use diesel::{ExpressionMethods, FilterDsl, LoadDsl, Queryable, SaveChangesDsl, T
 
 use super::schema::*;
 
-#[derive(Clone, Debug, Deserialize, Eq, Ord, PartialEq, PartialOrd, Queryable)]
+#[derive(Clone, Debug, Deserialize, Eq, Ord, PartialEq, PartialOrd, Queryable, Serialize)]
 #[insertable_into(githubuser)]
 #[changeset_for(githubuser)]
 pub struct GitHubUser {
@@ -93,7 +93,7 @@ pub struct Issue {
     pub repository: String,
 }
 
-#[derive(Clone, Debug, Deserialize, Eq, Ord, PartialEq, PartialOrd, Queryable)]
+#[derive(Clone, Debug, Deserialize, Eq, Ord, PartialEq, PartialOrd, Queryable, Serialize)]
 #[insertable_into(issuecomment)]
 #[changeset_for(issuecomment, treat_none_as_null="true")]
 pub struct IssueComment {
