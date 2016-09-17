@@ -52,6 +52,7 @@ pub struct NewFcpConcern<'a> {
     pub fk_initiator: i32,
     pub fk_resolved_comment: Option<i32>,
     pub name: &'a str,
+    pub fk_initiating_comment: i32,
 }
 
 #[derive(Clone, Debug, Deserialize, Eq, Ord, PartialEq, PartialOrd, Queryable)]
@@ -62,6 +63,7 @@ pub struct FcpConcern {
     pub fk_initiator: i32,
     pub fk_resolved_comment: Option<i32>,
     pub name: String,
+    pub fk_initiating_comment: i32,
 }
 
 #[derive(Clone, Debug, Eq, Ord, PartialEq, PartialOrd)]

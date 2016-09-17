@@ -438,6 +438,7 @@ impl<'a> RfcBotCommand<'a> {
                             fk_initiator: author.id,
                             fk_resolved_comment: None,
                             name: concern_name,
+                            fk_initiating_comment: comment.id,
                         };
 
                         diesel::insert(&new_concern).into(fcp_concern).execute(conn)?;
@@ -624,24 +625,20 @@ impl<'a> RfcBotComment<'a> {
                     msg.push_str("\nConcerns:\n\n");
                 }
 
-                for &(ref user, ref concern) in concerns {
+                for &(_, ref concern) in concerns {
 
                     if let Some(resolved_comment_id) = concern.fk_resolved_comment {
                         msg.push_str("* ~~");
                         msg.push_str(&concern.name);
-                        msg.push_str("~~ resolved by https://github.com/");
-                        msg.push_str(&self.repository);
-                        msg.push_str("/issues/");
-                        msg.push_str(&self.issue_num.to_string());
-                        msg.push_str("#issuecomment-");
-                        msg.push_str(&resolved_comment_id.to_string());
+                        msg.push_str("~~ resolved by ");
+                        self.add_comment_url(&mut msg, resolved_comment_id);
                         msg.push_str("\n");
 
                     } else {
                         msg.push_str("* ");
                         msg.push_str(&concern.name);
-                        msg.push_str(" (@");
-                        msg.push_str(&user.login);
+                        msg.push_str(" (");
+                        self.add_comment_url(&mut msg, concern.fk_initiating_comment);
                         msg.push_str(")\n");
                     }
                 }
@@ -658,6 +655,15 @@ impl<'a> RfcBotComment<'a> {
                 Ok("It has been one week since all blocks to the FCP were resolved.".to_string())
             }
         }
+    }
+
+    fn add_comment_url(&self, msg: &mut String, comment_id: i32) {
+        msg.push_str("https://github.com/");
+        msg.push_str(&self.repository);
+        msg.push_str("/issues/");
+        msg.push_str(&self.issue_num.to_string());
+        msg.push_str("#issuecomment-");
+        msg.push_str(&comment_id.to_string());
     }
 
     fn post(&self, existing_comment: Option<i32>) -> DashResult<CommentFromJson> {
