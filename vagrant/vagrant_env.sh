@@ -8,6 +8,7 @@ export GITHUB_SCRAPE_INTERVAL=2
 export RELEASES_SCRAPE_INTERVAL=720
 export BUILDBOT_SCRAPE_INTERVAL=80
 export SERVER_PORT=8080
+export POST_COMMENTS=false
 
 # VM config for cargo
 export CARGO_TARGET_DIR=/rust-dashboard/target
