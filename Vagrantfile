@@ -9,6 +9,11 @@ Vagrant.configure("2") do |config|
                       path: "vagrant/native_deps.sh",
                       keep_color: true)
 
+  config.vm.provision("frontend",
+                      type: "shell",
+                      path: "vagrant/frontend.sh",
+                      keep_color: true)
+
   config.vm.provision("postgres",
                       type: "shell",
                       path: "vagrant/postgres.sh",
