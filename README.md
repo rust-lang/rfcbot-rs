@@ -61,7 +61,7 @@ $ cd /vagrant && cargo run -- scrape
 To install dependencies for the front-end development server and run it:
 
 ```
-$ cd /vagrant/front && npm install && bower install
+$ cd /vagrant/front
 $ ember server --proxy=http://localhost:8080
 ```
 

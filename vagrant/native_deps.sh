@@ -16,7 +16,3 @@ locale-gen en_US.UTF-8
 apt-get update
 apt-get install -y postgresql libpq-dev npm nodejs curl git
 ln -s /usr/bin/nodejs /usr/bin/node
-
-# frontend deps
-npm install -g ember-cli
-npm install -g bower
