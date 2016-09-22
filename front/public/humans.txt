@@ -1,4 +1,9 @@
+/* PEOPLE */
+@dikaiosune
+@chriskrycho
+@DiscoStarslayer
+
+
 /* SITE */
 	Language: English
-	Doctype: HTML5
-    Technologies: HTML5, CSS3, ES2015, ember, ember-cli, pure, d3.js, babel, highcharts, loader.js, broccoli
+Doctype: HTML5
