@@ -110,6 +110,7 @@ fn evaluate_nags() -> DashResult<()> {
     let pending_proposals = fcp_proposal.filter(fcp_start.is_null()).load::<FcpProposal>(conn)?;
 
     for mut proposal in pending_proposals {
+        let initiator = githubuser::table.find(proposal.fk_initiator).first::<GitHubUser>(conn)?;
         let issue = issue::table.find(proposal.fk_issue).first::<Issue>(conn)?;
 
         // check to see if any checkboxes were modified before we end up replacing the comment
@@ -125,6 +126,7 @@ fn evaluate_nags() -> DashResult<()> {
 
         // update existing status comment with reviews & concerns
         let status_comment = RfcBotComment::new(&issue, CommentType::FcpProposed(
+                    &initiator,
                     FcpDisposition::from_str(&proposal.disposition)?,
                     &reviews,
                     &concerns));
@@ -135,6 +137,8 @@ fn evaluate_nags() -> DashResult<()> {
             // FCP can start now -- update the database
             proposal.fcp_start = Some(UTC::now().naive_utc());
             diesel::update(fcp_proposal.find(proposal.id)).set(&proposal).execute(conn)?;
+
+            // TODO attempt to add the final-comment-period label
 
             // leave a comment for FCP start
             let fcp_start_comment = RfcBotComment::new(&issue,
@@ -322,8 +326,8 @@ impl<'a> RfcBotCommand<'a> {
                     info!("proposal is a new FCP, creating...");
 
                     // leave github comment stating that FCP is proposed, ping reviewers
-                    let gh_comment = RfcBotComment::new(issue,
-                                                        CommentType::FcpProposed(disp, &[], &[]));
+                    let gh_comment =
+                        RfcBotComment::new(issue, CommentType::FcpProposed(author, disp, &[], &[]));
 
                     let gh_comment = gh_comment.post(None)?;
                     info!("Posted base comment to github, no reviewers listed yet");
@@ -352,10 +356,11 @@ impl<'a> RfcBotCommand<'a> {
 
                     let review_requests = issue_subteam_members.iter()
                         .map(|member| {
+                            // let's assume the initiator has reviewed it
                             NewFcpReviewRequest {
                                 fk_proposal: proposal.id,
                                 fk_reviewer: member.id,
-                                reviewed: false,
+                                reviewed: if member.id == author.id { true } else { false },
                             }
                         })
                         .collect::<Vec<_>>();
@@ -373,7 +378,10 @@ impl<'a> RfcBotCommand<'a> {
 
                     let new_gh_comment =
                         RfcBotComment::new(issue,
-                                           CommentType::FcpProposed(disp, &review_requests, &[]));
+                                           CommentType::FcpProposed(author,
+                                                                    disp,
+                                                                    &review_requests,
+                                                                    &[]));
 
                     new_gh_comment.post(Some(gh_comment.id))?;
 
@@ -525,7 +533,7 @@ impl<'a> RfcBotCommand<'a> {
         let invocation = tokens.next().ok_or(DashError::Misc)?;
 
         match invocation {
-            "fcp" => {
+            "fcp" | "pr" => {
                 let subcommand = tokens.next().ok_or(DashError::Misc)?;
 
                 debug!("Parsed command as new FCP proposal");
@@ -581,7 +589,8 @@ struct RfcBotComment<'a> {
 }
 
 enum CommentType<'a> {
-    FcpProposed(FcpDisposition,
+    FcpProposed(&'a GitHubUser,
+                FcpDisposition,
                 &'a [(GitHubUser, FcpReviewRequest)],
                 &'a [(GitHubUser, FcpConcern)]),
     FcpProposalCancelled(&'a GitHubUser),
@@ -602,10 +611,13 @@ impl<'a> RfcBotComment<'a> {
     fn format(&self) -> DashResult<String> {
 
         match self.comment_type {
-            CommentType::FcpProposed(disposition, reviewers, concerns) => {
-                let mut msg = String::from("FCP proposed with disposition to ");
+            CommentType::FcpProposed(initiator, disposition, reviewers, concerns) => {
+                let mut msg = String::from("Team member ");
+                msg.push_str(&initiator.login);
+                msg.push_str(" has proposed to ");
                 msg.push_str(disposition.repr());
-                msg.push_str(". Review requested from:\n\n");
+                msg.push_str(" this. The next step is review by the rest of the tagged ");
+                msg.push_str("teams:\n\n");
 
                 for &(ref member, ref review_request) in reviewers {
 
@@ -643,6 +655,10 @@ impl<'a> RfcBotComment<'a> {
                     }
                 }
 
+                msg.push_str("\nOnce these reviewers reach consensus, this will enter its final ");
+                msg.push_str("comment period. If you spot a major issue that hasn't been raised ");
+                msg.push_str("at any point in this process, please speak up!\n");
+
                 msg.push_str("\nSee [this document](");
                 msg.push_str("https://github.com/dikaiosune/rust-dashboard/blob/master/RFCBOT.md");
                 msg.push_str(") for info about what commands tagged team members can give me.");
@@ -650,12 +666,13 @@ impl<'a> RfcBotComment<'a> {
                 Ok(msg)
             }
             CommentType::FcpProposalCancelled(initiator) => {
-                Ok(format!("@{} FCP proposal cancelled.", initiator.login))
+                Ok(format!("@{} proposal cancelled.", initiator.login))
             }
             CommentType::FcpAllReviewedNoConcerns => {
                 Ok("All relevant subteam members have reviewed. No concerns remain.".to_string())
             }
             CommentType::FcpWeekPassed => {
+                // TODO add ping to original proposal author
                 Ok("It has been one week since all blocks to the FCP were resolved.".to_string())
             }
         }
