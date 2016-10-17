@@ -53,7 +53,7 @@ Before proposing a final comment period on an issue/PR/RFC, please double check 
 
 #### Proposing FCP
 
-To propose an FCP, use `@rfcbot fcp DISPOSITION` where disposition is one of `[merge|close|postpone]`.
+To propose an FCP, use `@rfcbot fcp DISPOSITION` where disposition is one of `[merge|close|postpone]`. You can also use `@rfcbot pr DISPOSITION`, which will be used in the future to improve the quality of status comments from the bot.
 
 If the proposer is on one of the tagged subteams, rfcbot will create a tracking comment with a checklist of review requests. Once all review requests have been satisfied and any concerns have been resolved, it will post a comment to that effect. One week after the "FCP start" comment, it will post another follow-up comment saying that one week has passed.
 
