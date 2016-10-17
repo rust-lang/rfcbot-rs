@@ -39,5 +39,15 @@ nav h4 {
 }
 
 div.container {
-    margin-top: 100px;
+    margin-top: 150px;
+}
+
+@media all and (max-width: 680px) {
+    nav {
+        position: unset !important;
+    }
+    
+    div.container {
+        margin-top: 0px;
+    }
 }
