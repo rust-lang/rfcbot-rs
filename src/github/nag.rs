@@ -113,6 +113,12 @@ fn evaluate_nags() -> DashResult<()> {
         let initiator = githubuser::table.find(proposal.fk_initiator).first::<GitHubUser>(conn)?;
         let issue = issue::table.find(proposal.fk_issue).first::<Issue>(conn)?;
 
+        // if the issue has been closed before an FCP starts,
+        // then we just need to cancel the FCP entirely
+        if !issue.open {
+            cancel_fcp(&initiator, &issue, &proposal)?;
+        }
+
         // check to see if any checkboxes were modified before we end up replacing the comment
         update_proposal_review_status(&issue.repository, proposal.id)?;
 
@@ -260,6 +266,23 @@ fn subteam_members(issue: &Issue) -> DashResult<Vec<GitHubUser>> {
     Ok(users)
 }
 
+fn cancel_fcp(author: &GitHubUser, issue: &Issue, existing: &FcpProposal) -> DashResult<()> {
+    use domain::schema::fcp_proposal::dsl::*;
+
+    let conn = &*DB_POOL.get()?;
+
+    // if exists delete FCP with associated concerns, reviews, feedback requests
+    // db schema has ON DELETE CASCADE
+    diesel::delete(fcp_proposal.filter(id.eq(existing.id))).execute(conn)?;
+
+    // leave github comment stating that FCP proposal cancelled
+    let comment = RfcBotComment::new(issue,
+                                     CommentType::FcpProposalCancelled(author));
+    let _ = comment.post(None);
+
+    Ok(())
+}
+
 #[derive(Debug, Eq, PartialEq)]
 pub enum RfcBotCommand<'a> {
     FcpPropose(FcpDisposition),
@@ -389,18 +412,8 @@ impl<'a> RfcBotCommand<'a> {
                 }
             }
             RfcBotCommand::FcpCancel => {
-                use domain::schema::fcp_proposal::dsl::*;
-
                 if let Some(existing) = existing_proposal {
-                    // if exists delete FCP with associated concerns, reviews, feedback requests
-                    // db schema has ON DELETE CASCADE
-                    diesel::delete(fcp_proposal.filter(id.eq(existing.id))).execute(conn)?;
-
-                    // leave github comment stating that FCP proposal cancelled
-                    let comment = RfcBotComment::new(issue,
-                                                     CommentType::FcpProposalCancelled(author));
-                    let _ = comment.post(None);
-
+                    cancel_fcp(author, issue, &existing)?;
                 }
             }
             RfcBotCommand::Reviewed => {
