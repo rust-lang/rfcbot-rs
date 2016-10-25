@@ -1,10 +1,10 @@
 use chrono::NaiveDateTime;
-use diesel::{ExpressionMethods, FilterDsl, LoadDsl, Queryable, SaveChangesDsl, Table};
+use diesel::ExpressionMethods;
 
 use super::schema::*;
 
-#[derive(Clone, Debug, Eq, Ord, PartialEq, PartialOrd)]
-#[insertable_into(fcp_proposal)]
+#[derive(Clone, Debug, Eq, Ord, Insertable, PartialEq, PartialOrd)]
+#[table_name="fcp_proposal"]
 pub struct NewFcpProposal<'a> {
     pub fk_issue: i32,
     pub fk_initiator: i32,
@@ -15,8 +15,9 @@ pub struct NewFcpProposal<'a> {
     pub fcp_closed: bool,
 }
 
-#[derive(Clone, Debug, Deserialize, Eq, Ord, PartialEq, PartialOrd, Queryable, Serialize)]
-#[changeset_for(fcp_proposal, treat_none_as_null="true")]
+#[derive(AsChangeset, Clone, Debug, Deserialize, Eq, Ord,
+         PartialEq, PartialOrd, Queryable, Serialize)]
+#[table_name="fcp_proposal"]
 pub struct FcpProposal {
     pub id: i32,
     pub fk_issue: i32,
@@ -28,16 +29,16 @@ pub struct FcpProposal {
     pub fcp_closed: bool,
 }
 
-#[derive(Clone, Debug, Eq, Ord, PartialEq, PartialOrd, Serialize)]
-#[insertable_into(fcp_review_request)]
+#[derive(Clone, Debug, Eq, Insertable, Ord, PartialEq, PartialOrd, Serialize)]
+#[table_name="fcp_review_request"]
 pub struct NewFcpReviewRequest {
     pub fk_proposal: i32,
     pub fk_reviewer: i32,
     pub reviewed: bool,
 }
 
-#[derive(Clone, Debug, Deserialize, Eq, Ord, PartialEq, PartialOrd, Queryable, Serialize)]
-#[changeset_for(fcp_review_request, treat_none_as_null="true")]
+#[derive(AsChangeset, Clone, Debug, Deserialize, Eq, Ord, PartialEq, PartialOrd, Queryable, Serialize)]
+#[table_name="fcp_review_request"]
 pub struct FcpReviewRequest {
     pub id: i32,
     pub fk_proposal: i32,
@@ -45,8 +46,8 @@ pub struct FcpReviewRequest {
     pub reviewed: bool,
 }
 
-#[derive(Clone, Debug, Eq, Ord, PartialEq, PartialOrd)]
-#[insertable_into(fcp_concern)]
+#[derive(Clone, Debug, Eq, Insertable, Ord, PartialEq, PartialOrd)]
+#[table_name="fcp_concern"]
 pub struct NewFcpConcern<'a> {
     pub fk_proposal: i32,
     pub fk_initiator: i32,
@@ -55,8 +56,8 @@ pub struct NewFcpConcern<'a> {
     pub fk_initiating_comment: i32,
 }
 
-#[derive(Clone, Debug, Deserialize, Eq, Ord, PartialEq, PartialOrd, Queryable)]
-#[changeset_for(fcp_concern, treat_none_as_null="true")]
+#[derive(AsChangeset, Clone, Debug, Deserialize, Eq, Ord, PartialEq, PartialOrd, Queryable)]
+#[table_name="fcp_concern"]
 pub struct FcpConcern {
     pub id: i32,
     pub fk_proposal: i32,
@@ -66,8 +67,8 @@ pub struct FcpConcern {
     pub fk_initiating_comment: i32,
 }
 
-#[derive(Clone, Debug, Eq, Ord, PartialEq, PartialOrd)]
-#[insertable_into(rfc_feedback_request)]
+#[derive(Clone, Debug, Eq, Insertable, Ord, PartialEq, PartialOrd)]
+#[table_name="rfc_feedback_request"]
 pub struct NewFeedbackRequest {
     pub fk_initiator: i32,
     pub fk_requested: i32,
@@ -75,8 +76,8 @@ pub struct NewFeedbackRequest {
     pub fk_feedback_comment: Option<i32>,
 }
 
-#[derive(Clone, Debug, Deserialize, Eq, Ord, PartialEq, PartialOrd, Queryable)]
-#[changeset_for(rfc_feedback_request, treat_none_as_null="true")]
+#[derive(AsChangeset, Clone, Debug, Deserialize, Eq, Ord, PartialEq, PartialOrd, Queryable)]
+#[table_name="rfc_feedback_request"]
 pub struct FeedbackRequest {
     pub id: i32,
     pub fk_initiator: i32,

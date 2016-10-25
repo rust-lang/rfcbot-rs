@@ -1,21 +1,22 @@
 // Copyright 2016 Adam Perry. Dual-licensed MIT and Apache 2.0 (see LICENSE files for details).
 
 use chrono::NaiveDateTime;
-use diesel::{ExpressionMethods, FilterDsl, LoadDsl, Queryable, SaveChangesDsl, Table};
+use diesel::ExpressionMethods;
 
 use super::schema::*;
 
-#[derive(Clone, Debug, Deserialize, Eq, Ord, PartialEq, PartialOrd, Queryable, Serialize)]
-#[insertable_into(githubuser)]
-#[changeset_for(githubuser)]
+#[derive(AsChangeset, Clone, Debug, Deserialize, Eq, Insertable,
+         Ord, PartialEq, PartialOrd, Queryable, Serialize)]
+#[table_name="githubuser"]
 pub struct GitHubUser {
     pub id: i32,
     pub login: String,
 }
 
-#[derive(Clone, Debug, Deserialize, Eq, Ord, PartialEq, PartialOrd, Queryable)]
-#[insertable_into(milestone)]
-#[changeset_for(milestone, treat_none_as_null="true")]
+#[derive(AsChangeset, Clone, Debug, Deserialize, Eq, Insertable,
+         Ord, PartialEq, PartialOrd, Queryable)]
+#[table_name="milestone"]
+#[treat_none_as_null="true"]
 pub struct Milestone {
     pub id: i32,
     pub number: i32,
@@ -32,8 +33,9 @@ pub struct Milestone {
     pub repository: String,
 }
 
-#[derive(Clone, Debug, Deserialize, Eq, Ord, PartialEq, PartialOrd, Queryable, Serialize)]
-#[insertable_into(issue)]
+#[derive(Clone, Debug, Deserialize, Eq, Insertable,
+         Ord, PartialEq, PartialOrd, Queryable, Serialize)]
+#[table_name="issue"]
 pub struct IssuePartial {
     pub number: i32,
     pub fk_milestone: Option<i32>,
@@ -73,8 +75,10 @@ impl IssuePartial {
     }
 }
 
-#[derive(Clone, Debug, Deserialize, Eq, Ord, PartialEq, PartialOrd, Queryable, Serialize)]
-#[changeset_for(issue, treat_none_as_null="true")]
+#[derive(AsChangeset, Clone, Debug, Deserialize, Eq, Ord,
+         PartialEq, PartialOrd, Queryable, Serialize)]
+#[table_name="issue"]
+#[treat_none_as_null="true"]
 pub struct Issue {
     pub id: i32,
     pub number: i32,
@@ -93,9 +97,10 @@ pub struct Issue {
     pub repository: String,
 }
 
-#[derive(Clone, Debug, Deserialize, Eq, Ord, PartialEq, PartialOrd, Queryable, Serialize)]
-#[insertable_into(issuecomment)]
-#[changeset_for(issuecomment, treat_none_as_null="true")]
+#[derive(AsChangeset, Clone, Debug, Deserialize, Eq, Insertable,
+         Ord, PartialEq, PartialOrd, Queryable, Serialize)]
+#[table_name="issuecomment"]
+#[treat_none_as_null="true"]
 pub struct IssueComment {
     pub id: i32,
     pub fk_issue: i32,
@@ -106,9 +111,10 @@ pub struct IssueComment {
     pub repository: String,
 }
 
-#[derive(Clone, Debug, Deserialize, Eq, Ord, PartialEq, PartialOrd, Queryable)]
-#[insertable_into(pullrequest)]
-#[changeset_for(pullrequest, treat_none_as_null="true")]
+#[derive(AsChangeset, Clone, Debug, Deserialize, Eq, Insertable,
+         Ord, PartialEq, PartialOrd, Queryable)]
+#[table_name="pullrequest"]
+#[treat_none_as_null="true"]
 pub struct PullRequest {
     pub number: i32,
     pub state: String,
@@ -128,8 +134,8 @@ pub struct PullRequest {
     pub repository: String,
 }
 
-#[derive(Clone, Debug, Deserialize, Eq, Ord, PartialEq, PartialOrd, Queryable)]
-#[changeset_for(teams)]
+#[derive(AsChangeset, Clone, Debug, Deserialize, Eq, Ord, PartialEq, PartialOrd, Queryable)]
+#[table_name="teams"]
 pub struct Team {
     pub id: i32,
     pub name: String,
@@ -137,8 +143,8 @@ pub struct Team {
     pub label: String,
 }
 
-#[derive(Clone, Debug, Deserialize, Eq, Ord, PartialEq, PartialOrd, Queryable)]
-#[changeset_for(memberships)]
+#[derive(AsChangeset, Clone, Debug, Deserialize, Eq, Ord, PartialEq, PartialOrd, Queryable)]
+#[table_name="memberships"]
 pub struct Membership {
     pub id: i32,
     pub fk_member: i32,

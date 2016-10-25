@@ -79,7 +79,7 @@ Not guaranteed to be updated regularly, but last time I remembered to update thi
 
 ```bash
 $ rustc --version
-rustc 1.11.0-nightly (bb4a79b08 2016-06-15)
+rustc 1.14.0-nightly (16eeeac78 2016-10-18)
 ```
 
 ### Environment variables
@@ -135,7 +135,7 @@ The launch the scraping daemon, make sure the interval environment variables are
 
 Setup a postgres database and user on a server with `dpkg` (recent Ubuntu is what's tested), and install nginx.
 
-Run `build.sh` on that with a compatible nightly installed (2016-05-24 right now). This will create a `rust-dashboard.deb` in the repo root. Install with `dpkg -i rust-dashboard.deb`, configure `/etc/rust-dashboard/env` from the example file there, and start the services:
+Run `build.sh` on that with a compatible nightly installed (2016-10-18 right now). This will create a `rust-dashboard.deb` in the repo root. Install with `dpkg -i rust-dashboard.deb`, configure `/etc/rust-dashboard/env` from the example file there, and start the services:
 
 ```bash
 sudo systemctl enable rust-dashboard-scraper

@@ -2,9 +2,9 @@ use chrono::NaiveDateTime;
 use diesel::prelude::*;
 use super::schema::*;
 
-#[derive(Clone, Debug, Deserialize, Eq, Ord, PartialEq, PartialOrd, Queryable, Serialize)]
-#[insertable_into(build)]
-#[changeset_for(build)]
+#[derive(AsChangeset, Clone, Debug, Deserialize, Eq, Insertable,
+         Ord, PartialEq, PartialOrd, Queryable, Serialize)]
+#[table_name="build"]
 pub struct Build {
     pub number: i32,
     pub builder_name: String,

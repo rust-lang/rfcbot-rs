@@ -71,7 +71,7 @@ impl Client {
 
             let repo = match v.get("name") {
                 Some(n) => {
-                    match n.as_string() {
+                    match n.as_str() {
                         Some(s) => format!("{}/{}", org, s),
                         None => return Err(DashError::Misc),
                     }

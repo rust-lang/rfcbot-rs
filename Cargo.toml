@@ -4,11 +4,10 @@ version = "0.1.0"
 authors = ["Adam Perry <adam.n.perry@gmail.com>"]
 
 [dependencies]
-chrono = {version = "0.2.21", features = ["serde"] }
+chrono = {version = "0.2.25", features = ["serde"] }
 clap = "2.2.5"
 crossbeam = "0.2.9"
 dotenv = "0.8.0"
-dotenv_macros = "0.8.0"
 env_logger = "0.3.3"
 hyper = "0.8.0"
 iron = "0.3.0"
@@ -16,23 +15,23 @@ lazy_static = "0.2.0"
 log = "0.3.6"
 mount = "0.1.0"
 r2d2 = "0.7.0"
-r2d2-diesel = "0.6.0"
+r2d2-diesel = "0.8"
 regex = "0.1"
 router = "0.1.1"
-serde = "0.7.0"
-serde_json = "0.7.0"
-serde_macros = "0.7.0"
+serde = "0.8"
+serde_derive = "0.8"
+serde_json = "0.8"
 urlencoded = "0.3.0"
 
 [dependencies.diesel]
-version = "0.6.2"
+version = "0.8"
 default-features = false
 features = ["postgres", "chrono", "large-tables"]
 
 [dependencies.diesel_codegen]
-version = "0.6.2"
+version = "0.8"
 default-features = false
-features = ["nightly", "postgres"]
+features = ["dotenv", "postgres"]
 
 [profile.release]
 debug = false

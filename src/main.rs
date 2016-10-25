@@ -1,13 +1,14 @@
 // Copyright 2016 Adam Perry. Dual-licensed MIT and Apache 2.0 (see LICENSE files for details).
 
-#![feature(custom_attribute, custom_derive, plugin, question_mark)]
-#![plugin(diesel_codegen, dotenv_macros, serde_macros)]
+#![feature(proc_macro)]
 
 extern crate chrono;
 extern crate clap;
 extern crate crossbeam;
 #[macro_use]
 extern crate diesel;
+#[macro_use]
+extern crate diesel_codegen;
 extern crate dotenv;
 extern crate env_logger;
 #[macro_use]
@@ -25,6 +26,8 @@ extern crate regex;
 #[macro_use]
 extern crate router;
 extern crate serde;
+#[macro_use]
+extern crate serde_derive;
 extern crate serde_json;
 extern crate urlencoded;
 
