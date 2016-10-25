@@ -66,22 +66,30 @@ fn update_proposal_review_status(repo: &str, proposal_id: i32) -> DashResult<()>
 
     let comment = GH.get_comment(repo, proposal.fk_bot_tracking_comment)?;
 
-    let statuses = comment.body
+    // parse the status comment and mark any new reviews as reviewed
+    let reviewed = comment.body
         .lines()
-        .filter(|l| l.starts_with("* ["))
-        .map(|line| {
-            let l = line.trim_left_matches("* [");
-            let reviewed = l.starts_with("x");
-            let username = l.trim_left_matches("x] @").trim_left_matches(" ] @");
+        .filter_map(|line| {
+            if line.starts_with("* [") {
+                let l = line.trim_left_matches("* [");
+                let reviewed = l.starts_with("x");
+                let username = l.trim_left_matches("x] @").trim_left_matches(" ] @");
 
-            debug!("reviewer parsed as reviewed? {} (line: \"{}\")",
-                   reviewed,
-                   l);
+                debug!("reviewer parsed as reviewed? {} (line: \"{}\")",
+                       reviewed,
+                       l);
 
-            (reviewed, username)
+                if reviewed {
+                    Some(username)
+                } else {
+                    None
+                }
+            } else {
+                None
+            }
         });
 
-    for (is_reviewed, username) in statuses {
+    for username in reviewed {
         let user: GitHubUser = githubuser::table.filter(githubuser::login.eq(username))
             .first(conn)?;
 
@@ -92,7 +100,7 @@ fn update_proposal_review_status(repo: &str, proposal_id: i32) -> DashResult<()>
                     .filter(fk_reviewer.eq(user.id))
                     .first(conn)?;
 
-            review_request.reviewed = is_reviewed;
+            review_request.reviewed = true;
             diesel::update(fcp_review_request.find(review_request.id)).set(&review_request)
                 .execute(conn)?;
         }
