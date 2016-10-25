@@ -10,6 +10,7 @@ use chrono::{DateTime, UTC};
 use hyper;
 use hyper::client::{RedirectPolicy, RequestBuilder, Response};
 use hyper::header::Headers;
+use hyper::status::StatusCode;
 use serde::Deserialize;
 use serde_json;
 
@@ -66,17 +67,17 @@ impl Client {
 
             let v = match v.as_object() {
                 Some(v) => v,
-                None => return Err(DashError::Misc),
+                None => return Err(DashError::Misc(None)),
             };
 
             let repo = match v.get("name") {
                 Some(n) => {
                     match n.as_str() {
                         Some(s) => format!("{}/{}", org, s),
-                        None => return Err(DashError::Misc),
+                        None => return Err(DashError::Misc(None)),
                     }
                 }
-                None => return Err(DashError::Misc),
+                None => return Err(DashError::Misc(None)),
             };
 
             repos.push(repo);
@@ -167,7 +168,7 @@ impl Client {
 
             Ok(try!(serde_json::from_str::<PullRequestFromJson>(&buf)))
         } else {
-            Err(DashError::Misc)
+            Err(DashError::Misc(None))
         }
     }
 
@@ -189,6 +190,23 @@ impl Client {
         }
 
         None
+    }
+
+    pub fn add_label(&self, repo: &str, issue_num: i32, label: &str) -> DashResult<()> {
+        let url = format!("{}/repos/{}/issues/{}/labels",
+                          BASE_URL, repo, issue_num);
+        let payload = serde_json::to_string(&[label])?;
+
+        let mut res = self.post(&url, &payload)?;
+
+        match res.status {
+            StatusCode::Ok => Ok(()),
+            _ => {
+                let mut body = String::new();
+                res.read_to_string(&mut body)?;
+                Err(DashError::Misc(Some(body)))
+            }
+        }
     }
 
     pub fn new_comment(&self,

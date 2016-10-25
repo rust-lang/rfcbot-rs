@@ -144,11 +144,29 @@ fn evaluate_nags() -> DashResult<()> {
             proposal.fcp_start = Some(UTC::now().naive_utc());
             diesel::update(fcp_proposal.find(proposal.id)).set(&proposal).execute(conn)?;
 
-            // TODO attempt to add the final-comment-period label
+            // attempt to add the final-comment-period label
+            // TODO only add label if FCP > 1 day
+            let label_res = GH.add_label(&issue.repository, issue.number, "final-comment-period");
+
+            let added_label = match label_res {
+                Ok(()) => true,
+                Err(why) => {
+                    error!("Unable to add FCP label to {}#{}: {:?}",
+                           &issue.repository,
+                           issue.number,
+                           why);
+                    false
+                }
+            };
+
+            let comment_type = CommentType::FcpAllReviewedNoConcerns {
+                added_label: added_label,
+                author: &initiator,
+                status_comment_id: proposal.fk_bot_tracking_comment,
+            };
 
             // leave a comment for FCP start
-            let fcp_start_comment = RfcBotComment::new(&issue,
-                                                       CommentType::FcpAllReviewedNoConcerns);
+            let fcp_start_comment = RfcBotComment::new(&issue, comment_type);
             fcp_start_comment.post(None)?;
         }
     }
@@ -276,8 +294,7 @@ fn cancel_fcp(author: &GitHubUser, issue: &Issue, existing: &FcpProposal) -> Das
     diesel::delete(fcp_proposal.filter(id.eq(existing.id))).execute(conn)?;
 
     // leave github comment stating that FCP proposal cancelled
-    let comment = RfcBotComment::new(issue,
-                                     CommentType::FcpProposalCancelled(author));
+    let comment = RfcBotComment::new(issue, CommentType::FcpProposalCancelled(author));
     let _ = comment.post(None);
 
     Ok(())
@@ -314,7 +331,7 @@ impl FcpDisposition {
             "merge" => Ok(FcpDisposition::Merge),
             "close" => Ok(FcpDisposition::Close),
             "postpone" => Ok(FcpDisposition::Postpone),
-            _ => Err(DashError::Misc),
+            _ => Err(DashError::Misc(None)),
         }
     }
 }
@@ -536,18 +553,18 @@ impl<'a> RfcBotCommand<'a> {
         let command = command.lines()
             .filter(|&l| l.starts_with(RFC_BOT_MENTION))
             .next()
-            .ok_or(DashError::Misc)?
+            .ok_or(DashError::Misc(None))?
             .trim_left_matches(RFC_BOT_MENTION)
             .trim_left_matches(':')
             .trim();
 
         let mut tokens = command.split_whitespace();
 
-        let invocation = tokens.next().ok_or(DashError::Misc)?;
+        let invocation = tokens.next().ok_or(DashError::Misc(None))?;
 
         match invocation {
             "fcp" | "pr" => {
-                let subcommand = tokens.next().ok_or(DashError::Misc)?;
+                let subcommand = tokens.next().ok_or(DashError::Misc(None))?;
 
                 debug!("Parsed command as new FCP proposal");
 
@@ -558,7 +575,7 @@ impl<'a> RfcBotCommand<'a> {
                     "cancel" => Ok(RfcBotCommand::FcpCancel),
                     _ => {
                         error!("unrecognized subcommand for fcp: {}", subcommand);
-                        Err(DashError::Misc)
+                        Err(DashError::Misc(Some(format!("found bad subcommand: {}", subcommand))))
                     }
                 }
             }
@@ -582,15 +599,16 @@ impl<'a> RfcBotCommand<'a> {
             "reviewed" => Ok(RfcBotCommand::Reviewed),
             "f?" => {
 
-                let user = tokens.next().ok_or(DashError::Misc)?;
+                let user = tokens.next()
+                    .ok_or(DashError::Misc(Some("no user specified".to_string())))?;
 
                 if user.len() == 0 {
-                    return Err(DashError::Misc);
+                    return Err(DashError::Misc(Some("no user specified".to_string())));
                 }
 
                 Ok(RfcBotCommand::FeedbackRequest(&user[1..]))
             }
-            _ => Err(DashError::Misc),
+            _ => Err(DashError::Misc(None)),
         }
     }
 }
@@ -607,7 +625,11 @@ enum CommentType<'a> {
                 &'a [(GitHubUser, FcpReviewRequest)],
                 &'a [(GitHubUser, FcpConcern)]),
     FcpProposalCancelled(&'a GitHubUser),
-    FcpAllReviewedNoConcerns,
+    FcpAllReviewedNoConcerns {
+        author: &'a GitHubUser,
+        status_comment_id: i32,
+        added_label: bool,
+    },
     FcpWeekPassed,
 }
 
@@ -625,7 +647,7 @@ impl<'a> RfcBotComment<'a> {
 
         match self.comment_type {
             CommentType::FcpProposed(initiator, disposition, reviewers, concerns) => {
-                let mut msg = String::from("Team member ");
+                let mut msg = String::from("Team member @");
                 msg.push_str(&initiator.login);
                 msg.push_str(" has proposed to ");
                 msg.push_str(disposition.repr());
@@ -645,7 +667,7 @@ impl<'a> RfcBotComment<'a> {
                 }
 
                 if concerns.is_empty() {
-                    msg.push_str("\nNo concerns currently listed.");
+                    msg.push_str("\nNo concerns currently listed.\n");
                 } else {
                     msg.push_str("\nConcerns:\n\n");
                 }
@@ -678,15 +700,31 @@ impl<'a> RfcBotComment<'a> {
 
                 Ok(msg)
             }
+
             CommentType::FcpProposalCancelled(initiator) => {
                 Ok(format!("@{} proposal cancelled.", initiator.login))
             }
-            CommentType::FcpAllReviewedNoConcerns => {
-                Ok("All relevant subteam members have reviewed. No concerns remain.".to_string())
+
+            CommentType::FcpAllReviewedNoConcerns { author, status_comment_id, added_label } => {
+                let mut msg = String::new();
+
+                msg.push_str(":bell: **This is now entering its final comment period**, ");
+                msg.push_str("as per the [review above](");
+                self.add_comment_url(&mut msg, status_comment_id);
+                msg.push_str("). :bell:");
+
+                if !added_label {
+                    msg.push_str("\n\n*psst @");
+                    msg.push_str(&author.login);
+                    msg.push_str(", I wasn't able to add the `final-comment-period` label,");
+                    msg.push_str(" please do so.*");
+                }
+
+                Ok(msg)
             }
+
             CommentType::FcpWeekPassed => {
-                // TODO add ping to original proposal author
-                Ok("It has been one week since all blocks to the FCP were resolved.".to_string())
+                Ok("The final comment period is now complete.".to_string())
             }
         }
     }
@@ -703,6 +741,8 @@ impl<'a> RfcBotComment<'a> {
     fn post(&self, existing_comment: Option<i32>) -> DashResult<CommentFromJson> {
         use config::CONFIG;
 
+        // TODO don't do this if the issue is closed
+
         if CONFIG.post_comments {
 
             let text = self.format()?;
@@ -716,7 +756,7 @@ impl<'a> RfcBotComment<'a> {
             info!("Skipping comment to {}#{}, comment posts are disabled.",
                   self.repository,
                   self.issue_num);
-            Err(DashError::Misc)
+            Err(DashError::Misc(None))
         }
     }
 }

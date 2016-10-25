@@ -19,7 +19,7 @@ pub enum DashError {
     Serde(serde_json::error::Error),
     R2d2Timeout(r2d2::GetTimeout),
     DieselError(diesel::result::Error),
-    Misc,
+    Misc(Option<String>),
 }
 
 impl From<hyper::error::Error> for DashError {
@@ -51,7 +51,7 @@ impl From<DashError> for iron::IronError {
                 DashError::Serde(e) => Box::new(e),
                 DashError::R2d2Timeout(e) => Box::new(e),
                 DashError::DieselError(e) => Box::new(e),
-                DashError::Misc => {
+                DashError::Misc(_) => {
                     Box::new(io::Error::new(io::ErrorKind::Other, "miscellaneous error"))
                 }
             },
