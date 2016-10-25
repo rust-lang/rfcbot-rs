@@ -154,8 +154,8 @@ fn evaluate_nags() -> DashResult<()> {
     }
 
     // look for any FCP proposals that entered FCP a week or more ago but aren't marked as closed
-    let one_week_ago = UTC::now().naive_utc() - Duration::weeks(1);
-    let finished_fcps = fcp_proposal.filter(fcp_start.le(one_week_ago))
+    let one_business_week_ago = UTC::now().naive_utc() - Duration::days(10);
+    let finished_fcps = fcp_proposal.filter(fcp_start.le(one_business_week_ago))
         .filter(fcp_closed.eq(false))
         .load::<FcpProposal>(conn)?;
 
