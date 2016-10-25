@@ -614,8 +614,7 @@ impl<'a> RfcBotCommand<'a> {
 }
 
 struct RfcBotComment<'a> {
-    repository: &'a str,
-    issue_num: i32,
+    issue: &'a Issue,
     comment_type: CommentType<'a>,
 }
 
@@ -637,8 +636,7 @@ impl<'a> RfcBotComment<'a> {
     fn new(issue: &'a Issue, comment_type: CommentType<'a>) -> RfcBotComment<'a> {
 
         RfcBotComment {
-            repository: &issue.repository,
-            issue_num: issue.number,
+            issue: &issue,
             comment_type: comment_type,
         }
     }
@@ -731,9 +729,9 @@ impl<'a> RfcBotComment<'a> {
 
     fn add_comment_url(&self, msg: &mut String, comment_id: i32) {
         msg.push_str("https://github.com/");
-        msg.push_str(&self.repository);
+        msg.push_str(&self.issue.repository);
         msg.push_str("/issues/");
-        msg.push_str(&self.issue_num.to_string());
+        msg.push_str(&self.issue.number.to_string());
         msg.push_str("#issuecomment-");
         msg.push_str(&comment_id.to_string());
     }
@@ -745,17 +743,25 @@ impl<'a> RfcBotComment<'a> {
 
         if CONFIG.post_comments {
 
-            let text = self.format()?;
+            if self.issue.open {
+                let text = self.format()?;
 
-            Ok(match existing_comment {
-                Some(comment_id) => GH.edit_comment(self.repository, comment_id, &text),
-                None => GH.new_comment(self.repository, self.issue_num, &text),
-            }?)
+                Ok(match existing_comment {
+                    Some(comment_id) => GH.edit_comment(&self.issue.repository, comment_id, &text),
+                    None => GH.new_comment(&self.issue.repository, self.issue.number, &text),
+                }?)
+            } else {
+                info!("Skipping comment to {}#{}, the issue is no longer open",
+                      self.issue.repository,
+                      self.issue.number);
+
+                Err(DashError::Misc(None))
+            }
 
         } else {
             info!("Skipping comment to {}#{}, comment posts are disabled.",
-                  self.repository,
-                  self.issue_num);
+                  self.issue.repository,
+                  self.issue.number);
             Err(DashError::Misc(None))
         }
     }
