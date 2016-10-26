@@ -79,11 +79,7 @@ fn update_proposal_review_status(repo: &str, proposal_id: i32) -> DashResult<()>
                        reviewed,
                        l);
 
-                if reviewed {
-                    Some(username)
-                } else {
-                    None
-                }
+                if reviewed { Some(username) } else { None }
             } else {
                 None
             }
@@ -154,28 +150,32 @@ fn evaluate_nags() -> DashResult<()> {
 
             // attempt to add the final-comment-period label
             // TODO only add label if FCP > 1 day
-            let label_res = GH.add_label(&issue.repository, issue.number, "final-comment-period");
+            use config::CONFIG;
+            if CONFIG.post_comments {
+                let label_res =
+                    GH.add_label(&issue.repository, issue.number, "final-comment-period");
 
-            let added_label = match label_res {
-                Ok(()) => true,
-                Err(why) => {
-                    error!("Unable to add FCP label to {}#{}: {:?}",
-                           &issue.repository,
-                           issue.number,
-                           why);
-                    false
-                }
-            };
+                let added_label = match label_res {
+                    Ok(()) => true,
+                    Err(why) => {
+                        error!("Unable to add FCP label to {}#{}: {:?}",
+                               &issue.repository,
+                               issue.number,
+                               why);
+                        false
+                    }
+                };
 
-            let comment_type = CommentType::FcpAllReviewedNoConcerns {
-                added_label: added_label,
-                author: &initiator,
-                status_comment_id: proposal.fk_bot_tracking_comment,
-            };
+                let comment_type = CommentType::FcpAllReviewedNoConcerns {
+                    added_label: added_label,
+                    author: &initiator,
+                    status_comment_id: proposal.fk_bot_tracking_comment,
+                };
 
-            // leave a comment for FCP start
-            let fcp_start_comment = RfcBotComment::new(&issue, comment_type);
-            fcp_start_comment.post(None)?;
+                // leave a comment for FCP start
+                let fcp_start_comment = RfcBotComment::new(&issue, comment_type);
+                fcp_start_comment.post(None)?;
+            }
         }
     }
 
@@ -746,8 +746,6 @@ impl<'a> RfcBotComment<'a> {
 
     fn post(&self, existing_comment: Option<i32>) -> DashResult<CommentFromJson> {
         use config::CONFIG;
-
-        // TODO don't do this if the issue is closed
 
         if CONFIG.post_comments {
 
