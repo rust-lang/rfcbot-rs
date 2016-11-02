@@ -15,9 +15,9 @@ pub fn serve() {
     mount.mount("/releases/", router!(get "/" => handlers::releases));
     mount.mount("/hot-issues/", router!(get "/" => handlers::hot_issues));
 
-    mount.mount("/nag/",
+    mount.mount("/fcp/",
                 router!(
-        get "/users" => handlers::team_members,
+        get "/all" => handlers::list_fcps,
         get "/:username" => handlers::member_nags
     ));
 

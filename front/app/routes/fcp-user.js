@@ -3,7 +3,7 @@ import ENV from 'rust-dashboard/config/environment';
 
 export default Ember.Route.extend({
   model(params) {
-    const url = `${ENV.apiBaseURL}nag/` + params.username;
+    const url = `${ENV.apiBaseURL}fcp/` + params.username;
 
     return fetch(url)
       .then(response => response.json())

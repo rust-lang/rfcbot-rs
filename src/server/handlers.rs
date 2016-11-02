@@ -1,4 +1,3 @@
-use std::collections::BTreeMap;
 use std::error::Error;
 use std::fmt;
 
@@ -12,17 +11,13 @@ use urlencoded::{UrlDecodingError, UrlEncodedQuery};
 use error::DashError;
 use reports;
 
-pub fn team_members(_: &mut Request) -> IronResult<Response> {
-    let members = try!(reports::nag::all_team_members());
+pub fn list_fcps(_: &mut Request) -> IronResult<Response> {
+    let nag_report = reports::nag::all_fcps()?;
 
-    let mut resp = BTreeMap::new();
-    resp.insert("users", members);
-
-    Ok(Response::with((status::Ok,
-                       try!(ser::to_string(&resp).map_err(|e| {
+    Ok(Response::with((status::Ok, ser::to_string(&nag_report).map_err(|e| {
         let e: DashError = e.into();
         e
-    })))))
+    })?)))
 }
 
 pub fn member_nags(req: &mut Request) -> IronResult<Response> {

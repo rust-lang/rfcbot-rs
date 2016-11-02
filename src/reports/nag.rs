@@ -1,24 +1,56 @@
-use diesel::expression::dsl::*;
 use diesel::prelude::*;
-use diesel::select;
-use diesel::types::VarChar;
 
 use DB_POOL;
-use domain::github::{GitHubUser, Issue};
+use domain::github::{GitHubUser, Issue, IssueComment};
 use domain::rfcbot::{FcpProposal, FcpReviewRequest};
 use error::DashResult;
 
-pub fn all_team_members() -> DashResult<Vec<String>> {
-    let conn = try!(DB_POOL.get());
+#[derive(Serialize)]
+pub struct FcpWithInfo {
+    fcp: FcpProposal,
+    reviews: Vec<(GitHubUser, bool)>,
+    issue: Issue,
+    status_comment: IssueComment,
+}
 
-    // waiting on associations to get this into proper typed queries
+pub fn all_fcps() -> DashResult<Vec<FcpWithInfo>> {
+    use domain::schema::{fcp_proposal, fcp_review_request, githubuser, issue, issuecomment};
 
-    Ok(try!(select(sql::<VarChar>("\
-        DISTINCT u.login \
-        FROM githubuser u, memberships m \
-        WHERE u.id = m.fk_member \
-        ORDER BY u.login"))
-        .load(&*conn)))
+    let conn = &*DB_POOL.get()?;
+
+    let proposals = fcp_proposal::table.filter(fcp_proposal::fcp_start.is_null())
+        .load::<FcpProposal>(conn)?;
+
+    let mut all_fcps = Vec::new();
+
+    for fcp in proposals {
+        let reviews = fcp_review_request::table.filter(fcp_review_request::fk_proposal.eq(fcp.id))
+            .load::<FcpReviewRequest>(conn)?;
+
+        let mut reviews_with_users = Vec::new();
+
+        for review in reviews {
+            let user = githubuser::table.filter(githubuser::id.eq(review.fk_reviewer)).first(conn)?;
+            reviews_with_users.push((user, review.reviewed));
+        }
+
+        let status_comment =
+            issuecomment::table.filter(issuecomment::id.eq(fcp.fk_bot_tracking_comment))
+                .first::<IssueComment>(conn)?;
+
+        let issue = issue::table.filter(issue::id.eq(fcp.fk_issue)).first::<Issue>(conn)?;
+
+        let fcp_with_info = FcpWithInfo {
+            fcp: fcp,
+            reviews: reviews_with_users,
+            issue: issue,
+            status_comment: status_comment,
+        };
+
+        all_fcps.push(fcp_with_info);
+    }
+
+    Ok(all_fcps)
 }
 
 #[derive(Queryable, Serialize)]

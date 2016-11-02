@@ -1,24 +1,21 @@
 {{outlet}}
 
-<h3>Team Members:</h3>
+<h3>FCP/Merge Proposals:</h3>
 
-<div class="container">
-    {{#groups-of
-            tagName="div"
-            groupsOf=2
-            groupTag="div"
-            groupClass="row"
-            items=model.users
-            as |u isFirst isLast|
-        }}
-        <div class="six columns">
-          {{#link-to "fcp_user" u}}
-            <img style="width:50px; height: auto" src="https://avatars.githubusercontent.com/{{u}}" />
-          {{/link-to}}
+{{#each model.fcps as |f| }}
+    <h5><code>{{ f.team }}</code></h5>
 
-          {{#link-to "fcp_user" u}}
-            <strong>{{u}}</strong>
-          {{/link-to}}
-        </div>
-      {{/groups-of}}
-</div>
+    <ul>
+        {{#each f.fcps as |fcp| }}
+            <li>
+                <a
+                href="https://github.com/{{ fcp.issue.repository }}/issues/{{ fcp.issue.number }}#issuecomment-{{ fcp.statusComment.id }}"
+                target="_blank">
+                {{ fcp.issue.repository }} #{{ fcp.issue.number }}</a>: waiting for
+            {{#each fcp.pendingReviewers as |r| }}
+                <a href="/fcp/{{r}}">{{ r }}</a>&nbsp;
+            {{/each}}
+            </li>
+        {{/each}}
+    </ul>
+{{/each}}
