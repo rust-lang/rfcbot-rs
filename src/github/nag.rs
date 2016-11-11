@@ -23,9 +23,29 @@ pub fn update_nags(mut comments: Vec<IssueComment>) -> DashResult<()> {
 
     for comment in &comments {
 
-        let issue = issue::table.find(comment.fk_issue).first::<Issue>(conn)?;
-        let author = githubuser::table.find(comment.fk_user).first::<GitHubUser>(conn)?;
-        let subteam_members = subteam_members(&issue)?;
+        let issue = match issue::table.find(comment.fk_issue).first::<Issue>(conn) {
+            Ok(i) => i,
+            Err(why) => {
+                error!("Unable to find issue for comment id {}: {:?}", comment.id, why);
+                continue;
+            }
+        };
+
+        let author = match githubuser::table.find(comment.fk_user).first::<GitHubUser>(conn) {
+            Ok(a) => a,
+            Err(why) => {
+                error!("Unable to find author for comment id {}: {:?}", comment.id, why);
+                continue;
+            }
+        };
+
+        let subteam_members = match subteam_members(&issue) {
+            Ok(s) => s,
+            Err(why) => {
+                error!("Unable to retrieve subteam members for issue id {}: {:?}", issue.id, why);
+                continue;
+            }
+        };
 
         // attempt to parse a command out of the comment
         if let Ok(command) = RfcBotCommand::from_str(&comment.body) {
@@ -38,15 +58,32 @@ pub fn update_nags(mut comments: Vec<IssueComment>) -> DashResult<()> {
             }
 
             debug!("processing rfcbot command: {:?}", &command);
-            command.process(&author, &issue, comment, &subteam_members)?;
+            match command.process(&author, &issue, comment, &subteam_members) {
+                Ok(_) => (),
+                Err(why) => {
+                    error!("Unable to process command for comment id {}: {:?}", comment.id, why);
+                    continue;
+                }
+            };
+
             debug!("rfcbot command is processed");
 
         } else {
-            resolve_applicable_feedback_requests(&author, &issue, comment)?;
+            match resolve_applicable_feedback_requests(&author, &issue, comment) {
+                Ok(_) => (),
+                Err(why) => {
+                    error!("Unable to resolve feedback requests for comment id {}: {:?}", comment.id, why);
+                }
+            };
         }
     }
 
-    evaluate_nags()?;
+    match evaluate_nags() {
+        Ok(_) => (),
+        Err(why) => {
+            error!("Unable to evaluate outstanding proposals: {:?}", why);
+        }
+    };
 
     Ok(())
 }
@@ -111,24 +148,68 @@ fn evaluate_nags() -> DashResult<()> {
     let conn = &*DB_POOL.get()?;
 
     // first process all "pending" proposals (unreviewed or remaining concerns)
-    let pending_proposals = fcp_proposal.filter(fcp_start.is_null()).load::<FcpProposal>(conn)?;
+    let pending_proposals = match fcp_proposal.filter(fcp_start.is_null()).load::<FcpProposal>(conn) {
+        Ok(p) => p,
+        Err(why) => {
+            error!("Unable to retrieve list of pending proposals: {:?}", why);
+            return Err(why.into());
+        }
+    };
 
     for mut proposal in pending_proposals {
-        let initiator = githubuser::table.find(proposal.fk_initiator).first::<GitHubUser>(conn)?;
-        let issue = issue::table.find(proposal.fk_issue).first::<Issue>(conn)?;
+        let initiator = match githubuser::table.find(proposal.fk_initiator).first::<GitHubUser>(conn) {
+            Ok(i) => i,
+            Err(why) => {
+                error!("Unable to retrieve proposal initiator for proposal id {}: {:?}", proposal.id, why);
+                return Err(why.into());
+            }
+        };
+
+        let issue = match issue::table.find(proposal.fk_issue).first::<Issue>(conn) {
+            Ok(i) => i,
+            Err(why) => {
+                error!("Unable to retrieve issue for proposal {}: {:?}", proposal.id, why);
+                return Err(why.into());
+            }
+        };
 
         // if the issue has been closed before an FCP starts,
         // then we just need to cancel the FCP entirely
         if !issue.open {
-            cancel_fcp(&initiator, &issue, &proposal)?;
+            match cancel_fcp(&initiator, &issue, &proposal) {
+                Ok(_) => (),
+                Err(why) => {
+                    error!("Unable to cancel FCP for proposal {}: {:?}", proposal.id, why);
+                    return Err(why.into());
+                }
+            };
         }
 
         // check to see if any checkboxes were modified before we end up replacing the comment
-        update_proposal_review_status(&issue.repository, proposal.id)?;
+        match update_proposal_review_status(&issue.repository, proposal.id) {
+            Ok(_) => (),
+            Err(why) => {
+                error!("Unable to update review status for proposal {}: {:?}", proposal.id, why);
+                return Err(why.into());
+            }
+        }
 
         // get associated concerns and reviews
-        let reviews = list_review_requests(proposal.id)?;
-        let concerns = list_concerns_with_authors(proposal.id)?;
+        let reviews = match list_review_requests(proposal.id) {
+            Ok(r) => r,
+            Err(why) => {
+                error!("Unable to retrieve review requests for proposal {}: {:?}", proposal.id, why);
+                return Err(why.into());
+            }
+        };
+
+        let concerns = match list_concerns_with_authors(proposal.id) {
+            Ok(c) => c,
+            Err(why) => {
+                error!("Unable to retrieve concerns for proposal {}: {:?}", proposal.id, why);
+                return Err(why.into());
+            }
+        };
 
         let num_active_reviews = reviews.iter().filter(|&&(_, ref r)| !r.reviewed).count();
         let num_active_concerns =
@@ -141,12 +222,24 @@ fn evaluate_nags() -> DashResult<()> {
                     &reviews,
                     &concerns));
 
-        status_comment.post(Some(proposal.fk_bot_tracking_comment))?;
+        match status_comment.post(Some(proposal.fk_bot_tracking_comment)) {
+            Ok(_) => (),
+            Err(why) => {
+                error!("Unable to update status comment for proposal {}: {:?}", proposal.id, why);
+                return Err(why.into());
+            }
+        };
 
         if num_active_reviews == 0 && num_active_concerns == 0 {
             // FCP can start now -- update the database
             proposal.fcp_start = Some(UTC::now().naive_utc());
-            diesel::update(fcp_proposal.find(proposal.id)).set(&proposal).execute(conn)?;
+            match diesel::update(fcp_proposal.find(proposal.id)).set(&proposal).execute(conn) {
+                Ok(_) => (),
+                Err(why) => {
+                    error!("Unable to mark FCP {} as started: {:?}", proposal.id, why);
+                    return Err(why.into());
+                }
+            }
 
             // attempt to add the final-comment-period label
             // TODO only add label if FCP > 1 day
@@ -174,28 +267,57 @@ fn evaluate_nags() -> DashResult<()> {
 
                 // leave a comment for FCP start
                 let fcp_start_comment = RfcBotComment::new(&issue, comment_type);
-                fcp_start_comment.post(None)?;
+                match fcp_start_comment.post(None) {
+                    Ok(_) => (),
+                    Err(why) => {
+                        error!("Unable to post comment for FCP {}'s start: {:?}", proposal.id, why);
+                        return Err(why.into());
+                    }
+                };
             }
         }
     }
 
     // look for any FCP proposals that entered FCP a week or more ago but aren't marked as closed
     let one_business_week_ago = UTC::now().naive_utc() - Duration::days(10);
-    let finished_fcps = fcp_proposal.filter(fcp_start.le(one_business_week_ago))
+    let finished_fcps = match fcp_proposal.filter(fcp_start.le(one_business_week_ago))
         .filter(fcp_closed.eq(false))
-        .load::<FcpProposal>(conn)?;
+        .load::<FcpProposal>(conn) {
+            Ok(f) => f,
+            Err(why) => {
+                error!("Unable to retrieve FCPs that need to be marked as finished: {:?}", why);
+                return Err(why.into());
+            }
+        };
 
     for mut proposal in finished_fcps {
 
-        let issue = issue::table.find(proposal.fk_issue).first::<Issue>(conn)?;
+        let issue = match issue::table.find(proposal.fk_issue).first::<Issue>(conn) {
+            Ok(i) => i,
+            Err(why) => {
+                error!("Unable to find issue to match proposal {}: {:?}", proposal.id, why);
+                return Err(why.into());
+            }
+        };
 
-        // end the fcp
+        // update the fcp
         proposal.fcp_closed = true;
-        diesel::update(fcp_proposal.find(proposal.id)).set(&proposal).execute(conn)?;
+        match diesel::update(fcp_proposal.find(proposal.id)).set(&proposal).execute(conn) {
+            Ok(_) => (),
+            Err(why) => {
+                error!("Unable to update FCP {}: {:?}", proposal.id, why);
+                return Err(why.into());
+            }
+        }
 
-        // leave a comment for FCP start
         let fcp_close_comment = RfcBotComment::new(&issue, CommentType::FcpWeekPassed);
-        fcp_close_comment.post(None)?;
+        match fcp_close_comment.post(None) {
+            Ok(_) => (),
+            Err(why) => {
+                error!("Unable to post FCP-ending comment for proposal {}: {:?}", proposal.id, why);
+                return Err(why);
+            }
+        };
     }
 
     Ok(())
