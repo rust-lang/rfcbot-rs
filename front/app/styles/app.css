@@ -51,3 +51,7 @@ div.container {
         margin-top: 0px;
     }
 }
+
+.github-fork-ribbon:before {
+    background-color: #000;
+}
