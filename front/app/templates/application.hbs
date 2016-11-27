@@ -1,12 +1,7 @@
 <a class="github-fork-ribbon left-top" href="https://github.com/dikaiosune/rust-dashboard" title="Fork me on GitHub">Fork me on GitHub</a> 
 
 <nav class="container">
-    {{#if isBrowserOutdated}}
-        <div style="padding: 20px 0;background: black;color: red;text-align: center;">
-            Sorry your browser is outdated. Please update
-        </div>
-    {{/if}}
-
+    
     <h2 id="title">Rust Language Project Metrics</h2>
     
     {{#link-to 'summary'}}Home{{/link-to}}
@@ -33,3 +28,5 @@
     {{outlet}}
 
 </div>
+<script> var $buoop = {vs:{i:11,f:-4,o:-4,s:9,c:-4},unsecure:true,mobile:false,api:4}; function $buo_f(){  var e = document.createElement("script");  e.src = "//browser-update.org/update.min.js";  document.body.appendChild(e);};try {document.addEventListener("DOMContentLoaded", $buo_f,false)}catch(e){window.attachEvent("onload", $buo_f)}</script>
+
