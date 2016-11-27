@@ -1,6 +1,12 @@
 <a class="github-fork-ribbon left-top" href="https://github.com/dikaiosune/rust-dashboard" title="Fork me on GitHub">Fork me on GitHub</a> 
 
 <nav class="container">
+    {{#if isBrowserOutdated}}
+        <div style="padding: 20px 0;background: black;color: red;text-align: center;">
+            Sorry your browser is outdated. Please update
+        </div>
+    {{/if}}
+
     <h2 id="title">Rust Language Project Metrics</h2>
     
     {{#link-to 'summary'}}Home{{/link-to}}
