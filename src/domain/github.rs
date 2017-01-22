@@ -16,7 +16,7 @@ pub struct GitHubUser {
 #[derive(AsChangeset, Clone, Debug, Deserialize, Eq, Insertable,
          Ord, PartialEq, PartialOrd, Queryable)]
 #[table_name="milestone"]
-#[treat_none_as_null="true"]
+#[changeset_options(treat_none_as_null = "true")]
 pub struct Milestone {
     pub id: i32,
     pub number: i32,
@@ -78,7 +78,7 @@ impl IssuePartial {
 #[derive(AsChangeset, Clone, Debug, Deserialize, Eq, Ord,
          PartialEq, PartialOrd, Queryable, Serialize)]
 #[table_name="issue"]
-#[treat_none_as_null="true"]
+#[changeset_options(treat_none_as_null = "true")]
 pub struct Issue {
     pub id: i32,
     pub number: i32,
@@ -100,7 +100,7 @@ pub struct Issue {
 #[derive(AsChangeset, Clone, Debug, Deserialize, Eq, Insertable,
          Ord, PartialEq, PartialOrd, Queryable, Serialize)]
 #[table_name="issuecomment"]
-#[treat_none_as_null="true"]
+#[changeset_options(treat_none_as_null = "true")]
 pub struct IssueComment {
     pub id: i32,
     pub fk_issue: i32,
@@ -114,7 +114,7 @@ pub struct IssueComment {
 #[derive(AsChangeset, Clone, Debug, Deserialize, Eq, Insertable,
          Ord, PartialEq, PartialOrd, Queryable)]
 #[table_name="pullrequest"]
-#[treat_none_as_null="true"]
+#[changeset_options(treat_none_as_null = "true")]
 pub struct PullRequest {
     pub number: i32,
     pub state: String,

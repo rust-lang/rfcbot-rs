@@ -27,6 +27,7 @@ pub struct Config {
     pub db_pool_size: u32,
     pub github_access_token: String,
     pub github_user_agent: String,
+    pub github_webhook_secrets: Vec<String>,
     pub github_interval_mins: u64,
     pub release_interval_mins: u64,
     pub buildbot_interval_mins: u64,
@@ -44,6 +45,7 @@ const SERVER_PORT: &'static str = "SERVER_PORT";
 const DB_URL: &'static str = "DATABASE_URL";
 const DB_POOL_SIZE: &'static str = "DATABASE_POOL_SIZE";
 const GITHUB_TOKEN: &'static str = "GITHUB_ACCESS_TOKEN";
+const GITHUB_WEBHOOK_SECRETS: &'static str = "GITHUB_WEBHOOK_SECRETS";
 const GITHUB_UA: &'static str = "GITHUB_USER_AGENT";
 const GITHUB_INTERVAL: &'static str = "GITHUB_SCRAPE_INTERVAL";
 const RELEASES_INTERVAL: &'static str = "RELEASES_SCRAPE_INTERVAL";
@@ -59,6 +61,7 @@ pub fn init() -> Result<Config, Vec<&'static str>> {
                     DB_URL,
                     DB_POOL_SIZE,
                     GITHUB_TOKEN,
+                    GITHUB_WEBHOOK_SECRETS,
                     GITHUB_UA,
                     GITHUB_INTERVAL,
                     RELEASES_INTERVAL,
@@ -115,12 +118,16 @@ pub fn init() -> Result<Config, Vec<&'static str>> {
             Err(_) => return Err(vec![POST_COMMENTS]),
         };
 
+        let webhook_secrets = vars.remove(GITHUB_WEBHOOK_SECRETS).unwrap();
+        let webhook_secrets = webhook_secrets.split(',').map(String::from).collect();
+
         Ok(Config {
             server_port: port,
             db_url: db_url,
             db_pool_size: db_pool_size,
             github_access_token: gh_token,
             github_user_agent: gh_ua,
+            github_webhook_secrets: webhook_secrets,
             github_interval_mins: gh_interval,
             release_interval_mins: rel_interval,
             buildbot_interval_mins: bb_interval,

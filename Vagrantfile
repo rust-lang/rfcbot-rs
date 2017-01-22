@@ -21,6 +21,7 @@ Vagrant.configure("2") do |config|
                       privileged: false,
                       env: { 'PGVERSION' => '9.5', })
 
+  # TODO(dikaiosune) change this to stable when 1.15 releases
   config.vm.provision("rust",
                       type: "shell",
                       path: "vagrant/rust.sh",

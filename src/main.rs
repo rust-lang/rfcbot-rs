@@ -1,7 +1,6 @@
 // Copyright 2016 Adam Perry. Dual-licensed MIT and Apache 2.0 (see LICENSE files for details).
 
-#![feature(proc_macro)]
-
+extern crate afterparty;
 extern crate chrono;
 extern crate clap;
 extern crate crossbeam;

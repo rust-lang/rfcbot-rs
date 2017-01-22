@@ -15,67 +15,47 @@ use super::GH;
 
 // TODO check if new subteam label added for existing proposals
 
-pub fn update_nags(mut comments: Vec<IssueComment>) -> DashResult<()> {
+pub fn update_nags(comment: &IssueComment) -> DashResult<()> {
     let conn = &*DB_POOL.get()?;
 
-    // make sure we process the new comments in creation order
-    comments.sort_by_key(|c| c.created_at);
+    let issue = issue::table.find(comment.fk_issue).first::<Issue>(conn)?;
 
-    for comment in &comments {
+    let author = githubuser::table.find(comment.fk_user).first::<GitHubUser>(conn)?;
 
-        let issue = match issue::table.find(comment.fk_issue).first::<Issue>(conn) {
-            Ok(i) => i,
-            Err(why) => {
-                error!("Unable to find issue for comment id {}: {:?}", comment.id, why);
-                continue;
-            }
-        };
+    let subteam_members = subteam_members(&issue)?;
 
-        let author = match githubuser::table.find(comment.fk_user).first::<GitHubUser>(conn) {
-            Ok(a) => a,
-            Err(why) => {
-                error!("Unable to find author for comment id {}: {:?}", comment.id, why);
-                continue;
-            }
-        };
+    // attempt to parse a command out of the comment
+    if let Ok(command) = RfcBotCommand::from_str(&comment.body) {
 
-        let subteam_members = match subteam_members(&issue) {
-            Ok(s) => s,
-            Err(why) => {
-                error!("Unable to retrieve subteam members for issue id {}: {:?}", issue.id, why);
-                continue;
-            }
-        };
-
-        // attempt to parse a command out of the comment
-        if let Ok(command) = RfcBotCommand::from_str(&comment.body) {
-
-            // don't accept bot commands from non-subteam members
-            if subteam_members.iter().find(|&u| u == &author).is_none() {
-                info!("command author ({}) doesn't appear in any relevant subteams",
-                      author.login);
-                continue;
-            }
-
-            debug!("processing rfcbot command: {:?}", &command);
-            match command.process(&author, &issue, comment, &subteam_members) {
-                Ok(_) => (),
-                Err(why) => {
-                    error!("Unable to process command for comment id {}: {:?}", comment.id, why);
-                    continue;
-                }
-            };
-
-            debug!("rfcbot command is processed");
-
-        } else {
-            match resolve_applicable_feedback_requests(&author, &issue, comment) {
-                Ok(_) => (),
-                Err(why) => {
-                    error!("Unable to resolve feedback requests for comment id {}: {:?}", comment.id, why);
-                }
-            };
+        // don't accept bot commands from non-subteam members
+        if subteam_members.iter().find(|&u| u == &author).is_none() {
+            info!("command author ({}) doesn't appear in any relevant subteams",
+                  author.login);
+            return Ok(());
         }
+
+        debug!("processing rfcbot command: {:?}", &command);
+        match command.process(&author, &issue, comment, &subteam_members) {
+            Ok(_) => (),
+            Err(why) => {
+                error!("Unable to process command for comment id {}: {:?}",
+                       comment.id,
+                       why);
+                return Ok(());
+            }
+        };
+
+        debug!("rfcbot command is processed");
+
+    } else {
+        match resolve_applicable_feedback_requests(&author, &issue, comment) {
+            Ok(_) => (),
+            Err(why) => {
+                error!("Unable to resolve feedback requests for comment id {}: {:?}",
+                       comment.id,
+                       why);
+            }
+        };
     }
 
     match evaluate_nags() {
@@ -145,10 +125,13 @@ fn update_proposal_review_status(repo: &str, proposal_id: i32) -> DashResult<()>
 fn evaluate_nags() -> DashResult<()> {
     use diesel::prelude::*;
     use domain::schema::fcp_proposal::dsl::*;
+    use domain::schema::issuecomment::dsl::*;
+    use domain::schema::issuecomment::dsl::id as issuecomment_id;
     let conn = &*DB_POOL.get()?;
 
     // first process all "pending" proposals (unreviewed or remaining concerns)
-    let pending_proposals = match fcp_proposal.filter(fcp_start.is_null()).load::<FcpProposal>(conn) {
+    let pending_proposals = match fcp_proposal.filter(fcp_start.is_null())
+        .load::<FcpProposal>(conn) {
         Ok(p) => p,
         Err(why) => {
             error!("Unable to retrieve list of pending proposals: {:?}", why);
@@ -157,10 +140,13 @@ fn evaluate_nags() -> DashResult<()> {
     };
 
     for mut proposal in pending_proposals {
-        let initiator = match githubuser::table.find(proposal.fk_initiator).first::<GitHubUser>(conn) {
+        let initiator = match githubuser::table.find(proposal.fk_initiator)
+            .first::<GitHubUser>(conn) {
             Ok(i) => i,
             Err(why) => {
-                error!("Unable to retrieve proposal initiator for proposal id {}: {:?}", proposal.id, why);
+                error!("Unable to retrieve proposal initiator for proposal id {}: {:?}",
+                       proposal.id,
+                       why);
                 return Err(why.into());
             }
         };
@@ -168,7 +154,9 @@ fn evaluate_nags() -> DashResult<()> {
         let issue = match issue::table.find(proposal.fk_issue).first::<Issue>(conn) {
             Ok(i) => i,
             Err(why) => {
-                error!("Unable to retrieve issue for proposal {}: {:?}", proposal.id, why);
+                error!("Unable to retrieve issue for proposal {}: {:?}",
+                       proposal.id,
+                       why);
                 return Err(why.into());
             }
         };
@@ -179,7 +167,9 @@ fn evaluate_nags() -> DashResult<()> {
             match cancel_fcp(&initiator, &issue, &proposal) {
                 Ok(_) => (),
                 Err(why) => {
-                    error!("Unable to cancel FCP for proposal {}: {:?}", proposal.id, why);
+                    error!("Unable to cancel FCP for proposal {}: {:?}",
+                           proposal.id,
+                           why);
                     return Err(why.into());
                 }
             };
@@ -189,7 +179,9 @@ fn evaluate_nags() -> DashResult<()> {
         match update_proposal_review_status(&issue.repository, proposal.id) {
             Ok(_) => (),
             Err(why) => {
-                error!("Unable to update review status for proposal {}: {:?}", proposal.id, why);
+                error!("Unable to update review status for proposal {}: {:?}",
+                       proposal.id,
+                       why);
                 return Err(why.into());
             }
         }
@@ -198,7 +190,9 @@ fn evaluate_nags() -> DashResult<()> {
         let reviews = match list_review_requests(proposal.id) {
             Ok(r) => r,
             Err(why) => {
-                error!("Unable to retrieve review requests for proposal {}: {:?}", proposal.id, why);
+                error!("Unable to retrieve review requests for proposal {}: {:?}",
+                       proposal.id,
+                       why);
                 return Err(why.into());
             }
         };
@@ -206,7 +200,9 @@ fn evaluate_nags() -> DashResult<()> {
         let concerns = match list_concerns_with_authors(proposal.id) {
             Ok(c) => c,
             Err(why) => {
-                error!("Unable to retrieve concerns for proposal {}: {:?}", proposal.id, why);
+                error!("Unable to retrieve concerns for proposal {}: {:?}",
+                       proposal.id,
+                       why);
                 return Err(why.into());
             }
         };
@@ -222,13 +218,23 @@ fn evaluate_nags() -> DashResult<()> {
                     &reviews,
                     &concerns));
 
-        match status_comment.post(Some(proposal.fk_bot_tracking_comment)) {
-            Ok(_) => (),
-            Err(why) => {
-                error!("Unable to update status comment for proposal {}: {:?}", proposal.id, why);
-                return Err(why.into());
-            }
-        };
+        let previous_comment: IssueComment =
+            issuecomment.filter(issuecomment_id.eq(proposal.fk_bot_tracking_comment)).first(conn)?;
+
+        if previous_comment.body != status_comment.body {
+            // if the comment body in the database equals the new one we generated, then no change
+            // is needed from github (this assumes our DB accurately reflects GH's, which should
+            // be true in most cases by the time this is called)
+            match status_comment.post(Some(proposal.fk_bot_tracking_comment)) {
+                Ok(_) => (),
+                Err(why) => {
+                    error!("Unable to update status comment for proposal {}: {:?}",
+                           proposal.id,
+                           why);
+                    return Err(why.into());
+                }
+            };
+        }
 
         if num_active_reviews == 0 && num_active_concerns == 0 {
             // FCP can start now -- update the database
@@ -270,7 +276,9 @@ fn evaluate_nags() -> DashResult<()> {
                 match fcp_start_comment.post(None) {
                     Ok(_) => (),
                     Err(why) => {
-                        error!("Unable to post comment for FCP {}'s start: {:?}", proposal.id, why);
+                        error!("Unable to post comment for FCP {}'s start: {:?}",
+                               proposal.id,
+                               why);
                         return Err(why.into());
                     }
                 };
@@ -283,19 +291,22 @@ fn evaluate_nags() -> DashResult<()> {
     let finished_fcps = match fcp_proposal.filter(fcp_start.le(one_business_week_ago))
         .filter(fcp_closed.eq(false))
         .load::<FcpProposal>(conn) {
-            Ok(f) => f,
-            Err(why) => {
-                error!("Unable to retrieve FCPs that need to be marked as finished: {:?}", why);
-                return Err(why.into());
-            }
-        };
+        Ok(f) => f,
+        Err(why) => {
+            error!("Unable to retrieve FCPs that need to be marked as finished: {:?}",
+                   why);
+            return Err(why.into());
+        }
+    };
 
     for mut proposal in finished_fcps {
 
         let issue = match issue::table.find(proposal.fk_issue).first::<Issue>(conn) {
             Ok(i) => i,
             Err(why) => {
-                error!("Unable to find issue to match proposal {}: {:?}", proposal.id, why);
+                error!("Unable to find issue to match proposal {}: {:?}",
+                       proposal.id,
+                       why);
                 return Err(why.into());
             }
         };
@@ -314,7 +325,9 @@ fn evaluate_nags() -> DashResult<()> {
         match fcp_close_comment.post(None) {
             Ok(_) => (),
             Err(why) => {
-                error!("Unable to post FCP-ending comment for proposal {}: {:?}", proposal.id, why);
+                error!("Unable to post FCP-ending comment for proposal {}: {:?}",
+                       proposal.id,
+                       why);
                 return Err(why);
             }
         };
@@ -718,6 +731,7 @@ impl<'a> RfcBotCommand<'a> {
                 Ok(RfcBotCommand::NewConcern(command[name_start..].trim()))
             }
             "resolved" => {
+                // TODO handle "resolve" as well, with the correct tokenization
 
                 let name_start = command.find("resolved").unwrap() + "resolved".len();
 
@@ -745,7 +759,7 @@ impl<'a> RfcBotCommand<'a> {
 
 struct RfcBotComment<'a> {
     issue: &'a Issue,
-    comment_type: CommentType<'a>,
+    body: String,
 }
 
 enum CommentType<'a> {
@@ -765,16 +779,18 @@ enum CommentType<'a> {
 impl<'a> RfcBotComment<'a> {
     fn new(issue: &'a Issue, comment_type: CommentType<'a>) -> RfcBotComment<'a> {
 
+        let body = Self::format(issue, &comment_type);
+
         RfcBotComment {
             issue: &issue,
-            comment_type: comment_type,
+            body: body,
         }
     }
 
-    fn format(&self) -> DashResult<String> {
+    fn format(issue: &Issue, comment_type: &CommentType) -> String {
 
-        match self.comment_type {
-            CommentType::FcpProposed(initiator, disposition, reviewers, concerns) => {
+        match comment_type {
+            &CommentType::FcpProposed(initiator, disposition, reviewers, concerns) => {
                 let mut msg = String::from("Team member @");
                 msg.push_str(&initiator.login);
                 msg.push_str(" has proposed to ");
@@ -806,14 +822,14 @@ impl<'a> RfcBotComment<'a> {
                         msg.push_str("* ~~");
                         msg.push_str(&concern.name);
                         msg.push_str("~~ resolved by ");
-                        self.add_comment_url(&mut msg, resolved_comment_id);
+                        Self::add_comment_url(issue, &mut msg, resolved_comment_id);
                         msg.push_str("\n");
 
                     } else {
                         msg.push_str("* ");
                         msg.push_str(&concern.name);
                         msg.push_str(" (");
-                        self.add_comment_url(&mut msg, concern.fk_initiating_comment);
+                        Self::add_comment_url(issue, &mut msg, concern.fk_initiating_comment);
                         msg.push_str(")\n");
                     }
                 }
@@ -826,19 +842,19 @@ impl<'a> RfcBotComment<'a> {
                 msg.push_str("https://github.com/dikaiosune/rust-dashboard/blob/master/RFCBOT.md");
                 msg.push_str(") for info about what commands tagged team members can give me.");
 
-                Ok(msg)
+                msg
             }
 
-            CommentType::FcpProposalCancelled(initiator) => {
-                Ok(format!("@{} proposal cancelled.", initiator.login))
+            &CommentType::FcpProposalCancelled(initiator) => {
+                format!("@{} proposal cancelled.", initiator.login)
             }
 
-            CommentType::FcpAllReviewedNoConcerns { author, status_comment_id, added_label } => {
+            &CommentType::FcpAllReviewedNoConcerns { author, status_comment_id, added_label } => {
                 let mut msg = String::new();
 
                 msg.push_str(":bell: **This is now entering its final comment period**, ");
                 msg.push_str("as per the [review above](");
-                self.add_comment_url(&mut msg, status_comment_id);
+                Self::add_comment_url(issue, &mut msg, status_comment_id);
                 msg.push_str("). :bell:");
 
                 if !added_label {
@@ -848,22 +864,19 @@ impl<'a> RfcBotComment<'a> {
                     msg.push_str(" please do so.*");
                 }
 
-                Ok(msg)
+                msg
             }
 
-            CommentType::FcpWeekPassed => {
-                Ok("The final comment period is now complete.".to_string())
-            }
+            &CommentType::FcpWeekPassed => "The final comment period is now complete.".to_string(),
         }
     }
 
-    fn add_comment_url(&self, msg: &mut String, comment_id: i32) {
-        msg.push_str("https://github.com/");
-        msg.push_str(&self.issue.repository);
-        msg.push_str("/issues/");
-        msg.push_str(&self.issue.number.to_string());
-        msg.push_str("#issuecomment-");
-        msg.push_str(&comment_id.to_string());
+    fn add_comment_url(issue: &Issue, msg: &mut String, comment_id: i32) {
+        let to_add = format!("https://github.com/{}/issues/{}#issuecomment-{}",
+                             issue.repository,
+                             issue.number,
+                             comment_id);
+        msg.push_str(&to_add);
     }
 
     fn post(&self, existing_comment: Option<i32>) -> DashResult<CommentFromJson> {
@@ -872,11 +885,11 @@ impl<'a> RfcBotComment<'a> {
         if CONFIG.post_comments {
 
             if self.issue.open {
-                let text = self.format()?;
-
                 Ok(match existing_comment {
-                    Some(comment_id) => GH.edit_comment(&self.issue.repository, comment_id, &text),
-                    None => GH.new_comment(&self.issue.repository, self.issue.number, &text),
+                    Some(comment_id) => {
+                        GH.edit_comment(&self.issue.repository, comment_id, &self.body)
+                    }
+                    None => GH.new_comment(&self.issue.repository, self.issue.number, &self.body),
                 }?)
             } else {
                 info!("Skipping comment to {}#{}, the issue is no longer open",

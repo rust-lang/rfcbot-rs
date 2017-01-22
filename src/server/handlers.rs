@@ -14,10 +14,11 @@ use reports;
 pub fn list_fcps(_: &mut Request) -> IronResult<Response> {
     let nag_report = reports::nag::all_fcps()?;
 
-    Ok(Response::with((status::Ok, ser::to_string(&nag_report).map_err(|e| {
-        let e: DashError = e.into();
-        e
-    })?)))
+    Ok(Response::with((status::Ok,
+                       ser::to_string(&nag_report).map_err(|e| {
+                               let e: DashError = e.into();
+                               e
+                           })?)))
 }
 
 pub fn member_nags(req: &mut Request) -> IronResult<Response> {
@@ -28,10 +29,10 @@ pub fn member_nags(req: &mut Request) -> IronResult<Response> {
 
     Ok(Response::with((status::Ok,
                        try!(ser::to_string(&try!(reports::nag::individual_nags(username)))
-        .map_err(|e| {
-            let e: DashError = e.into();
-            e
-        })))))
+                           .map_err(|e| {
+                               let e: DashError = e.into();
+                               e
+                           })))))
 }
 
 pub fn hot_issues(_: &mut Request) -> IronResult<Response> {

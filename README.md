@@ -75,12 +75,7 @@ Assuming that the VM provisions correctly (a little bit of an "if"), you should 
 
 ### Rust Version
 
-Not guaranteed to be updated regularly, but last time I remembered to update this, the dashboard compiled with:
-
-```bash
-$ rustc --version
-rustc 1.14.0-nightly (16eeeac78 2016-10-18)
-```
+A recent nightly is required until 1.15 releases, at which point rust-dashboard will build on the stable compiler releases.
 
 ### Environment variables
 

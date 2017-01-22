@@ -4,8 +4,8 @@
 pub mod client;
 pub mod models;
 mod nag;
+pub mod webhooks;
 
-use std::collections::BTreeSet;
 use std::cmp;
 
 use chrono::{DateTime, NaiveDate, NaiveDateTime, NaiveTime, UTC};
@@ -19,11 +19,13 @@ use domain::schema::*;
 use error::DashResult;
 
 use self::client::Client;
-use self::models::PullRequestFromJson;
+use self::models::{CommentFromJson, IssueFromJson, PullRequestFromJson};
 
 lazy_static! {
     pub static ref GH: Client = Client::new();
 }
+
+// TODO(adam) store db info about the polling refreshes, check since that time
 
 pub fn most_recent_update(repo: &str) -> DashResult<DateTime<UTC>> {
     info!("finding most recent github updates");
@@ -65,7 +67,9 @@ pub fn most_recent_update(repo: &str) -> DashResult<DateTime<UTC>> {
 pub fn ingest_since(repo: &str, start: DateTime<UTC>) -> DashResult<()> {
     info!("fetching all {} issues and comments since {}", repo, start);
     let issues = try!(GH.issues_since(repo, start));
-    let comments = try!(GH.comments_since(repo, start));
+    let mut comments = try!(GH.comments_since(repo, start));
+    // make sure we process the new comments in creation order
+    comments.sort_by_key(|c| c.created_at);
 
     let mut prs: Vec<PullRequestFromJson> = vec![];
     for issue in &issues {
@@ -92,119 +96,133 @@ pub fn ingest_since(repo: &str, start: DateTime<UTC>) -> DashResult<()> {
 
     debug!("let's insert some stuff in the database");
 
-    let conn = try!(DB_POOL.get());
-
     // make sure we have all of the users to ensure referential integrity
-    let mut users = BTreeSet::new();
-    for issue in &issues {
-        users.insert(issue.user.clone());
-
-        if issue.assignee.is_some() {
-            users.insert(issue.assignee.clone().unwrap());
-        }
-
-        if issue.milestone.is_some() {
-            users.insert(issue.milestone.clone().unwrap().creator);
-        }
-    }
-
-    for comment in &comments {
-        users.insert(comment.user.clone());
-    }
-
-    for pr in &prs {
-        if pr.assignee.is_some() {
-            users.insert(pr.assignee.clone().unwrap());
-        }
-    }
-
-    // make sure all the users are present in the database
-    for user in users {
-        let exists = githubuser::table.find(user.id).get_result::<GitHubUser>(&*conn).is_ok();
-
-        if exists {
-            try!(diesel::update(githubuser::table.find(user.id)).set(&user).execute(&*conn));
-        } else {
-            try!(diesel::insert(&user).into(githubuser::table).execute(&*conn));
-        }
-    }
-
-    // insert the issues, milestones, and labels
     for issue in issues {
-        let (i, milestone) = issue.with_repo(repo);
-
-        if let Some(milestone) = milestone {
-            let exists = milestone::table.find(milestone.id)
-                .get_result::<Milestone>(&*conn)
-                .is_ok();
-            if exists {
-                try!(diesel::update(milestone::table.find(milestone.id))
-                    .set(&milestone)
-                    .execute(&*conn));
-            } else {
-                try!(diesel::insert(&milestone).into(milestone::table).execute(&*conn));
-            }
-        }
-
-        {
-            use domain::schema::issue::dsl::*;
-
-            let exists = issue.select(id)
-                .filter(number.eq(&i.number))
-                .filter(repository.eq(&i.repository))
-                .first::<i32>(&*conn)
-                .ok();
-
-            if let Some(current_id) = exists {
-                try!(diesel::update(issue.find(current_id)).set(&i.complete(current_id)).execute(&*conn));
-            } else {
-                try!(diesel::insert(&i).into(issue).execute(&*conn));
-            }
-        }
+        handle_issue(issue, repo)?;
     }
-
-    let mut domain_comments = Vec::new();
 
     // insert the comments
     for comment in comments {
-        let comment: IssueComment = try!(comment.with_repo(repo));
-
-        if issuecomment::table.find(comment.id).get_result::<IssueComment>(&*conn).is_ok() {
-            try!(diesel::update(issuecomment::table.find(comment.id))
-                .set(&comment)
-                .execute(&*conn));
-        } else {
-            try!(diesel::insert(&comment).into(issuecomment::table).execute(&*conn));
-
-            // we don't want to double-process comments
-            domain_comments.push(comment);
-        }
+        handle_comment(comment, repo)?;
     }
 
     for pr in prs {
-        use domain::schema::pullrequest::dsl::*;
+        handle_pr(pr, repo)?;
+    }
 
-        let pr: PullRequest = pr.with_repo(repo);
+    Ok(())
+}
 
-        let existing_id = pullrequest.select(id)
-            .filter(number.eq(&pr.number))
-            .filter(repository.eq(&pr.repository))
+pub fn handle_pr(pr: PullRequestFromJson, repo: &str) -> DashResult<()> {
+    use domain::schema::pullrequest::dsl::*;
+
+    let conn = DB_POOL.get()?;
+
+    if let Some(ref assignee) = pr.assignee {
+        handle_user(assignee)?;
+    }
+
+    let pr: PullRequest = pr.with_repo(repo);
+
+    let existing_id = pullrequest.select(id)
+        .filter(number.eq(&pr.number))
+        .filter(repository.eq(&pr.repository))
+        .first::<i32>(&*conn)
+        .ok();
+
+    if let Some(current_id) = existing_id {
+        diesel::update(pullrequest.find(current_id)).set(&pr).execute(&*conn)?;
+    } else {
+        diesel::insert(&pr).into(pullrequest).execute(&*conn)?;
+    }
+
+    Ok(())
+}
+
+pub fn handle_comment(comment: CommentFromJson, repo: &str) -> DashResult<()> {
+    handle_user(&comment.user)?;
+
+    let conn = DB_POOL.get()?;
+
+    let comment: IssueComment = comment.with_repo(repo)?;
+
+    if issuecomment::table.find(comment.id).get_result::<IssueComment>(&*conn).is_ok() {
+        diesel::update(issuecomment::table.find(comment.id))
+            .set(&comment)
+            .execute(&*conn)?;
+        Ok(())
+    } else {
+        diesel::insert(&comment).into(issuecomment::table).execute(&*conn)?;
+
+        // we don't want to double-process comments
+        // now that all updates have been registered, update any applicable nags
+        match nag::update_nags(&comment) {
+            Ok(()) => Ok(()),
+            Err(why) => {
+                error!("Problem updating FCPs: {:?}", &why);
+                Err(why)
+            }
+        }
+    }
+}
+
+pub fn handle_issue(issue: IssueFromJson, repo: &str) -> DashResult<()> {
+    let conn = DB_POOL.get()?;
+
+    // user handling
+    handle_user(&issue.user)?;
+    if let Some(ref assignee) = issue.assignee {
+        handle_user(assignee)?;
+    }
+    if let Some(ref milestone) = issue.milestone {
+        handle_user(&milestone.creator)?;
+    }
+
+    let (i, milestone) = issue.with_repo(repo);
+
+    // handle milestones
+    if let Some(milestone) = milestone {
+        let exists = milestone::table.find(milestone.id)
+            .get_result::<Milestone>(&*conn)
+            .is_ok();
+        if exists {
+            diesel::update(milestone::table.find(milestone.id)).set(&milestone).execute(&*conn)?;
+        } else {
+            diesel::insert(&milestone).into(milestone::table).execute(&*conn)?;
+        }
+    }
+
+    // handle issue itself
+    {
+        use domain::schema::issue::dsl::*;
+
+        let exists = issue.select(id)
+            .filter(number.eq(&i.number))
+            .filter(repository.eq(&i.repository))
             .first::<i32>(&*conn)
             .ok();
 
-        if let Some(current_id) = existing_id {
-            try!(diesel::update(pullrequest.find(current_id)).set(&pr).execute(&*conn));
+        if let Some(current_id) = exists {
+            diesel::update(issue.find(current_id))
+                .set(&i.complete(current_id))
+                .execute(&*conn)?;
         } else {
-            try!(diesel::insert(&pr).into(pullrequest).execute(&*conn));
+            diesel::insert(&i).into(issue).execute(&*conn)?;
         }
     }
 
-    // now that all updates have been registered, update any applicable nags
-    match nag::update_nags(domain_comments) {
-        Ok(()) => Ok(()),
-        Err(why) => {
-            error!("Problem updating FCPs: {:?}", &why);
-            Err(why)
-        }
+    Ok(())
+}
+
+pub fn handle_user(user: &GitHubUser) -> DashResult<()> {
+    let conn = DB_POOL.get()?;
+    let exists = githubuser::table.find(user.id).get_result::<GitHubUser>(&*conn).is_ok();
+
+    if exists {
+        diesel::update(githubuser::table.find(user.id)).set(user).execute(&*conn)?;
+    } else {
+        diesel::insert(user).into(githubuser::table).execute(&*conn)?;
     }
+
+    Ok(())
 }
