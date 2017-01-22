@@ -6,6 +6,7 @@ extern crate log;
 extern crate hyper;
 extern crate case;
 extern crate crypto;
+extern crate iron;
 extern crate serde;
 extern crate serde_json;
 extern crate hex;
@@ -15,7 +16,6 @@ mod events;
 
 pub use events::Event;
 pub use hook::{AuthenticateHook, Hook};
-use hyper::server::{Handler, Request, Response};
 use std::collections::HashMap;
 use std::io::Read;
 
@@ -116,8 +116,8 @@ impl Hub {
     }
 }
 
-impl Handler for Hub {
-    fn handle(&self, mut req: Request, res: Response) {
+impl iron::middleware::Handler for Hub {
+    fn handle(&self, req: &mut iron::Request) -> iron::IronResult<iron::Response> {
         let headers = req.headers.clone();
         if let (Some(&XGithubEvent(ref event)), Some(&XGithubDelivery(ref delivery))) =
                (headers.get::<XGithubEvent>(), headers.get::<XGithubDelivery>()) {
@@ -125,7 +125,7 @@ impl Handler for Hub {
             info!("recv '{}' event with signature '{:?}'", event, signature);
             if let Some(hooks) = self.hooks(event) {
                 let mut payload = String::new();
-                if let Ok(_) = req.read_to_string(&mut payload) {
+                if let Ok(_) = req.body.read_to_string(&mut payload) {
                     match Delivery::new(delivery,
                                         event,
                                         payload.as_ref(),
@@ -144,8 +144,7 @@ impl Handler for Hub {
                 }
             }
         }
-        let _ = res.send(b"ok");
-        ()
+        Ok(iron::Response::with((iron::status::Ok, "ok")))
     }
 }
 
