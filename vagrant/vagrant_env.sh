@@ -5,6 +5,7 @@ export DATABASE_URL=postgres://vagrant:hunter2@localhost/dashboard
 export DATABASE_POOL_SIZE=10
 export RUST_LOG=debug,hyper=info,rustc=error,cargo=error
 export GITHUB_SCRAPE_INTERVAL=2
+export GITHUB_WEBHOOK_SECRETS="none"
 export RELEASES_SCRAPE_INTERVAL=720
 export BUILDBOT_SCRAPE_INTERVAL=80
 export SERVER_PORT=8080

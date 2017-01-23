@@ -83,6 +83,7 @@ A recent nightly is required until 1.15 releases, at which point rust-dashboard 
 * `DATABASE_POOL_SIZE`: number of connections to maintain in the pool
 * `GITHUB_ACCESS_TOKEN`: your access token from GitHub. See [this page](https://help.github.com/articles/creating-an-access-token-for-command-line-use/) for more information. You shouldn't need to check any of the boxes for granting scopes when creating it.
 * `GITHUB_USER_AGENT`: the UA string to send to GitHub (they request that you send your GitHub username or the app name you registered for the client ID)
+* `GITHUB_WEBHOOK_SECRETS`: a comma-delimited string of the secrets used for any ingestion webhooks. The webhook handler will attempt to validate any POST'd webhook against each secret until it either finds a matching one or runs out.
 * `RUST_LOG`: the logging configuration for [env_logger](https://crates.io/crates/env_logger). If you're unfamiliar, you can read about it in the documentation linked on crates.io. If it's not defined, logging will default to `info!()` and above.
 * `GITHUB_SCRAPE_INTERVAL`: time (in minutes) to wait in between GitHub scrapes
 * `RELEASES_SCRAPE_INTERVAL`: time (in minutes) to wait in between nightly release scrapes
