@@ -4,6 +4,23 @@ use chrono::NaiveDateTime;
 
 use super::schema::*;
 
+#[derive(AsChangeset, Clone, Debug, Queryable)]
+#[table_name="githubsync"]
+pub struct GitHubSync {
+    pub id: i32,
+    pub successful: bool,
+    pub ran_at: NaiveDateTime,
+    pub message: Option<String>,
+}
+
+#[derive(Clone, Debug, Insertable)]
+#[table_name="githubsync"]
+pub struct GitHubSyncPartial {
+    pub successful: bool,
+    pub ran_at: NaiveDateTime,
+    pub message: Option<String>,
+}
+
 #[derive(AsChangeset, Clone, Debug, Deserialize, Eq, Insertable,
          Ord, PartialEq, PartialOrd, Queryable, Serialize)]
 #[table_name="githubuser"]

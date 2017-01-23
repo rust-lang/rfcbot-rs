@@ -25,46 +25,29 @@ lazy_static! {
     pub static ref GH: Client = Client::new();
 }
 
-// TODO(adam) store db info about the polling refreshes, check since that time
-
 pub fn most_recent_update(repo: &str) -> DashResult<DateTime<UTC>> {
     info!("finding most recent github updates");
 
     let default_date = NaiveDateTime::new(NaiveDate::from_ymd(2015, 5, 15),
                                           NaiveTime::from_hms(0, 0, 0));
 
-    let conn = try!(DB_POOL.get());
+    let conn = &*DB_POOL.get()?;
 
-    let issues_updated: NaiveDateTime = {
-        use domain::schema::issue::dsl::*;
-        match issue.select(max(updated_at)).filter(repository.eq(repo)).first(&*conn) {
-            Ok(dt) => dt,
-            Err(_) => default_date,
-        }
+    let updated: NaiveDateTime = {
+        use domain::schema::githubsync::dsl::*;
+        githubsync.select(ran_at)
+            .filter(successful.eq(true))
+            .order(ran_at.desc())
+            .first(conn)
+            .unwrap_or(default_date)
     };
 
-    let prs_updated: NaiveDateTime = {
-        use domain::schema::pullrequest::dsl::*;
-        match pullrequest.select(max(updated_at)).filter(repository.eq(repo)).first(&*conn) {
-            Ok(dt) => dt,
-            Err(_) => default_date,
-        }
-    };
-
-    let comments_updated: NaiveDateTime = {
-        use domain::schema::issuecomment::dsl::*;
-        match issuecomment.select(max(updated_at)).filter(repository.eq(repo)).first(&*conn) {
-            Ok(dt) => dt,
-            Err(_) => default_date,
-        }
-    };
-
-    let most_recent = cmp::min(issues_updated, cmp::min(prs_updated, comments_updated));
-
-    Ok(DateTime::from_utc(most_recent, UTC))
+    Ok(DateTime::from_utc(updated, UTC))
 }
 
 pub fn ingest_since(repo: &str, start: DateTime<UTC>) -> DashResult<()> {
+    let ingest_start = UTC::now().naive_utc();
+
     info!("fetching all {} issues and comments since {}", repo, start);
     let issues = try!(GH.issues_since(repo, start));
     let mut comments = try!(GH.comments_since(repo, start));
@@ -101,7 +84,12 @@ pub fn ingest_since(repo: &str, start: DateTime<UTC>) -> DashResult<()> {
         let issue_number = issue.number;
         match handle_issue(issue, repo) {
             Ok(()) => (),
-            Err(why) => error!("Error processing issue {}#{}: {:?}", repo, issue_number, why),
+            Err(why) => {
+                error!("Error processing issue {}#{}: {:?}",
+                       repo,
+                       issue_number,
+                       why)
+            }
         }
     }
 
@@ -110,7 +98,12 @@ pub fn ingest_since(repo: &str, start: DateTime<UTC>) -> DashResult<()> {
         let comment_id = comment.id;
         match handle_comment(comment, repo) {
             Ok(()) => (),
-            Err(why) => error!("Error processing comment {}#{}: {:?}", repo, comment_id, why),
+            Err(why) => {
+                error!("Error processing comment {}#{}: {:?}",
+                       repo,
+                       comment_id,
+                       why)
+            }
         }
     }
 
@@ -120,6 +113,19 @@ pub fn ingest_since(repo: &str, start: DateTime<UTC>) -> DashResult<()> {
             Ok(()) => (),
             Err(why) => error!("Error processing PR {}#{}: {:?}", repo, pr_number, why),
         }
+    }
+
+    {
+        let conn = &*DB_POOL.get()?;
+        // insert a successful sync record
+        use domain::schema::githubsync::dsl::*;
+        let sync_record = GitHubSyncPartial {
+            successful: true,
+            ran_at: ingest_start,
+            message: None,
+        };
+
+        diesel::insert(&sync_record).into(githubsync).execute(conn)?;
     }
 
     Ok(())
@@ -159,8 +165,7 @@ pub fn handle_comment(comment: CommentFromJson, repo: &str) -> DashResult<()> {
     let comment: IssueComment = comment.with_repo(repo)?;
 
     if issuecomment::table.find(comment.id).get_result::<IssueComment>(&*conn).is_ok() {
-        diesel::update(issuecomment::table.find(comment.id))
-            .set(&comment)
+        diesel::update(issuecomment::table.find(comment.id)).set(&comment)
             .execute(&*conn)?;
         Ok(())
     } else {
@@ -215,8 +220,7 @@ pub fn handle_issue(issue: IssueFromJson, repo: &str) -> DashResult<()> {
             .ok();
 
         if let Some(current_id) = exists {
-            diesel::update(issue.find(current_id))
-                .set(&i.complete(current_id))
+            diesel::update(issue.find(current_id)).set(&i.complete(current_id))
                 .execute(&*conn)?;
         } else {
             diesel::insert(&i).into(issue).execute(&*conn)?;
