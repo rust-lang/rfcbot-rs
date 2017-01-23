@@ -4,3 +4,4 @@ target
 *.deb
 .vagrant
 *.log
+.envrc
