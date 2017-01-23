@@ -5,6 +5,8 @@ use chrono::NaiveDateTime;
 use diesel;
 use diesel::prelude::*;
 use hyper::Client;
+use hyper::net::HttpsConnector;
+use hyper_native_tls::NativeTlsClient;
 use serde_json;
 
 use error::DashResult;
@@ -73,7 +75,7 @@ impl Into<Build> for BuildFromJson {
 pub fn ingest() -> DashResult<()> {
     info!("Ingesting buildbot data.");
     let conn = try!(DB_POOL.get());
-    let c = Client::new();
+    let c = Client::with_connector(HttpsConnector::new(NativeTlsClient::new().unwrap()));
 
     let mut resp = try!(c.get("https://buildbot.rust-lang.org/json/builders/").send());
 

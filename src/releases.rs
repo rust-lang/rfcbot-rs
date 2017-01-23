@@ -3,14 +3,17 @@ use diesel;
 use diesel::expression::dsl::*;
 use diesel::prelude::*;
 use hyper::client::Client;
+use hyper::net::HttpsConnector;
 use hyper::status::StatusCode;
+use hyper_native_tls::NativeTlsClient;
 
 use DB_POOL;
 use domain::releases::Release;
 use error::DashResult;
 
 lazy_static! {
-    static ref CLIENT: Client = Client::new();
+    static ref CLIENT: Client = Client::with_connector(
+        HttpsConnector::new(NativeTlsClient::new().unwrap()));
 }
 
 pub fn most_recent_update() -> DashResult<DateTime<UTC>> {
