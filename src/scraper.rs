@@ -35,7 +35,7 @@ pub fn start_scraping() {
 
                 for repo in repos {
 
-                    match github::most_recent_update(&repo) {
+                    match github::most_recent_update() {
                         Ok(gh_most_recent) => {
                             info!("scraping github activity since {:?}", gh_most_recent);
 

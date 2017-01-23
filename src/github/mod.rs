@@ -6,10 +6,7 @@ pub mod models;
 mod nag;
 pub mod webhooks;
 
-use std::cmp;
-
 use chrono::{DateTime, NaiveDate, NaiveDateTime, NaiveTime, UTC};
-use diesel::expression::dsl::*;
 use diesel::prelude::*;
 use diesel;
 
@@ -25,7 +22,7 @@ lazy_static! {
     pub static ref GH: Client = Client::new();
 }
 
-pub fn most_recent_update(repo: &str) -> DashResult<DateTime<UTC>> {
+pub fn most_recent_update() -> DashResult<DateTime<UTC>> {
     info!("finding most recent github updates");
 
     let default_date = NaiveDateTime::new(NaiveDate::from_ymd(2015, 5, 15),
