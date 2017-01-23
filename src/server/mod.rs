@@ -1,4 +1,3 @@
-use afterparty::Hub;
 use iron::prelude::*;
 use mount::Mount;
 
@@ -22,13 +21,7 @@ pub fn serve() {
         usernamefcps: get "/:username" => handlers::member_nags
     ));
 
-    let mut gh_webhook_hub = Hub::new();
-
-    for secret in &CONFIG.github_webhook_secrets {
-        gh_webhook_hub.handle_authenticated("*", secret.as_str(), webhooks::handler);
-    }
-
-    mount.mount("/github-webhook", router!(ghwebhook: post "/" => gh_webhook_hub));
+    mount.mount("/github-webhook", router!(ghwebhook: post "/" => webhooks::handler));
 
     // middleware goes here
 

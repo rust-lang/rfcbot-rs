@@ -68,7 +68,7 @@ pub fn update_nags(comment: &IssueComment) -> DashResult<()> {
     Ok(())
 }
 
-fn update_proposal_review_status(repo: &str, proposal_id: i32) -> DashResult<()> {
+fn update_proposal_review_status(proposal_id: i32) -> DashResult<()> {
     let conn = &*DB_POOL.get()?;
     // this is an updated comment from the bot itself
 
@@ -81,7 +81,8 @@ fn update_proposal_review_status(repo: &str, proposal_id: i32) -> DashResult<()>
         return Ok(());
     }
 
-    let comment = GH.get_comment(repo, proposal.fk_bot_tracking_comment)?;
+    let comment: IssueComment = issuecomment::table.find(proposal.fk_bot_tracking_comment)
+        .first(conn)?;
 
     // parse the status comment and mark any new reviews as reviewed
     let reviewed = comment.body
@@ -90,13 +91,20 @@ fn update_proposal_review_status(repo: &str, proposal_id: i32) -> DashResult<()>
             if line.starts_with("* [") {
                 let l = line.trim_left_matches("* [");
                 let reviewed = l.starts_with("x");
-                let username = l.trim_left_matches("x] @").trim_left_matches(" ] @");
+                let remaining = l.trim_left_matches("x] @").trim_left_matches(" ] @");
 
-                debug!("reviewer parsed as reviewed? {} (line: \"{}\")",
-                       reviewed,
-                       l);
+                if let Some(username) = remaining.split_whitespace().next() {
+                    trace!("reviewer parsed as reviewed? {} (line: \"{}\")",
+                           reviewed,
+                           l);
 
-                if reviewed { Some(username) } else { None }
+                    if reviewed { Some(username) } else { None }
+                } else {
+                    warn!("An empty usename showed up in comment {} for proposal {}",
+                          comment.id,
+                          proposal.id);
+                    None
+                }
             } else {
                 None
             }
@@ -147,7 +155,7 @@ fn evaluate_nags() -> DashResult<()> {
                 error!("Unable to retrieve proposal initiator for proposal id {}: {:?}",
                        proposal.id,
                        why);
-                return Err(why.into());
+                continue;
             }
         };
 
@@ -157,7 +165,7 @@ fn evaluate_nags() -> DashResult<()> {
                 error!("Unable to retrieve issue for proposal {}: {:?}",
                        proposal.id,
                        why);
-                return Err(why.into());
+                continue;
             }
         };
 
@@ -170,19 +178,19 @@ fn evaluate_nags() -> DashResult<()> {
                     error!("Unable to cancel FCP for proposal {}: {:?}",
                            proposal.id,
                            why);
-                    return Err(why.into());
+                    continue;
                 }
             };
         }
 
         // check to see if any checkboxes were modified before we end up replacing the comment
-        match update_proposal_review_status(&issue.repository, proposal.id) {
+        match update_proposal_review_status(proposal.id) {
             Ok(_) => (),
             Err(why) => {
                 error!("Unable to update review status for proposal {}: {:?}",
                        proposal.id,
                        why);
-                return Err(why.into());
+                continue;
             }
         }
 
@@ -193,7 +201,7 @@ fn evaluate_nags() -> DashResult<()> {
                 error!("Unable to retrieve review requests for proposal {}: {:?}",
                        proposal.id,
                        why);
-                return Err(why.into());
+                continue;
             }
         };
 
@@ -203,7 +211,7 @@ fn evaluate_nags() -> DashResult<()> {
                 error!("Unable to retrieve concerns for proposal {}: {:?}",
                        proposal.id,
                        why);
-                return Err(why.into());
+                continue;
             }
         };
 
@@ -231,19 +239,22 @@ fn evaluate_nags() -> DashResult<()> {
                     error!("Unable to update status comment for proposal {}: {:?}",
                            proposal.id,
                            why);
-                    return Err(why.into());
+                    continue;
                 }
             };
         }
 
         if num_active_reviews == 0 && num_active_concerns == 0 {
+            // TODO only record the fcp as started if we know that we successfully commented
+            // i.e. either the comment claims to have posted, or we get a comment back to reconcile
+
             // FCP can start now -- update the database
             proposal.fcp_start = Some(UTC::now().naive_utc());
             match diesel::update(fcp_proposal.find(proposal.id)).set(&proposal).execute(conn) {
                 Ok(_) => (),
                 Err(why) => {
                     error!("Unable to mark FCP {} as started: {:?}", proposal.id, why);
-                    return Err(why.into());
+                    continue;
                 }
             }
 
@@ -257,10 +268,10 @@ fn evaluate_nags() -> DashResult<()> {
                 let added_label = match label_res {
                     Ok(()) => true,
                     Err(why) => {
-                        error!("Unable to add FCP label to {}#{}: {:?}",
-                               &issue.repository,
-                               issue.number,
-                               why);
+                        warn!("Unable to add FCP label to {}#{}: {:?}",
+                              &issue.repository,
+                              issue.number,
+                              why);
                         false
                     }
                 };
@@ -279,7 +290,7 @@ fn evaluate_nags() -> DashResult<()> {
                         error!("Unable to post comment for FCP {}'s start: {:?}",
                                proposal.id,
                                why);
-                        return Err(why.into());
+                        continue;
                     }
                 };
             }
@@ -307,9 +318,11 @@ fn evaluate_nags() -> DashResult<()> {
                 error!("Unable to find issue to match proposal {}: {:?}",
                        proposal.id,
                        why);
-                return Err(why.into());
+                continue;
             }
         };
+
+        // TODO only update the db if the comment posts, but reconcile if we find out it worked
 
         // update the fcp
         proposal.fcp_closed = true;
@@ -317,7 +330,7 @@ fn evaluate_nags() -> DashResult<()> {
             Ok(_) => (),
             Err(why) => {
                 error!("Unable to update FCP {}: {:?}", proposal.id, why);
-                return Err(why.into());
+                continue;
             }
         }
 
@@ -328,7 +341,7 @@ fn evaluate_nags() -> DashResult<()> {
                 error!("Unable to post FCP-ending comment for proposal {}: {:?}",
                        proposal.id,
                        why);
-                return Err(why);
+                continue;
             }
         };
     }

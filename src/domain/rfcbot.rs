@@ -1,5 +1,4 @@
 use chrono::NaiveDateTime;
-use diesel::ExpressionMethods;
 
 use super::schema::*;
 

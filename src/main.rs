@@ -1,17 +1,19 @@
 // Copyright 2016 Adam Perry. Dual-licensed MIT and Apache 2.0 (see LICENSE files for details).
 
-extern crate afterparty;
 extern crate chrono;
 extern crate clap;
 extern crate crossbeam;
+extern crate crypto;
 #[macro_use]
 extern crate diesel;
 #[macro_use]
 extern crate diesel_codegen;
 extern crate dotenv;
 extern crate env_logger;
+extern crate hex;
 #[macro_use]
 extern crate hyper;
+extern crate hyper_native_tls;
 #[macro_use]
 extern crate iron;
 #[macro_use]

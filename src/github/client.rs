@@ -10,7 +10,9 @@ use chrono::{DateTime, UTC};
 use hyper;
 use hyper::client::{RedirectPolicy, RequestBuilder, Response};
 use hyper::header::Headers;
+use hyper::net::HttpsConnector;
 use hyper::status::StatusCode;
+use hyper_native_tls::NativeTlsClient;
 use serde::Deserialize;
 use serde_json;
 
@@ -45,7 +47,8 @@ pub struct Client {
 
 impl Client {
     pub fn new() -> Self {
-        let mut client = hyper::Client::new();
+        let tls_connector = HttpsConnector::new(NativeTlsClient::new().unwrap());
+        let mut client = hyper::Client::with_connector(tls_connector);
         client.set_redirect_policy(RedirectPolicy::FollowAll);
 
         Client {
@@ -247,17 +250,6 @@ impl Client {
 
         let mut body = String::new();
         self.patch(&url, &payload)?.read_to_string(&mut body)?;
-
-        let comment = serde_json::from_str::<CommentFromJson>(&body)?;
-
-        Ok(comment)
-    }
-
-    pub fn get_comment(&self, repo: &str, comment_num: i32) -> DashResult<CommentFromJson> {
-        let url = format!("{}/repos/{}/issues/comments/{}", BASE_URL, repo, comment_num);
-
-        let mut body = String::new();
-        self.get(&url, None)?.read_to_string(&mut body)?;
 
         let comment = serde_json::from_str::<CommentFromJson>(&body)?;
 

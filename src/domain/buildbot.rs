@@ -1,5 +1,4 @@
 use chrono::NaiveDateTime;
-use diesel::prelude::*;
 use super::schema::*;
 
 #[derive(AsChangeset, Clone, Debug, Deserialize, Eq, Insertable,

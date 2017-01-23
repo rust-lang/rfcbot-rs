@@ -98,16 +98,28 @@ pub fn ingest_since(repo: &str, start: DateTime<UTC>) -> DashResult<()> {
 
     // make sure we have all of the users to ensure referential integrity
     for issue in issues {
-        handle_issue(issue, repo)?;
+        let issue_number = issue.number;
+        match handle_issue(issue, repo) {
+            Ok(()) => (),
+            Err(why) => error!("Error processing issue {}#{}: {:?}", repo, issue_number, why),
+        }
     }
 
     // insert the comments
     for comment in comments {
-        handle_comment(comment, repo)?;
+        let comment_id = comment.id;
+        match handle_comment(comment, repo) {
+            Ok(()) => (),
+            Err(why) => error!("Error processing comment {}#{}: {:?}", repo, comment_id, why),
+        }
     }
 
     for pr in prs {
-        handle_pr(pr, repo)?;
+        let pr_number = pr.number;
+        match handle_pr(pr, repo) {
+            Ok(()) => (),
+            Err(why) => error!("Error processing PR {}#{}: {:?}", repo, pr_number, why),
+        }
     }
 
     Ok(())
