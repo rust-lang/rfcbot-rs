@@ -1,6 +1,7 @@
 use std::thread;
 use std::time::Duration;
 
+use chrono::UTC;
 use crossbeam::scope;
 
 use config::CONFIG;
@@ -32,11 +33,11 @@ pub fn start_scraping() {
                     }
                 }
 
+                match github::most_recent_update() {
+                    Ok(gh_most_recent) => {
+                        let ingest_start = UTC::now().naive_utc();
 
-                for repo in repos {
-
-                    match github::most_recent_update() {
-                        Ok(gh_most_recent) => {
+                        for repo in repos {
                             info!("scraping github activity since {:?}", gh_most_recent);
 
                             match github::ingest_since(&repo, gh_most_recent) {
@@ -44,9 +45,16 @@ pub fn start_scraping() {
                                 Err(why) => error!("unable to scrape github: {:?}", why),
                             }
                         }
-                        Err(why) => {
-                            error!("Unable to determine most recent github update ({:?}).", why)
+
+                        match github::record_successful_update(ingest_start) {
+                            Ok(_) => {},
+                            Err(why) => {
+                                error!("Problem recording successful update: {:?}", why);
+                            }
                         }
+                    }
+                    Err(why) => {
+                        error!("Unable to determine most recent github update ({:?}).", why)
                     }
                 }
 

@@ -42,9 +42,21 @@ pub fn most_recent_update() -> DashResult<DateTime<UTC>> {
     Ok(DateTime::from_utc(updated, UTC))
 }
 
-pub fn ingest_since(repo: &str, start: DateTime<UTC>) -> DashResult<()> {
-    let ingest_start = UTC::now().naive_utc();
+pub fn record_successful_update(ingest_start: NaiveDateTime) -> DashResult<()> {
+    let conn = &*DB_POOL.get()?;
+    // insert a successful sync record
+    use domain::schema::githubsync::dsl::*;
+    let sync_record = GitHubSyncPartial {
+        successful: true,
+        ran_at: ingest_start,
+        message: None,
+    };
 
+    diesel::insert(&sync_record).into(githubsync).execute(conn)?;
+    Ok(())
+}
+
+pub fn ingest_since(repo: &str, start: DateTime<UTC>) -> DashResult<()> {
     info!("fetching all {} issues and comments since {}", repo, start);
     let issues = try!(GH.issues_since(repo, start));
     let mut comments = try!(GH.comments_since(repo, start));
@@ -110,19 +122,6 @@ pub fn ingest_since(repo: &str, start: DateTime<UTC>) -> DashResult<()> {
             Ok(()) => (),
             Err(why) => error!("Error processing PR {}#{}: {:?}", repo, pr_number, why),
         }
-    }
-
-    {
-        let conn = &*DB_POOL.get()?;
-        // insert a successful sync record
-        use domain::schema::githubsync::dsl::*;
-        let sync_record = GitHubSyncPartial {
-            successful: true,
-            ran_at: ingest_start,
-            message: None,
-        };
-
-        diesel::insert(&sync_record).into(githubsync).execute(conn)?;
     }
 
     Ok(())
