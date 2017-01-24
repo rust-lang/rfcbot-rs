@@ -531,7 +531,12 @@ impl<'a> RfcBotCommand<'a> {
                     // at this point our new comment doesn't yet exist in the database, so
                     // we need to insert it
                     let gh_comment = gh_comment.with_repo(&issue.repository)?;
-                    diesel::insert(&gh_comment).into(issuecomment::table).execute(conn)?;
+                    match diesel::insert(&gh_comment).into(issuecomment::table).execute(conn) {
+                        Ok(_) => {},
+                        Err(why) => {
+                            warn!("Had an issue inserting the new record, probably received a webhook for it: {:?}", why);
+                        }
+                    }
 
                     let proposal = NewFcpProposal {
                         fk_issue: issue.id,
