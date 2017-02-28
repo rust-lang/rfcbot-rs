@@ -21,13 +21,12 @@ Vagrant.configure("2") do |config|
                       privileged: false,
                       env: { 'PGVERSION' => '9.5', })
 
-  # TODO(dikaiosune) change this to stable when 1.15 releases
   config.vm.provision("rust",
                       type: "shell",
                       path: "vagrant/rust.sh",
                       keep_color: true,
                       privileged: false,
-                      env: { 'RUST_NIGHTLY_VERSION' => 'nightly-2017-01-16', },)
+                      env: { 'RUST_VERSION' => '1.15.1', },)
 
   config.vm.network :forwarded_port, guest: 4200, host: 4040
   config.vm.network :forwarded_port, guest: 5432, host: 4050

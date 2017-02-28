@@ -75,7 +75,7 @@ Assuming that the VM provisions correctly (a little bit of an "if"), you should 
 
 ### Rust Version
 
-A recent nightly is required until 1.15 releases, at which point rust-dashboard will build on the stable compiler releases.
+Rust 1.15 or later is required.
 
 ### Environment variables
 

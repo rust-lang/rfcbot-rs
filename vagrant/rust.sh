@@ -5,7 +5,7 @@ set -e
 # install rust
 curl https://sh.rustup.rs -sSf | sh -s -- -y
 source $HOME/.cargo/env
-rustup default $RUST_NIGHTLY_VERSION
+rustup default $RUST_VERSION
 rustup update
 
 # for DB migrations
