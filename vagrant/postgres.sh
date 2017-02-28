@@ -11,6 +11,6 @@ createdb -E UTF8 -l en_US.UTF8 -T template0 -O vagrant dashboard
 sudo -u postgres echo "ALTER ROLE vagrant WITH PASSWORD 'hunter2'" | psql -d dashboard
 psql -d dashboard -f /vagrant/bootstrap.sql
 
-sudo cp /vagrant/vagrant/pg_hba.conf /etc/postgresql/9.5/main/
+sudo cp /vagrant/vagrant/pg_hba.conf /etc/postgresql/$PGVERSION/main/
 echo "listen_addresses = '*'" | sudo tee --append /etc/postgresql/$PGVERSION/main/postgresql.conf
 sudo systemctl restart postgresql
