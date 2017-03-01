@@ -264,15 +264,13 @@ impl Client {
         self.set_headers(self.client.post(url).body(payload)).send()
     }
 
-    fn get<'a>(&self,
-               url: &'a str,
-               params: Option<&ParameterMap>)
-               -> Result<Response, hyper::error::Error> {
+    fn get(&self, url: &str, params: Option<&ParameterMap>)
+           -> Result<Response, hyper::error::Error> {
 
         let qp_string = match params {
             Some(p) => {
                 let mut qp = String::from("?");
-                for (k, v) in p.iter() {
+                for (k, v) in p {
                     if qp.len() > 1 {
                         qp.push('&');
                     }
