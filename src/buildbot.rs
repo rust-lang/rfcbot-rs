@@ -33,7 +33,7 @@ impl Into<Build> for BuildFromJson {
         let concat_msg = {
             let mut buf = String::new();
             for s in self.text {
-                if buf.len() > 0 {
+                if !buf.is_empty() {
                     buf = buf + " ";
                 }
                 buf = buf + &s;

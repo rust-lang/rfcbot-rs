@@ -50,8 +50,7 @@ fn inner_handler(req: &mut iron::Request) -> DashResult<()> {
         let mut authenticated = false;
 
         for secret in &CONFIG.github_webhook_secrets {
-
-            if authenticate(secret, &body, &signature) {
+            if authenticate(secret, &body, signature) {
                 // once we know it's from github, we'll parse it
 
                 authenticated = true;
@@ -86,10 +85,8 @@ fn authenticate(secret: &str, payload: &str, signature: &str) -> bool {
     let sans_prefix = signature[5..].as_bytes();
     match Vec::from_hex(sans_prefix) {
         Ok(sigbytes) => {
-            let sbytes = secret.as_bytes();
-            let mut mac = Hmac::new(Sha1::new(), &sbytes);
-            let pbytes = payload.as_bytes();
-            mac.input(&pbytes);
+            let mut mac = Hmac::new(Sha1::new(), secret.as_bytes());
+            mac.input(payload.as_bytes());
             // constant time comparison
             mac.result() == MacResult::new(&sigbytes)
         }

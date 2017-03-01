@@ -90,7 +90,7 @@ fn update_proposal_review_status(proposal_id: i32) -> DashResult<()> {
         .filter_map(|line| {
             if line.starts_with("* [") {
                 let l = line.trim_left_matches("* [");
-                let reviewed = l.starts_with("x");
+                let reviewed = l.starts_with('x');
                 let remaining = l.trim_left_matches("x] @").trim_left_matches(" ] @");
 
                 if let Some(username) = remaining.split_whitespace().next() {
@@ -561,7 +561,7 @@ impl<'a> RfcBotCommand<'a> {
                             NewFcpReviewRequest {
                                 fk_proposal: proposal.id,
                                 fk_reviewer: member.id,
-                                reviewed: if member.id == author.id { true } else { false },
+                                reviewed: member.id == author.id,
                             }
                         })
                         .collect::<Vec<_>>();
@@ -712,8 +712,7 @@ impl<'a> RfcBotCommand<'a> {
 
         // get the tokens for the command line (starts with a bot mention)
         let command = command.lines()
-            .filter(|&l| l.starts_with(RFC_BOT_MENTION))
-            .next()
+            .find(|&l| l.starts_with(RFC_BOT_MENTION))
             .ok_or(DashError::Misc(None))?
             .trim_left_matches(RFC_BOT_MENTION)
             .trim_left_matches(':')
@@ -762,9 +761,9 @@ impl<'a> RfcBotCommand<'a> {
             "f?" => {
 
                 let user = tokens.next()
-                    .ok_or(DashError::Misc(Some("no user specified".to_string())))?;
+                    .ok_or_else(|| DashError::Misc(Some("no user specified".to_string())))?;
 
-                if user.len() == 0 {
+                if user.is_empty() {
                     return Err(DashError::Misc(Some("no user specified".to_string())));
                 }
 
@@ -800,15 +799,15 @@ impl<'a> RfcBotComment<'a> {
         let body = Self::format(issue, &comment_type);
 
         RfcBotComment {
-            issue: &issue,
+            issue: issue,
             body: body,
         }
     }
 
     fn format(issue: &Issue, comment_type: &CommentType) -> String {
 
-        match comment_type {
-            &CommentType::FcpProposed(initiator, disposition, reviewers, concerns) => {
+        match *comment_type {
+            CommentType::FcpProposed(initiator, disposition, reviewers, concerns) => {
                 let mut msg = String::from("Team member @");
                 msg.push_str(&initiator.login);
                 msg.push_str(" has proposed to ");
@@ -863,11 +862,11 @@ impl<'a> RfcBotComment<'a> {
                 msg
             }
 
-            &CommentType::FcpProposalCancelled(initiator) => {
+            CommentType::FcpProposalCancelled(initiator) => {
                 format!("@{} proposal cancelled.", initiator.login)
             }
 
-            &CommentType::FcpAllReviewedNoConcerns { author, status_comment_id, added_label } => {
+            CommentType::FcpAllReviewedNoConcerns { author, status_comment_id, added_label } => {
                 let mut msg = String::new();
 
                 msg.push_str(":bell: **This is now entering its final comment period**, ");
@@ -885,7 +884,7 @@ impl<'a> RfcBotComment<'a> {
                 msg
             }
 
-            &CommentType::FcpWeekPassed => "The final comment period is now complete.".to_string(),
+            CommentType::FcpWeekPassed => "The final comment period is now complete.".to_string(),
         }
     }
 
