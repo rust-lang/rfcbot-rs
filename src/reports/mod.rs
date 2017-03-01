@@ -503,7 +503,7 @@ pub fn buildbot_build_times(since: NaiveDateTime,
     let mut results = BTreeMap::new();
     for ((builder, date), build_minutes) in triples {
         results.entry(builder)
-            .or_insert(Vec::new())
+            .or_insert_with(Vec::new)
             .push((date.and_hms(12, 0, 0).timestamp(), build_minutes));
     }
 
@@ -533,7 +533,7 @@ pub fn buildbot_failures_by_day(since: NaiveDateTime,
     let mut results = BTreeMap::new();
     for ((builder, date), build_minutes) in triples {
         results.entry(builder)
-            .or_insert(Vec::new())
+            .or_insert_with(Vec::new)
             .push((date.and_hms(12, 0, 0).timestamp(), build_minutes));
     }
 
@@ -580,7 +580,7 @@ pub fn nightly_releases(since: NaiveDateTime,
 
     let mut releases_and_builds = Vec::with_capacity(releases.len());
 
-    for r in releases.into_iter() {
+    for r in releases {
         let builds = try!(build.select((number,
                      builder_name,
                      successful,
@@ -596,7 +596,7 @@ pub fn nightly_releases(since: NaiveDateTime,
             .order(builder_name.asc())
             .load::<Build>(&*conn));
 
-        if builds.len() > 0 {
+        if !builds.is_empty() {
             releases_and_builds.push((r, Some(builds)));
         } else {
             releases_and_builds.push((r, None));

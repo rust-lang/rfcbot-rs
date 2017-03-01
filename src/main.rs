@@ -67,7 +67,7 @@ fn main() {
                     Local::now().format("%Y-%m-%d %H:%M:%S"),
                     rec.args())
         })
-        .parse(&std::env::var("RUST_LOG").unwrap_or("info".to_string()))
+        .parse(&std::env::var("RUST_LOG").unwrap_or_else(|_| "info".to_string()))
         .init()
         .unwrap();
 
@@ -89,7 +89,7 @@ fn main() {
     } else if let Some(args) = args.subcommand_matches("bootstrap") {
         // OK to unwrap, this has already been validated by clap
         let start = make_date_time(args.value_of("since").unwrap())
-            .unwrap_or(UTC.ymd(2015, 5, 15).and_hms(0, 0, 0));
+            .unwrap_or_else(|_| UTC.ymd(2015, 5, 15).and_hms(0, 0, 0));
 
         let source = args.value_of("source").unwrap();
 

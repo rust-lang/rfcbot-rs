@@ -36,8 +36,8 @@ pub struct Config {
 
 impl Config {
     pub fn check(&self) -> bool {
-        self.db_url.len() > 0 && self.github_access_token.len() > 0 &&
-        self.github_user_agent.len() > 0
+        !self.db_url.is_empty() && !self.github_access_token.is_empty() &&
+            !self.github_user_agent.is_empty()
     }
 }
 
@@ -68,7 +68,7 @@ pub fn init() -> Result<Config, Vec<&'static str>> {
                     BUILDBOT_INTERVAL,
                     POST_COMMENTS];
 
-    for var in keys.into_iter() {
+    for var in keys {
         vars.insert(var, env::var(var));
     }
 

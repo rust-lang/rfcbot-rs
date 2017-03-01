@@ -15,10 +15,9 @@ pub fn list_fcps(_: &mut Request) -> IronResult<Response> {
     let nag_report = reports::nag::all_fcps()?;
 
     Ok(Response::with((status::Ok,
-                       ser::to_string(&nag_report).map_err(|e| {
-                               let e: DashError = e.into();
-                               e
-                           })?)))
+                       ser::to_string(&nag_report).map_err(|e| -> DashError {
+                           e.into()
+                       })?)))
 }
 
 pub fn member_nags(req: &mut Request) -> IronResult<Response> {
@@ -86,14 +85,14 @@ fn parse_dates_from_query(req: &mut Request) -> IronResult<(NaiveDate, NaiveDate
 
             if start.len() == 1 && end.len() == 1 {
 
-                let (start, end) = (start.get(0).unwrap(), end.get(0).unwrap());
+                let (start, end) = (&start[0], &end[0]);
 
-                let start = match NaiveDate::parse_from_str(&start, DATE_FORMAT) {
+                let start = match NaiveDate::parse_from_str(start, DATE_FORMAT) {
                     Ok(s) => s,
                     Err(why) => return Err(IronError::new(why, errmsg)),
                 };
 
-                let end = match NaiveDate::parse_from_str(&end, DATE_FORMAT) {
+                let end = match NaiveDate::parse_from_str(end, DATE_FORMAT) {
                     Ok(s) => s,
                     Err(why) => return Err(IronError::new(why, errmsg)),
                 };
@@ -123,8 +122,8 @@ impl fmt::Display for DateParseError {
 
 impl Error for DateParseError {
     fn description(&self) -> &str {
-        match self {
-            &DateParseError::WrongNumber => "Incorrect number of date params",
+        match *self {
+            DateParseError::WrongNumber => "Incorrect number of date params",
         }
     }
 }

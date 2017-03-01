@@ -177,9 +177,9 @@ impl Client {
 
     fn next_page(h: &Headers) -> Option<String> {
         if let Some(lh) = h.get::<Link>() {
-            for link in (**lh).split(",").map(|s| s.trim()) {
+            for link in (**lh).split(',').map(|s| s.trim()) {
 
-                let tokens = link.split(";").map(|s| s.trim()).collect::<Vec<_>>();
+                let tokens = link.split(';').map(|s| s.trim()).collect::<Vec<_>>();
 
                 if tokens.len() != 2 {
                     continue;
@@ -256,11 +256,11 @@ impl Client {
         Ok(comment)
     }
 
-    fn patch<'a>(&self, url: &str, payload: &str) -> Result<Response, hyper::error::Error> {
+    fn patch(&self, url: &str, payload: &str) -> Result<Response, hyper::error::Error> {
         self.set_headers(self.client.patch(url).body(payload)).send()
     }
 
-    fn post<'a>(&self, url: &str, payload: &str) -> Result<Response, hyper::error::Error> {
+    fn post(&self, url: &str, payload: &str) -> Result<Response, hyper::error::Error> {
         self.set_headers(self.client.post(url).body(payload)).send()
     }
 
