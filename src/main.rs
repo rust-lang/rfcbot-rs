@@ -96,9 +96,8 @@ fn main() {
         match source {
             "github" => {
                 info!("Bootstrapping GitHub data since {}", start);
-                info!("{:#?}",
-                      github::ingest_since("rust-lang/rust", start)
-                          .map(|()| "Ingestion succesful."))
+                scraper::scrape_github(start);
+                info!("Ingestion complete");
             }
 
             "releases" => {
