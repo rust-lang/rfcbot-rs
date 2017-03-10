@@ -1,4 +1,4 @@
-use std::collections::{BTreeMap, HashMap};
+use std::collections::BTreeMap;
 
 use chrono::{NaiveDate, NaiveDateTime, UTC};
 use chrono::duration::Duration;
@@ -7,17 +7,14 @@ use diesel::expression::AsExpression;
 use diesel::prelude::*;
 use diesel::select;
 use diesel::types::{Array, BigInt, Bool, Date, Double, Integer, Nullable, Text, Timestamp, VarChar};
-use regex::Regex;
 
 use DB_POOL;
 use domain::buildbot::Build;
 use domain::github::Issue;
 use domain::releases::Release;
 use error::DashResult;
-use reports::stopwords::STOPWORDS;
 
 pub mod nag;
-mod stopwords;
 
 pub type EpochTimestamp = i64;
 
@@ -78,7 +75,6 @@ pub struct NightlyStreakSummary {
 #[derive(Clone, Debug, Serialize)]
 pub struct HotIssueSummary {
     issues: Vec<Issue>,
-    word_counts: Vec<(String, u32)>,
 }
 
 pub fn issue_summary(since: NaiveDate, until: NaiveDate) -> DashResult<IssueSummary> {
@@ -158,58 +154,7 @@ pub fn release_summary(since: NaiveDate, until: NaiveDate) -> DashResult<Release
 }
 
 pub fn hot_issues_summary() -> DashResult<HotIssueSummary> {
-    let issues = try!(hottest_issues_last_month());
-    let words = try!(issues_word_cloud());
-
-    Ok(HotIssueSummary {
-        issues: issues,
-        word_counts: words,
-    })
-}
-
-pub fn issues_word_cloud() -> DashResult<Vec<(String, u32)>> {
-    let mut buf = String::new();
-    let conn = try!(DB_POOL.get());
-
-    let recent_issues = try!(select(sql::<(VarChar, VarChar)>("
-    DISTINCT i.title, i.body
-    FROM issue i, issuecomment ic, githubuser u
-    WHERE
-      u.login != 'bors' AND
-      ic.fk_user = u.id AND
-      ic.fk_issue = i.id AND
-      (ic.created_at > NOW() - '2 weeks'::interval OR
-       i.created_at > NOW() - '2 weeks'::interval)"))
-        .load::<(String, String)>(&*conn));
-
-    for (title, body) in recent_issues {
-        buf.push_str(&title);
-        buf.push_str(&body);
-    }
-
-    // all issue/comment bodies are now in the buffer
-
-    let mut counts = HashMap::new();
-
-    // replace all non alphabetic characters, split into words
-    let nonalpha = Regex::new(r"[^A-Za-z ]").expect("Invalid regex literal. Adam is stupid.");
-    let no_alpha = nonalpha.replace_all(&buf, " ");
-    let words = no_alpha.split(' ')
-        .map(|w| w.trim())
-        .filter(|w| w.len() > 1 && !STOPWORDS.contains(w))
-        .map(|w| w.to_lowercase());
-
-    for w in words {
-        let count = counts.entry(w).or_insert(0);
-        *count += 1;
-    }
-
-    let mut counts = counts.into_iter().collect::<Vec<_>>();
-
-    counts.sort_by(|&(_, a), &(_, b)| b.cmp(&a));
-    counts.truncate(300);
-
-    Ok(counts)
+    Ok(HotIssueSummary {issues: hottest_issues_last_month()?})
 }
 
 pub fn hottest_issues_last_month() -> DashResult<Vec<Issue>> {
