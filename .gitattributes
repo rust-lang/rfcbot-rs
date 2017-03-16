@@ -1,1 +1,1 @@
-bootstrap.sql linguist-vendored
+bootstrap.sql filter=lfs diff=lfs merge=lfs -text
