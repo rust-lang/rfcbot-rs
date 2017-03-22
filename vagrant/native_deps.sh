@@ -21,5 +21,6 @@ apt-get install -y \
     nodejs \
     npm \
     pkg-config \
-    postgresql
+    postgresql \
+    yarn
 ln -s /usr/bin/nodejs /usr/bin/node
