@@ -14,5 +14,12 @@ chown -R vagrant:vagrant /rust-dashboard/
 update-locale LANGE=en_US.UTF-8
 locale-gen en_US.UTF-8
 apt-get update
-apt-get install -y postgresql libpq-dev npm nodejs curl git pkg-config
+apt-get install -y \
+    curl \
+    git \
+    libpq-dev \
+    nodejs \
+    npm \
+    pkg-config \
+    postgresql
 ln -s /usr/bin/nodejs /usr/bin/node
