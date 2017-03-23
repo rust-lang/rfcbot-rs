@@ -16,6 +16,6 @@ chown -R vagrant:vagrant /vagrant/front/node_modules
 # install local deps
 su vagrant <<'EOF'
 cd /vagrant/front
-npm install
+yarn install
 bower install
 EOF
