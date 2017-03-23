@@ -139,6 +139,11 @@ pub fn update_issue(repo: &str, number: i32) -> DashResult<()> {
     Ok(())
 }
 
+pub fn update_pr(repo: &str, number: i32) -> DashResult<()> {
+    let pr = GH.fetch_pr(repo, number)?;
+    handle_pr(pr, repo)
+}
+
 pub fn handle_pr(pr: PullRequestFromJson, repo: &str) -> DashResult<()> {
     use domain::schema::pullrequest::dsl::*;
 

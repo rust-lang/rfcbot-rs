@@ -178,6 +178,15 @@ impl Client {
         self.get_models(&url, &params)
     }
 
+    pub fn fetch_pr(&self, repo: &str, number: i32) -> DashResult<PullRequestFromJson> {
+        let url = format!("{}/repos/{}/pulls/{}", BASE_URL, repo, number);
+        let mut buf = String::new();
+
+        self.get(&url, None)?
+            .read_to_string(&mut buf)?;
+        Ok(serde_json::from_str(&buf)?)
+    }
+
     pub fn fetch_pull_request(&self, pr_info: &PullRequestUrls) -> DashResult<PullRequestFromJson> {
         let url = pr_info.get("url");
 
