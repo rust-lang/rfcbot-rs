@@ -35,6 +35,7 @@ mod buildbot;
 mod config;
 mod domain;
 mod error;
+mod fix;
 mod github;
 mod releases;
 mod reports;
@@ -76,15 +77,13 @@ fn main() {
 
 
     if let Some(_) = args.subcommand_matches("scrape") {
-
         // this will block on joining never-ending threads
         // need to come up with a better way to do this...
         scraper::start_scraping();
-
     } else if let Some(_) = args.subcommand_matches("serve") {
-
         server::serve();
-
+    } else if let Some(_) = args.subcommand_matches("fix") {
+        fix::fix();
     } else if let Some(args) = args.subcommand_matches("bootstrap") {
         // OK to unwrap, this has already been validated by clap
         let start = make_date_time(args.value_of("since").unwrap())
@@ -125,7 +124,7 @@ fn make_date_time(date_str: &str) -> Result<DateTime<UTC>, chrono::ParseError> {
 fn init_cli<'a>() -> ArgMatches<'a> {
     let scrape = SubCommand::with_name("scrape").about("scrapes any updated data");
     let serve = SubCommand::with_name("serve").about("serve the dashboard JSON API");
-
+    let fix = SubCommand::with_name("fix").about("fix corrupted data");
     let bootstrap = SubCommand::with_name("bootstrap")
         .about("bootstraps the database")
         .arg(Arg::with_name("source")
@@ -152,6 +151,7 @@ fn init_cli<'a>() -> ArgMatches<'a> {
         .author(env!("CARGO_PKG_AUTHORS"))
         .about(env!("CARGO_PKG_DESCRIPTION"))
         .subcommand(bootstrap)
+        .subcommand(fix)
         .subcommand(scrape)
         .subcommand(serve)
         .get_matches()

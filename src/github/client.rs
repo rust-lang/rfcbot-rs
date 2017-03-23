@@ -161,6 +161,23 @@ impl Client {
         Ok(models)
     }
 
+    pub fn fetch_issue(&self, repo: &str, number: i32) -> DashResult<IssueFromJson> {
+        let url = format!("{}/repos/{}/issues/{}", BASE_URL, repo, number);
+        let mut buf = String::new();
+
+        self.get(&url, None)?
+            .read_to_string(&mut buf)?;
+
+        Ok(serde_json::from_str(&buf)?)
+    }
+
+    pub fn fetch_comments(&self, repo: &str, number: i32) -> DashResult<Vec<CommentFromJson>> {
+        let url = format!("{}/repos/{}/issues/{}/comments", BASE_URL, repo, number);
+        let params = ParameterMap::new();
+
+        self.get_models(&url, &params)
+    }
+
     pub fn fetch_pull_request(&self, pr_info: &PullRequestUrls) -> DashResult<PullRequestFromJson> {
         let url = pr_info.get("url");
 
