@@ -62,8 +62,7 @@ impl Client {
 
     pub fn org_repos(&self, org: &str) -> DashResult<Vec<String>> {
         let url = format!("{}/orgs/{}/repos", BASE_URL, org);
-
-        let vals: Vec<serde_json::Value> = try!(self.get_models(&url, &ParameterMap::new()));
+        let vals: Vec<serde_json::Value> = try!(self.get_models(&url, None));
 
         let mut repos = Vec::new();
         for v in vals {
@@ -100,8 +99,7 @@ impl Client {
         params.insert("per_page", format!("{}", PER_PAGE));
         params.insert("direction", "asc".to_string());
 
-        // make the request
-        self.get_models(&url, &params)
+        self.get_models(&url, Some(&params))
     }
 
     pub fn comments_since(&self,
@@ -116,14 +114,14 @@ impl Client {
         params.insert("since", format!("{:?}", start));
         params.insert("per_page", format!("{}", PER_PAGE));
 
-        self.get_models(&url, &params)
+        self.get_models(&url, Some(&params))
     }
 
     fn get_models<M: Deserialize>(&self,
                                   start_url: &str,
-                                  params: &ParameterMap)
+                                  params: Option<&ParameterMap>)
                                   -> DashResult<Vec<M>> {
-        let mut res = try!(self.get(start_url, Some(&params)));
+        let mut res = try!(self.get(start_url, params));
 
         // let's try deserializing!
         let mut buf = String::new();
@@ -173,9 +171,7 @@ impl Client {
 
     pub fn fetch_comments(&self, repo: &str, number: i32) -> DashResult<Vec<CommentFromJson>> {
         let url = format!("{}/repos/{}/issues/{}/comments", BASE_URL, repo, number);
-        let params = ParameterMap::new();
-
-        self.get_models(&url, &params)
+        self.get_models(&url, None)
     }
 
     pub fn fetch_pr(&self, repo: &str, number: i32) -> DashResult<PullRequestFromJson> {
