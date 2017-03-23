@@ -1,0 +1,54 @@
+dist: trusty
+notifications:
+  email: false
+
+language: rust
+rust:
+  - 1.15.1
+  - stable
+  - beta
+  - nightly
+
+matrix:
+  allow_failures:
+    - nightly
+cache:
+  cargo: true
+  directories:
+    - front/node_modules
+    - front/bower_components
+
+addons:
+  postgresql: "9.5"
+  apt:
+    packages:
+      - curl
+      - libpq-dev
+      - phantomjs
+      - pkg-config
+
+before_install:
+  - nvm install 4
+  - npm config set spin false
+  - npm install -g bower phantomjs-prebuilt yarn
+  - bower --version
+  - phantomjs --version
+install:
+  - cd front/
+  - yarn install
+  - bower install
+  - cd ../
+
+  - source ./vagrant/vagrant_env.sh
+  - sudo -u postgres createuser -s --createdb vagrant
+  - createdb -E UTF8 -l en_US.UTF8 -T template0 -O vagrant dashboard
+  - sudo -u postgres echo "ALTER ROLE vagrant WITH PASSWORD 'hunter2'" | psql -d dashboard
+  - psql -d dashboard -f bootstrap.sql
+  - cp ./vagrant/pg_hba.conf /etc/postgresql/9.5/main
+  - echo "listen_addresses = '*'" | tee --append /etc/postgresql/9.5/main/postgresql.conf
+  - systemctl restart postgresql
+
+
+script:
+  - cargo build --verbose
+  # - cd front && yarn test
