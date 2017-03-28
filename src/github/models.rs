@@ -30,10 +30,7 @@ impl MilestoneFromJson {
         Milestone {
             id: self.id,
             number: self.number,
-            open: match &self.state as &str {
-                "open" => true,
-                _ => false,
-            },
+            open: self.state == "open",
             title: self.title.replace(0x00 as char, ""),
             description: self.description.map(|s| s.replace(0x00 as char, "")),
             fk_creator: self.creator.id,
@@ -77,20 +74,12 @@ pub struct IssueFromJson {
 
 impl IssueFromJson {
     pub fn with_repo(self, repo: &str) -> (IssuePartial, Option<Milestone>) {
-        let milestone_id = match self.milestone {
-            Some(ref m) => Some(m.id),
-            None => None,
-        };
-
         let issue = IssuePartial {
             number: self.number,
-            fk_milestone: milestone_id,
+            fk_milestone: self.milestone.as_ref().map(|m| m.id),
             fk_user: self.user.id,
             fk_assignee: self.assignee.map(|a| a.id),
-            open: match &*self.state {
-                "open" => true,
-                _ => false,
-            },
+            open: self.state == "open",
             is_pull_request: self.pull_request.is_some(),
             title: self.title.replace(0x00 as char, ""),
             body: self.body.unwrap_or_else(String::new).replace(0x00 as char, ""),
