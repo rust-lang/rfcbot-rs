@@ -66,23 +66,15 @@ impl Client {
 
         let mut repos = Vec::new();
         for v in vals {
-
-            let v = match v.as_object() {
-                Some(v) => v,
-                None => return Err(DashError::Misc(None)),
-            };
-
-            let repo = match v.get("name") {
-                Some(n) => {
-                    match n.as_str() {
-                        Some(s) => format!("{}/{}", org, s),
-                        None => return Err(DashError::Misc(None)),
+            if let Some(v) = v.as_object() {
+                if let Some(n) = v.get("name") {
+                    if let Some(s) = n.as_str() {
+                        repos.push(format!("{}/{}", org, s));
+                        continue;
                     }
                 }
-                None => return Err(DashError::Misc(None)),
-            };
-
-            repos.push(repo);
+            }
+            return Err(DashError::Misc(None));
 
         }
         Ok(repos)
