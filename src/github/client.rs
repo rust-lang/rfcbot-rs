@@ -124,17 +124,11 @@ impl Client {
 
         let mut res = try!(self.get(start_url, params));
         let mut models = self.deserialize::<Vec<M>>(&mut res)?;
-        let mut next_url = Self::next_page(&res.headers);
-        while next_url.is_some() {
-            // TODO figure out a better rate limit
+        while let Some(url) = Self::next_page(&res.headers) {
             sleep(Duration::from_millis(DELAY));
-            let url = next_url.unwrap();
-            let mut next_res = try!(self.get(&url, None));
-
-            models.extend(self.deserialize::<Vec<M>>(&mut next_res)?);
-            next_url = Self::next_page(&next_res.headers);
+            res = self.get(&url, None)?;
+            models.extend(self.deserialize::<Vec<M>>(&mut res)?);
         }
-
         Ok(models)
     }
 
