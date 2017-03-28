@@ -121,20 +121,9 @@ impl Client {
                                   start_url: &str,
                                   params: Option<&ParameterMap>)
                                   -> DashResult<Vec<M>> {
+
         let mut res = try!(self.get(start_url, params));
-
-        // let's try deserializing!
-        let mut buf = String::new();
-        try!(res.read_to_string(&mut buf));
-
-        let mut models = match serde_json::from_str::<Vec<M>>(&buf) {
-            Ok(m) => m,
-            Err(why) => {
-                error!("Unable to parse from JSON ({:?}): {}", &why, buf);
-                return Err(why.into());
-            }
-        };
-
+        let mut models = self.deserialize::<Vec<M>>(&mut res)?;
         let mut next_url = Self::next_page(&res.headers);
         while next_url.is_some() {
             // TODO figure out a better rate limit
@@ -142,17 +131,7 @@ impl Client {
             let url = next_url.unwrap();
             let mut next_res = try!(self.get(&url, None));
 
-            buf.clear();
-            try!(next_res.read_to_string(&mut buf));
-
-            models.extend(match serde_json::from_str::<Vec<M>>(&buf) {
-                Ok(m) => m,
-                Err(why) => {
-                    error!("Unable to parse from JSON ({:?}): {}", &why, buf);
-                    return Err(why.into());
-                }
-            });
-
+            models.extend(self.deserialize::<Vec<M>>(&mut next_res)?);
             next_url = Self::next_page(&next_res.headers);
         }
 
@@ -161,12 +140,7 @@ impl Client {
 
     pub fn fetch_issue(&self, repo: &str, number: i32) -> DashResult<IssueFromJson> {
         let url = format!("{}/repos/{}/issues/{}", BASE_URL, repo, number);
-        let mut buf = String::new();
-
-        self.get(&url, None)?
-            .read_to_string(&mut buf)?;
-
-        Ok(serde_json::from_str(&buf)?)
+        self.deserialize(&mut self.get(&url, None)?)
     }
 
     pub fn fetch_comments(&self, repo: &str, number: i32) -> DashResult<Vec<CommentFromJson>> {
@@ -176,11 +150,7 @@ impl Client {
 
     pub fn fetch_pr(&self, repo: &str, number: i32) -> DashResult<PullRequestFromJson> {
         let url = format!("{}/repos/{}/pulls/{}", BASE_URL, repo, number);
-        let mut buf = String::new();
-
-        self.get(&url, None)?
-            .read_to_string(&mut buf)?;
-        Ok(serde_json::from_str(&buf)?)
+        self.deserialize(&mut self.get(&url, None)?)
     }
 
     pub fn fetch_pull_request(&self, pr_info: &PullRequestUrls) -> DashResult<PullRequestFromJson> {
@@ -188,10 +158,7 @@ impl Client {
 
         if let Some(url) = url {
             let mut res = try!(self.get(url, None));
-            let mut buf = String::new();
-            try!(res.read_to_string(&mut buf));
-
-            Ok(try!(serde_json::from_str::<PullRequestFromJson>(&buf)))
+            self.deserialize(&mut res)
         } else {
             Err(DashError::Misc(None))
         }
@@ -247,13 +214,7 @@ impl Client {
         let payload = serde_json::to_string(&obj)?;
 
         // FIXME propagate an error if it's a 404 or other error
-
-        let mut body = String::new();
-        self.post(&url, &payload)?.read_to_string(&mut body)?;
-
-        let comment = serde_json::from_str::<CommentFromJson>(&body)?;
-
-        Ok(comment)
+        self.deserialize(&mut self.post(&url, &payload)?)
     }
 
     pub fn edit_comment(&self,
@@ -269,13 +230,7 @@ impl Client {
         let payload = serde_json::to_string(&obj)?;
 
         // FIXME propagate an error if it's a 404 or other error
-
-        let mut body = String::new();
-        self.patch(&url, &payload)?.read_to_string(&mut body)?;
-
-        let comment = serde_json::from_str::<CommentFromJson>(&body)?;
-
-        Ok(comment)
+        self.deserialize(&mut self.patch(&url, &payload)?)
     }
 
     fn patch(&self, url: &str, payload: &str) -> Result<Response, hyper::error::Error> {
@@ -309,6 +264,19 @@ impl Client {
 
         self.set_headers(self.client.get(&url))
             .send()
+    }
+
+    fn deserialize<M: Deserialize>(&self, res: &mut Response) -> DashResult<M> {
+        let mut buf = String::new();
+        res.read_to_string(&mut buf)?;
+
+        match serde_json::from_str(&buf) {
+            Ok(m) => Ok(m),
+            Err(why) => {
+                error!("Unable to parse from JSON ({:?}): {}", why, buf);
+                Err(why.into())
+            }
+        }
     }
 
     fn set_headers<'a>(&self, req: RequestBuilder<'a>) -> RequestBuilder<'a> {
