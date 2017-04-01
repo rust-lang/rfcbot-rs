@@ -38,17 +38,15 @@ install:
   - yarn install
   - bower install
   - cd ../
+  - cargo install --force diesel_cli
 
+before_script:
   - source ./vagrant/vagrant_env.sh
-  - sudo -u postgres createuser -s --createdb vagrant
-  - createdb -E UTF8 -l en_US.UTF8 -T template0 -O vagrant dashboard
-  - sudo -u postgres echo "ALTER ROLE vagrant WITH PASSWORD 'hunter2'" | psql -d dashboard
-  - psql -d dashboard -f bootstrap.sql
-  - cp ./vagrant/pg_hba.conf /etc/postgresql/9.5/main
-  - echo "listen_addresses = '*'" | tee --append /etc/postgresql/9.5/main/postgresql.conf
-  - systemctl restart postgresql
+  - export DATABASE_URL='postgres://localhost/dashboard'
+  - unset CARGO_TARGET_DIR
 
+  - diesel setup
+  - diesel migration run
 
 script:
   - cargo build --verbose
-  # - cd front && yarn test
