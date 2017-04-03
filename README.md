@@ -1,5 +1,7 @@
 # rust-dashboard
 
+[![Travis](https://img.shields.io/travis/rust-lang/rust.svg)](https://travis-ci.org/dikaiosune/rust-dashboard)
+
 Deployed to http://rusty-dash.com right now.
 
 ## ToC
