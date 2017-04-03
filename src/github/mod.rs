@@ -244,14 +244,46 @@ pub fn handle_issue(issue: IssueFromJson, repo: &str) -> DashResult<()> {
 }
 
 pub fn handle_user(user: &GitHubUser) -> DashResult<()> {
+    use diesel::pg::upsert::*;
+
     let conn = DB_POOL.get()?;
-    let exists = githubuser::table.find(user.id).get_result::<GitHubUser>(&*conn).is_ok();
-
-    if exists {
-        diesel::update(githubuser::table.find(user.id)).set(user).execute(&*conn)?;
-    } else {
-        diesel::insert(user).into(githubuser::table).execute(&*conn)?;
-    }
-
+    diesel::insert(&user.on_conflict(githubuser::id, do_update().set(user)))
+        .into(githubuser::table).execute(&*conn)?;
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use dotenv;
+
+    #[test]
+    fn test_handle_user() {
+        dotenv::dotenv().ok();
+        let conn = DB_POOL.get().expect("Failed to get database connection");
+
+        let user = GitHubUser {id: -1, login: "A".to_string()};
+        let query = githubuser::table.filter(githubuser::id.eq(user.id));
+
+        // User should not exist
+        assert_eq!(query.load::<GitHubUser>(&*conn), Ok(vec![]));
+
+        // User has been inserted
+        handle_user(&user).expect("Unable to handle user!");
+        assert_eq!(query.load::<GitHubUser>(&*conn), Ok(vec![user.clone()]));
+
+        // User has been inserted, but nothing changed
+        handle_user(&user).expect("Unable to handle user!");
+        assert_eq!(query.load::<GitHubUser>(&*conn), Ok(vec![user.clone()]));
+
+        // User has been inserted, but login has changed
+        let new_user = GitHubUser {id: user.id, login: user.login + "_new"};
+        handle_user(&new_user).expect("Unable to handle user!");
+        assert_eq!(query.load::<GitHubUser>(&*conn), Ok(vec![new_user.clone()]));
+
+        // Clean up after ourselves
+        diesel::delete(githubuser::table.filter(githubuser::id.eq(user.id)))
+            .execute(&*conn)
+            .expect("Failed to clear database");
+    }
 }
