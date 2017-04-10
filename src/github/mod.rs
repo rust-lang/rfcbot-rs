@@ -8,6 +8,7 @@ pub mod webhooks;
 
 use chrono::{DateTime, NaiveDate, NaiveDateTime, NaiveTime, UTC};
 use diesel::prelude::*;
+use diesel::pg::PgConnection;
 use diesel;
 
 use DB_POOL;
@@ -150,7 +151,7 @@ pub fn handle_pr(pr: PullRequestFromJson, repo: &str) -> DashResult<()> {
     let conn = DB_POOL.get()?;
 
     if let Some(ref assignee) = pr.assignee {
-        handle_user(assignee)?;
+        handle_user(&*conn, assignee)?;
     }
 
     let pr: PullRequest = pr.with_repo(repo);
@@ -171,9 +172,9 @@ pub fn handle_pr(pr: PullRequestFromJson, repo: &str) -> DashResult<()> {
 }
 
 pub fn handle_comment(comment: CommentFromJson, repo: &str) -> DashResult<()> {
-    handle_user(&comment.user)?;
-
     let conn = DB_POOL.get()?;
+
+    handle_user(&*conn, &comment.user)?;
 
     let comment: IssueComment = comment.with_repo(repo)?;
 
@@ -200,12 +201,12 @@ pub fn handle_issue(issue: IssueFromJson, repo: &str) -> DashResult<()> {
     let conn = DB_POOL.get()?;
 
     // user handling
-    handle_user(&issue.user)?;
+    handle_user(&*conn, &issue.user)?;
     if let Some(ref assignee) = issue.assignee {
-        handle_user(assignee)?;
+        handle_user(&*conn, assignee)?;
     }
     if let Some(ref milestone) = issue.milestone {
-        handle_user(&milestone.creator)?;
+        handle_user(&*conn, &milestone.creator)?;
     }
 
     let (i, milestone) = issue.with_repo(repo);
@@ -243,15 +244,48 @@ pub fn handle_issue(issue: IssueFromJson, repo: &str) -> DashResult<()> {
     Ok(())
 }
 
-pub fn handle_user(user: &GitHubUser) -> DashResult<()> {
-    let conn = DB_POOL.get()?;
-    let exists = githubuser::table.find(user.id).get_result::<GitHubUser>(&*conn).is_ok();
+pub fn handle_user(conn: &PgConnection, user: &GitHubUser) -> DashResult<()> {
+    use diesel::pg::upsert::*;
 
-    if exists {
-        diesel::update(githubuser::table.find(user.id)).set(user).execute(&*conn)?;
-    } else {
-        diesel::insert(user).into(githubuser::table).execute(&*conn)?;
-    }
-
+    diesel::insert(&user.on_conflict(githubuser::id, do_update().set(user)))
+        .into(githubuser::table).execute(conn)?;
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::env;
+
+    #[test]
+    fn test_handle_user() {
+        let db_url = env::var("DATABASE_URL")
+            .expect("DATABASE_URL must be set");
+        let conn = PgConnection::establish(&db_url)
+            .expect(&format!("Error connecting to {}", db_url));
+
+        let user = GitHubUser {id: -1, login: "A".to_string()};
+        let query = githubuser::table.filter(githubuser::id.eq(user.id));
+
+        // User should not exist
+        assert_eq!(query.load::<GitHubUser>(&conn), Ok(vec![]));
+
+        // User has been inserted
+        handle_user(&conn, &user).expect("Unable to handle user!");
+        assert_eq!(query.load::<GitHubUser>(&conn), Ok(vec![user.clone()]));
+
+        // User has been inserted, but nothing changed
+        handle_user(&conn, &user).expect("Unable to handle user!");
+        assert_eq!(query.load::<GitHubUser>(&conn), Ok(vec![user.clone()]));
+
+        // User has been inserted, but login has changed
+        let new_user = GitHubUser {id: user.id, login: user.login + "_new"};
+        handle_user(&conn, &new_user).expect("Unable to handle user!");
+        assert_eq!(query.load::<GitHubUser>(&conn), Ok(vec![new_user.clone()]));
+
+        // Clean up after ourselves
+        diesel::delete(githubuser::table.filter(githubuser::id.eq(user.id)))
+            .execute(&conn)
+            .expect("Failed to clear database");
+    }
 }

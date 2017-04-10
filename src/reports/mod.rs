@@ -1,7 +1,6 @@
 use std::collections::BTreeMap;
 
-use chrono::{NaiveDate, NaiveDateTime, UTC};
-use chrono::duration::Duration;
+use chrono::{Duration, NaiveDate, NaiveDateTime, UTC};
 use diesel::expression::dsl::*;
 use diesel::expression::AsExpression;
 use diesel::prelude::*;
@@ -593,7 +592,7 @@ fn streaks() -> DashResult<NightlyStreakSummary> {
             None => UTC::today().naive_utc() + Duration::days(1),
         };
 
-        let this_streak = (next - date).num_days();
+        let this_streak = next.signed_duration_since(date).num_days();
 
         if this_streak > longest_streak {
             longest_streak = this_streak;

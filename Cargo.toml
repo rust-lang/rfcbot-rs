@@ -16,24 +16,24 @@ lazy_static = "0.2.0"
 log = "0.3.6"
 mount = "0.3.0"
 r2d2 = "0.7.1"
-r2d2-diesel = "0.10"
+r2d2-diesel = "0.12"
 router = "0.5.0"
 rust-crypto = "0.2.36"
-serde = "0.8"
-serde_derive = "0.8"
-serde_json = "0.8"
-urlencoded = "0.5.0"
+serde = "0.9"
+serde_derive = "0.9"
+serde_json = "0.9"
+urlencoded = "0.5"
 
 [dependencies.chrono]
 features = ["serde"]
-version = "0.2.25"
+version = "0.3"
 
 [dependencies.diesel]
 default-features = false
 features = ["postgres", "chrono", "large-tables"]
-version = "0.10"
+version = "0.12"
 
 [dependencies.diesel_codegen]
 default-features = false
 features = ["dotenv", "postgres"]
-version = "0.10"
+version = "0.12"

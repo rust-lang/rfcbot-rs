@@ -1,5 +1,4 @@
-use chrono::UTC;
-use chrono::duration::Duration;
+use chrono::{Duration, UTC};
 use diesel::prelude::*;
 use diesel;
 

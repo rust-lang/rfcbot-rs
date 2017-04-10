@@ -21,12 +21,13 @@ pub fn most_recent_update() -> DashResult<DateTime<UTC>> {
 
     let conn = try!(DB_POOL.get());
 
-    let most_recent: NaiveDate = {
+    let most_recent: Option<NaiveDate> = {
         use domain::schema::release::dsl::*;
         try!(release.select(max(date)).filter(released).first(&*conn))
     };
 
-    Ok(DateTime::from_utc(most_recent.and_hms(0, 0, 0), UTC))
+    Ok(DateTime::from_utc(most_recent.expect("No releases found")
+                          .and_hms(0, 0, 0), UTC))
 }
 
 fn get_release_for_date(d: NaiveDate) -> DashResult<Release> {
