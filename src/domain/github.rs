@@ -49,7 +49,7 @@ pub struct Milestone {
     pub repository: String,
 }
 
-#[derive(Clone, Debug, Deserialize, Eq, Insertable,
+#[derive(AsChangeset, Clone, Debug, Deserialize, Eq, Insertable,
          Ord, PartialEq, PartialOrd, Queryable, Serialize)]
 #[table_name="issue"]
 pub struct IssuePartial {
