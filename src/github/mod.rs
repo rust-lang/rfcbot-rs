@@ -9,6 +9,7 @@ pub mod webhooks;
 use chrono::{DateTime, NaiveDate, NaiveDateTime, NaiveTime, UTC};
 use diesel::prelude::*;
 use diesel::pg::PgConnection;
+use diesel::pg::upsert::*;
 use diesel;
 
 use DB_POOL;
@@ -155,19 +156,8 @@ pub fn handle_pr(pr: PullRequestFromJson, repo: &str) -> DashResult<()> {
     }
 
     let pr: PullRequest = pr.with_repo(repo);
-
-    let existing_id = pullrequest.select(id)
-        .filter(number.eq(&pr.number))
-        .filter(repository.eq(&pr.repository))
-        .first::<i32>(&*conn)
-        .ok();
-
-    if let Some(current_id) = existing_id {
-        diesel::update(pullrequest.find(current_id)).set(&pr).execute(&*conn)?;
-    } else {
-        diesel::insert(&pr).into(pullrequest).execute(&*conn)?;
-    }
-
+    diesel::insert(&pr.on_conflict((repository, number), do_update().set(&pr)))
+        .into(pullrequest).execute(&*conn)?;
     Ok(())
 }
 
@@ -211,42 +201,23 @@ pub fn handle_issue(issue: IssueFromJson, repo: &str) -> DashResult<()> {
 
     let (i, milestone) = issue.with_repo(repo);
 
-    // handle milestones
     if let Some(milestone) = milestone {
-        let exists = milestone::table.find(milestone.id)
-            .get_result::<Milestone>(&*conn)
-            .is_ok();
-        if exists {
-            diesel::update(milestone::table.find(milestone.id)).set(&milestone).execute(&*conn)?;
-        } else {
-            diesel::insert(&milestone).into(milestone::table).execute(&*conn)?;
-        }
+        diesel::insert(&milestone.on_conflict(milestone::id,
+                                              do_update().set(&milestone)))
+            .into(milestone::table).execute(&*conn)?;
     }
 
     // handle issue itself
     {
         use domain::schema::issue::dsl::*;
-
-        let exists = issue.select(id)
-            .filter(number.eq(&i.number))
-            .filter(repository.eq(&i.repository))
-            .first::<i32>(&*conn)
-            .ok();
-
-        if let Some(current_id) = exists {
-            diesel::update(issue.find(current_id)).set(&i.complete(current_id))
-                .execute(&*conn)?;
-        } else {
-            diesel::insert(&i).into(issue).execute(&*conn)?;
-        }
+        diesel::insert(&i.on_conflict((repository, number), do_update().set(&i)))
+            .into(issue).execute(&*conn)?;
     }
 
     Ok(())
 }
 
 pub fn handle_user(conn: &PgConnection, user: &GitHubUser) -> DashResult<()> {
-    use diesel::pg::upsert::*;
-
     diesel::insert(&user.on_conflict(githubuser::id, do_update().set(user)))
         .into(githubuser::table).execute(conn)?;
     Ok(())
