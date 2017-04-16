@@ -137,7 +137,7 @@ pub fn ci_summary(since: NaiveDate, until: NaiveDate) -> DashResult<BuildbotSumm
     })
 }
 
-pub fn release_summary(since: NaiveDate, until: NaiveDate) -> DashResult<ReleaseSummary> {
+pub fn nightly_summary(since: NaiveDate, until: NaiveDate) -> DashResult<ReleaseSummary> {
     let since = since.and_hms(0, 0, 0);
     let until = until.and_hms(23, 59, 59);
 

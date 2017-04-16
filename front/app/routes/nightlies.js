@@ -10,7 +10,7 @@ function fixTimestamps(data) {
 
 export default Ember.Route.extend({
   model() {
-    const summary_url = `${ENV.apiBaseURL}releases`;
+    const summary_url = `${ENV.apiBaseURL}nightlies`;
     return fetch(summary_url)
       .then(response => response.json())
       .then(({ streak_summary, nightlies, builder_times_mins }) => ({
@@ -21,7 +21,7 @@ export default Ember.Route.extend({
             builds: elt[1],
           };
         }),
-        build_times: builder_times_mins.map(series => ({ 
+        build_times: builder_times_mins.map(series => ({
           name: series[0],
           data: fixTimestamps(series[1])
         }))
