@@ -22,7 +22,6 @@
       <tr>
         <th>Date</th>
         <th>Released?</th>
-        <th>Failed Builds</th>
       </tr>
     </thead>
     <tbody>
@@ -30,33 +29,14 @@
         <tr>
           <td>{{r.nightly.date}}</td>
           {{#if r.nightly.released}}
-
             <td style="background: #DFF0D8">
               &#x2713; Yes
             </td>
-            <td></td>
-
           {{else}}
-
             <td style="background: #F2DEDE">
               <div><strong>&#x2717; No</strong></div>
             </td>
-            <td>
-              <ul>
-                {{#each r.builds as |b|}}
-                  <li>
-                      <a href="http://buildbot.rust-lang.org/builders/{{b.builder_name}}/builds/{{b.number}}" target="_blank">
-                          {{b.builder_name}}
-                      </a>
-                  </li>
-
-          {{else}}
-            No failed builds found. Perhaps this nightly hasn't run yet?
-                {{/each}}
-              </ul>
-            </td>
           {{/if}}
-
         </tr>
       {{/each}}
     </tbody>
