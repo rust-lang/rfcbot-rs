@@ -15,12 +15,7 @@ export default Ember.Route.extend({
       .then(response => response.json())
       .then(({ streak_summary, nightlies, builder_times_mins }) => ({
         streak: streak_summary,
-        nightlies: nightlies.map(elt => {
-          return {
-            nightly: elt[0],
-            builds: elt[1],
-          };
-        }),
+        nightlies: nightlies,
         build_times: builder_times_mins.map(series => ({
           name: series[0],
           data: fixTimestamps(series[1])

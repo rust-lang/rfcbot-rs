@@ -50,7 +50,7 @@ pub struct IssueSummary {
 
 #[derive(Clone, Debug, Serialize)]
 pub struct ReleaseSummary {
-    nightlies: Vec<(Release, Option<Vec<Build>>)>,
+    nightlies: Vec<Release>,
     builder_times_mins: Vec<(String, Vec<(EpochTimestamp, f64)>)>,
     streak_summary: NightlyStreakSummary,
 }
@@ -508,10 +508,7 @@ pub fn buildbot_failures_last_24_hours() -> DashResult<Vec<Build>> {
 
 pub fn nightly_releases(since: NaiveDateTime,
                         until: NaiveDateTime)
-                        -> DashResult<Vec<(Release, Option<Vec<Build>>)>> {
-
-    use domain::schema::build::dsl::{build, number, builder_name, successful, message,
-                                     duration_secs, start_time, end_time};
+                        -> DashResult<Vec<Release>> {
     use domain::schema::release::dsl::*;
 
     let conn = try!(DB_POOL.get());
@@ -521,33 +518,7 @@ pub fn nightly_releases(since: NaiveDateTime,
         .filter(date.le(until.date()))
         .order(date.desc())
         .load::<Release>(&*conn));
-
-    let mut releases_and_builds = Vec::with_capacity(releases.len());
-
-    for r in releases {
-        let builds = try!(build.select((number,
-                     builder_name,
-                     successful,
-                     message,
-                     duration_secs,
-                     start_time,
-                     end_time))
-            .filter(builder_name.like("nightly-%"))
-            .filter(successful.ne(true))
-            .filter(sql::<Date>("start_time::date")
-                .eq(r.date)
-                .or(sql::<Date>("end_time::date").eq(r.date)))
-            .order(builder_name.asc())
-            .load::<Build>(&*conn));
-
-        if !builds.is_empty() {
-            releases_and_builds.push((r, Some(builds)));
-        } else {
-            releases_and_builds.push((r, None));
-        }
-    }
-
-    Ok(releases_and_builds)
+    Ok(releases)
 }
 
 fn streaks() -> DashResult<NightlyStreakSummary> {

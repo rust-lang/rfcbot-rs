@@ -25,10 +25,10 @@
       </tr>
     </thead>
     <tbody>
-      {{#each model.nightlies as |r|}}
+      {{#each model.nightlies as |nightly|}}
         <tr>
-          <td>{{r.nightly.date}}</td>
-          {{#if r.nightly.released}}
+          <td>{{nightly.date}}</td>
+          {{#if nightly.released}}
             <td style="background: #DFF0D8">
               &#x2713; Yes
             </td>
