@@ -9,6 +9,7 @@ pub mod webhooks;
 use chrono::{DateTime, NaiveDate, NaiveDateTime, NaiveTime, UTC};
 use diesel::prelude::*;
 use diesel::pg::PgConnection;
+use diesel::pg::upsert::*;
 use diesel;
 
 use DB_POOL;
@@ -87,12 +88,14 @@ pub fn ingest_since(repo: &str, start: DateTime<UTC>) -> DashResult<()> {
            &start,
            comments.len());
 
+    let conn = &*DB_POOL.get()?;
     debug!("let's insert some stuff in the database");
+
 
     // make sure we have all of the users to ensure referential integrity
     for issue in issues {
         let issue_number = issue.number;
-        match handle_issue(issue, repo) {
+        match handle_issue(conn, issue, repo) {
             Ok(()) => (),
             Err(why) => {
                 error!("Error processing issue {}#{}: {:?}",
@@ -106,7 +109,7 @@ pub fn ingest_since(repo: &str, start: DateTime<UTC>) -> DashResult<()> {
     // insert the comments
     for comment in comments {
         let comment_id = comment.id;
-        match handle_comment(comment, repo) {
+        match handle_comment(conn, comment, repo) {
             Ok(()) => (),
             Err(why) => {
                 error!("Error processing comment {}#{}: {:?}",
@@ -119,7 +122,7 @@ pub fn ingest_since(repo: &str, start: DateTime<UTC>) -> DashResult<()> {
 
     for pr in prs {
         let pr_number = pr.number;
-        match handle_pr(pr, repo) {
+        match handle_pr(conn, pr, repo) {
             Ok(()) => (),
             Err(why) => error!("Error processing PR {}#{}: {:?}", repo, pr_number, why),
         }
@@ -131,10 +134,11 @@ pub fn ingest_since(repo: &str, start: DateTime<UTC>) -> DashResult<()> {
 pub fn update_issue(repo: &str, number: i32) -> DashResult<()> {
     let issue = GH.fetch_issue(repo, number)?;
     let comments = GH.fetch_comments(repo, number)?;
+    let conn = &*DB_POOL.get()?;
 
-    handle_issue(issue, repo)?;
+    handle_issue(conn, issue, repo)?;
     for comment in comments {
-        handle_comment(comment, repo)?;
+        handle_comment(conn, comment, repo)?;
     }
 
     Ok(())
@@ -142,51 +146,36 @@ pub fn update_issue(repo: &str, number: i32) -> DashResult<()> {
 
 pub fn update_pr(repo: &str, number: i32) -> DashResult<()> {
     let pr = GH.fetch_pr(repo, number)?;
-    handle_pr(pr, repo)
+    let conn = &*DB_POOL.get()?;
+
+    handle_pr(conn, pr, repo)
 }
 
-pub fn handle_pr(pr: PullRequestFromJson, repo: &str) -> DashResult<()> {
+pub fn handle_pr(conn: &PgConnection, pr: PullRequestFromJson, repo: &str) -> DashResult<()> {
     use domain::schema::pullrequest::dsl::*;
-
-    let conn = DB_POOL.get()?;
-
     if let Some(ref assignee) = pr.assignee {
-        handle_user(&*conn, assignee)?;
+        handle_user(conn, assignee)?;
     }
 
     let pr: PullRequest = pr.with_repo(repo);
-
-    let existing_id = pullrequest.select(id)
-        .filter(number.eq(&pr.number))
-        .filter(repository.eq(&pr.repository))
-        .first::<i32>(&*conn)
-        .ok();
-
-    if let Some(current_id) = existing_id {
-        diesel::update(pullrequest.find(current_id)).set(&pr).execute(&*conn)?;
-    } else {
-        diesel::insert(&pr).into(pullrequest).execute(&*conn)?;
-    }
-
+    diesel::insert(&pr.on_conflict((repository, number), do_update().set(&pr)))
+        .into(pullrequest).execute(conn)?;
     Ok(())
 }
 
-pub fn handle_comment(comment: CommentFromJson, repo: &str) -> DashResult<()> {
-    let conn = DB_POOL.get()?;
-
-    handle_user(&*conn, &comment.user)?;
+pub fn handle_comment(conn: &PgConnection, comment: CommentFromJson, repo: &str) -> DashResult<()> {
+    handle_user(conn, &comment.user)?;
 
     let comment: IssueComment = comment.with_repo(repo)?;
 
-    if issuecomment::table.find(comment.id).get_result::<IssueComment>(&*conn).is_ok() {
+    // We only want to run `nag::update_nags` on insert to avoid
+    // double-processing commits, so we can't use upsert here
+    if issuecomment::table.find(comment.id).get_result::<IssueComment>(conn).is_ok() {
         diesel::update(issuecomment::table.find(comment.id)).set(&comment)
-            .execute(&*conn)?;
+            .execute(conn)?;
         Ok(())
     } else {
-        diesel::insert(&comment).into(issuecomment::table).execute(&*conn)?;
-
-        // we don't want to double-process comments
-        // now that all updates have been registered, update any applicable nags
+        diesel::insert(&comment).into(issuecomment::table).execute(conn)?;
         match nag::update_nags(&comment) {
             Ok(()) => Ok(()),
             Err(why) => {
@@ -197,56 +186,35 @@ pub fn handle_comment(comment: CommentFromJson, repo: &str) -> DashResult<()> {
     }
 }
 
-pub fn handle_issue(issue: IssueFromJson, repo: &str) -> DashResult<()> {
-    let conn = DB_POOL.get()?;
-
+pub fn handle_issue(conn: &PgConnection, issue: IssueFromJson, repo: &str) -> DashResult<()> {
     // user handling
-    handle_user(&*conn, &issue.user)?;
+    handle_user(conn, &issue.user)?;
     if let Some(ref assignee) = issue.assignee {
-        handle_user(&*conn, assignee)?;
+        handle_user(conn, assignee)?;
     }
     if let Some(ref milestone) = issue.milestone {
-        handle_user(&*conn, &milestone.creator)?;
+        handle_user(conn, &milestone.creator)?;
     }
 
     let (i, milestone) = issue.with_repo(repo);
 
-    // handle milestones
     if let Some(milestone) = milestone {
-        let exists = milestone::table.find(milestone.id)
-            .get_result::<Milestone>(&*conn)
-            .is_ok();
-        if exists {
-            diesel::update(milestone::table.find(milestone.id)).set(&milestone).execute(&*conn)?;
-        } else {
-            diesel::insert(&milestone).into(milestone::table).execute(&*conn)?;
-        }
+        diesel::insert(&milestone.on_conflict(milestone::id,
+                                              do_update().set(&milestone)))
+            .into(milestone::table).execute(conn)?;
     }
 
     // handle issue itself
     {
         use domain::schema::issue::dsl::*;
-
-        let exists = issue.select(id)
-            .filter(number.eq(&i.number))
-            .filter(repository.eq(&i.repository))
-            .first::<i32>(&*conn)
-            .ok();
-
-        if let Some(current_id) = exists {
-            diesel::update(issue.find(current_id)).set(&i.complete(current_id))
-                .execute(&*conn)?;
-        } else {
-            diesel::insert(&i).into(issue).execute(&*conn)?;
-        }
+        diesel::insert(&i.on_conflict((repository, number), do_update().set(&i)))
+            .into(issue).execute(conn)?;
     }
 
     Ok(())
 }
 
 pub fn handle_user(conn: &PgConnection, user: &GitHubUser) -> DashResult<()> {
-    use diesel::pg::upsert::*;
-
     diesel::insert(&user.on_conflict(githubuser::id, do_update().set(user)))
         .into(githubuser::table).execute(conn)?;
     Ok(())

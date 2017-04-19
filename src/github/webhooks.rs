@@ -8,6 +8,7 @@ use hex::FromHex;
 use iron;
 use serde_json;
 
+use DB_POOL;
 use config::CONFIG;
 use error::DashResult;
 use github::models::{CommentFromJson, IssueFromJson, PullRequestFromJson};
@@ -25,7 +26,6 @@ header! {(XGithubEvent, "X-Github-Event") => [String]}
 header! {(XGithubDelivery, "X-Github-Delivery") => [String]}
 
 pub fn handler(req: &mut iron::Request) -> iron::IronResult<iron::Response> {
-
     match inner_handler(req) {
         Ok(()) => (),
         Err(why) => error!("Error processing webhook: {:?}", why),
@@ -147,14 +147,15 @@ fn parse_event(event_name: &str, body: &str) -> DashResult<Payload> {
 }
 
 fn authenticated_handler(event: Event) -> DashResult<()> {
+    let conn = &*DB_POOL.get()?;
 
     match event.payload {
         Payload::Issues(issue_event) => {
-            handle_issue(issue_event.issue, &issue_event.repository.full_name)?;
+            handle_issue(conn, issue_event.issue, &issue_event.repository.full_name)?;
         }
 
         Payload::PullRequest(pr_event) => {
-            handle_pr(pr_event.pull_request, &pr_event.repository.full_name)?;
+            handle_pr(conn, pr_event.pull_request, &pr_event.repository.full_name)?;
         }
 
         Payload::IssueComment(comment_event) => {
@@ -163,8 +164,8 @@ fn authenticated_handler(event: Event) -> DashResult<()> {
 
             if comment_event.action != "deleted" {
                 // TODO handle deleted comments properly
-                handle_issue(comment_event.issue, &comment_event.repository.full_name)?;
-                handle_comment(comment_event.comment, &comment_event.repository.full_name)?;
+                handle_issue(conn, comment_event.issue, &comment_event.repository.full_name)?;
+                handle_comment(conn, comment_event.comment, &comment_event.repository.full_name)?;
             }
         }
 
