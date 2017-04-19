@@ -522,61 +522,39 @@ pub fn nightly_releases(since: NaiveDateTime,
 }
 
 fn streaks() -> DashResult<NightlyStreakSummary> {
-    let conn = try!(DB_POOL.get());
+    use domain::schema::release::dsl::*;
 
-    let all_nightlies: Vec<(NaiveDate, bool, i64)> = try!(select(sql::<(Date, Bool, BigInt)>("
-        r.date, r.released, COUNT(build_date) as num_failed
-        FROM release r
-        LEFT JOIN (SELECT end_time::date as build_date FROM build b
-        WHERE
-          NOT b.successful AND
-          b.builder_name LIKE 'nightly%') AS build_date
-        ON build_date = r.date
-        GROUP BY r.date, r.released
-        ORDER BY r.date ASC"))
-        .load(&*conn));
+    let conn = DB_POOL.get()?;
 
-    // get current streak info from other function results
-    let mut current_start = None;
-    let mut current_length = 0;
+    let nightlies = release.select((date, released)).load::<Release>(&*conn)?;
 
-    for &(reldate, released, num_failed_builds) in all_nightlies.iter().rev() {
-        if !released && num_failed_builds > 0 {
-            break;
-        }
+    let mut last_failure = None;
+    let mut longest_streak_length = 0;
+    let mut longest_streak_start = nightlies[0].date;
 
-        current_start = Some(reldate);
-        current_length += 1;
-    }
-
-    // find the longest streak
-    let mut longest_streak = 0;
-    let mut longest_streak_start = all_nightlies[0].0;
-    let mut longest_streak_end = longest_streak_start;
-
-    let mut failures =
-        all_nightlies.iter().filter(|&&(_, r, b)| !r && b > 0).map(|&(d, _, _)| d).peekable();
-
-    while let Some(date) = failures.next() {
-        let next = match failures.peek() {
-            Some(&d) => d,
-            None => UTC::today().naive_utc() + Duration::days(1),
-        };
-
-        let this_streak = next.signed_duration_since(date).num_days();
-
-        if this_streak > longest_streak {
-            longest_streak = this_streak;
-            longest_streak_start = date + Duration::days(1);
-            longest_streak_end = next - Duration::days(1);
+    let mut streak_length = 0;
+    let mut streak_start = nightlies[0].date;
+    for nightly in nightlies {
+        if nightly.released {
+            if streak_length == 0 { // if first success
+                streak_start = nightly.date
+            }
+            streak_length += 1;
+        } else {
+            last_failure = Some(nightly.date);
+            if streak_length > longest_streak_length {
+                longest_streak_length = streak_length;
+                longest_streak_start = streak_start;
+            }
+            streak_length = 0;
         }
     }
 
     Ok(NightlyStreakSummary {
-        longest_length_days: longest_streak as u32,
+        longest_length_days: longest_streak_length,
         longest_start: longest_streak_start,
-        longest_end: longest_streak_end,
-        current_length_days: current_length,
-        last_failure: current_start.map(|d| d - Duration::days(1)),
+        longest_end: longest_streak_start + Duration::days(longest_streak_length as i64),
+        current_length_days: streak_length,
+        last_failure: last_failure,
     })
 }
