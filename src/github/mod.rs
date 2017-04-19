@@ -168,15 +168,14 @@ pub fn handle_comment(conn: &PgConnection, comment: CommentFromJson, repo: &str)
 
     let comment: IssueComment = comment.with_repo(repo)?;
 
+    // We only want to run `nag::update_nags` on insert to avoid
+    // double-processing commits, so we can't use upsert here
     if issuecomment::table.find(comment.id).get_result::<IssueComment>(conn).is_ok() {
         diesel::update(issuecomment::table.find(comment.id)).set(&comment)
             .execute(conn)?;
         Ok(())
     } else {
         diesel::insert(&comment).into(issuecomment::table).execute(conn)?;
-
-        // we don't want to double-process comments
-        // now that all updates have been registered, update any applicable nags
         match nag::update_nags(&comment) {
             Ok(()) => Ok(()),
             Err(why) => {
