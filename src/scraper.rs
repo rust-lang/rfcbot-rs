@@ -7,7 +7,6 @@ use crossbeam::scope;
 use config::{CONFIG, GH_ORGS};
 use github;
 use releases;
-use buildbot;
 
 pub fn start_scraping() {
     // spawn the github scraper
@@ -43,23 +42,6 @@ pub fn start_scraping() {
                 info!("Release scraper sleeping for {} seconds ({} minutes)",
                       sleep_duration.as_secs(),
                       CONFIG.release_interval_mins);
-                thread::sleep(sleep_duration);
-            }
-        });
-
-        // spawn the buildbot scraper
-        scope.spawn(|| {
-            let sleep_duration = Duration::from_secs(CONFIG.buildbot_interval_mins * 60);
-            loop {
-                info!("scraping all buildbots...");
-                match buildbot::ingest() {
-                    Ok(()) => info!("scraped build status successfully"),
-                    Err(why) => error!("unable to scrape build status: {:?}", why),
-                }
-
-                info!("Buildbot scraper sleeping for {} seconds ({} minutes)",
-                      sleep_duration.as_secs(),
-                      CONFIG.buildbot_interval_mins);
                 thread::sleep(sleep_duration);
             }
         });
