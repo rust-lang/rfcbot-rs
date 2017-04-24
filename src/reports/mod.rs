@@ -51,7 +51,6 @@ pub struct IssueSummary {
 #[derive(Clone, Debug, Serialize)]
 pub struct ReleaseSummary {
     nightlies: Vec<Release>,
-    builder_times_mins: Vec<(String, Vec<(EpochTimestamp, f64)>)>,
     streak_summary: NightlyStreakSummary,
 }
 
@@ -141,14 +140,9 @@ pub fn nightly_summary(since: NaiveDate, until: NaiveDate) -> DashResult<Release
     let since = since.and_hms(0, 0, 0);
     let until = until.and_hms(23, 59, 59);
 
-    let nightlies = try!(nightly_releases(since, until));
-    let build_times = try!(buildbot_build_times(since, until, "nightly-%"));
-    let streaks = try!(streaks());
-
     Ok(ReleaseSummary {
-        nightlies: nightlies,
-        builder_times_mins: build_times,
-        streak_summary: streaks,
+        nightlies: nightly_releases(since, until)?,
+        streak_summary: streaks()?,
     })
 }
 
