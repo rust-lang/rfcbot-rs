@@ -53,10 +53,9 @@ fn get<M: DeserializeOwned>(url: &str) -> DashResult<M> {
     let mut buffer = String::new();
     client.get(url)
         .header(Accept::json())
-        .send()?;
+        .send()?
+        .read_to_string(&mut buffer)?;
 
-    let mut buffer = String::new();
-    response.read_to_string(&mut buffer)?;
     match serde_json::from_str(&buffer) {
         Ok(m) => Ok(m),
         Err(reason) => {

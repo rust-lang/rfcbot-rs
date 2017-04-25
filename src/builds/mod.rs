@@ -2,17 +2,22 @@ use error::{DashResult, DashError};
 
 pub mod buildbot;
 mod appveyor;
+mod travis;
 
 use url::{Url, Host};
 
 
 pub fn ingest_status_event(url: String) -> DashResult<()> {
     if let Ok(url) = Url::parse(&url) {
-        match (url.host(), url.path_segments()) {
-            (Some(Host::Domain("ci.appveyor.com")), Some(segments)) => {
-                return appveyor::get_build(segments.last().unwrap());
-            },
-            _ => return Err(DashError::Misc(Some(format!("Bad URL {}", url)))),
+        if let Some(segments) = url.path_segments() {
+            let build = segments.last().unwrap();
+            if let Some(Host::Domain(domain)) = url.host() {
+                match domain {
+                    "ci.appveyor.com" => return appveyor::get_build(build),
+                    "travis-ci.org" => return travis::get_build(build),
+                    _ => (),
+                }
+            }
         }
     }
     return Err(DashError::Misc(Some(format!("Could not parse URL {}", url))));
