@@ -63,7 +63,7 @@ macro_rules! make_dated_endpoint {
 make_dated_endpoint!(pull_requests, pr_summary);
 make_dated_endpoint!(issues, issue_summary);
 make_dated_endpoint!(buildbots, ci_summary);
-make_dated_endpoint!(releases, release_summary);
+make_dated_endpoint!(nightlies, nightly_summary);
 
 fn parse_dates_from_query(req: &mut Request) -> IronResult<(NaiveDate, NaiveDate)> {
     let today = UTC::today().naive_utc();

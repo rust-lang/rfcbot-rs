@@ -2,7 +2,7 @@
 
 <h3>Nightly Releases</h3>
 
-{{#with model.streak as |s|}}
+{{#with model.streak_summary as |s|}}
   <h4>
       It's been <strong>{{s.current_length_days}} days</strong> since a failed nightly
       build{{#if s.last_failure}} (since {{s.last_failure}}){{/if}}.
@@ -14,49 +14,27 @@
   </h5>
 {{/with}}
 
-{{line-chart title='Times of Successful Nightly Builds' data=model.build_times}}
-
 <div class="row">
   <table>
     <thead>
       <tr>
         <th>Date</th>
         <th>Released?</th>
-        <th>Failed Builds</th>
       </tr>
     </thead>
     <tbody>
-      {{#each model.nightlies as |r|}}
+      {{#each model.nightlies as |nightly|}}
         <tr>
-          <td>{{r.nightly.date}}</td>
-          {{#if r.nightly.released}}
-
+          <td>{{nightly.date}}</td>
+          {{#if nightly.released}}
             <td style="background: #DFF0D8">
               &#x2713; Yes
             </td>
-            <td></td>
-
           {{else}}
-
             <td style="background: #F2DEDE">
               <div><strong>&#x2717; No</strong></div>
             </td>
-            <td>
-              <ul>
-                {{#each r.builds as |b|}}
-                  <li>
-                      <a href="http://buildbot.rust-lang.org/builders/{{b.builder_name}}/builds/{{b.number}}" target="_blank">
-                          {{b.builder_name}}
-                      </a>
-                  </li>
-
-          {{else}}
-            No failed builds found. Perhaps this nightly hasn't run yet?
-                {{/each}}
-              </ul>
-            </td>
           {{/if}}
-
         </tr>
       {{/each}}
     </tbody>
