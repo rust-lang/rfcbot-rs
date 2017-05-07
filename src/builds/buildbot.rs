@@ -11,7 +11,7 @@ use serde_json;
 
 use error::DashResult;
 use DB_POOL;
-use domain::buildbot::Build;
+use domain::builds::Build;
 
 #[allow(non_snake_case)]
 #[derive(Debug, Deserialize)]

@@ -8,7 +8,7 @@ use diesel::select;
 use diesel::types::{Array, BigInt, Bool, Date, Double, Integer, Nullable, Text, Timestamp, VarChar};
 
 use DB_POOL;
-use domain::buildbot::Build;
+use domain::builds::Build;
 use domain::github::Issue;
 use domain::releases::Release;
 use error::DashResult;
