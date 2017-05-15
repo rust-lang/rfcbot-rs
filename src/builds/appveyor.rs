@@ -22,7 +22,6 @@ pub fn get_build(build: &str) -> DashResult<()> {
 
     let conn = &*DB_POOL.get()?;
     for job in response.build.jobs.iter() {
-        debug!("GOT {:?}", job);
         if job.finished.is_none() || job.status == "cancelled" {
             continue;
         }
@@ -40,6 +39,7 @@ pub fn get_build(build: &str) -> DashResult<()> {
         };
 
         {
+            debug!("Inserting Appveyor job {:?}", b);
             use domain::schema::build::dsl::*;
             diesel::insert(&b).into(build).execute(conn)?;
         }

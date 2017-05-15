@@ -42,7 +42,7 @@ pub fn get_build(build: &str) -> DashResult<()> {
         };
 
         {
-            debug!("INSERTING {:?}", build);
+            debug!("Inserting Travis build {:?}", b);
             use domain::schema::build::dsl::*;
             diesel::insert(&b).into(build).execute(conn)?;
         }
@@ -55,7 +55,6 @@ fn get<M: DeserializeOwned>(url: &str) -> DashResult<M> {
     let client = Client::with_connector(HttpsConnector::new(tls));
     let mut buffer = String::new();
 
-    debug!("HELLO! {}", url);
     client.get(url)
         .header(UserAgent(UA.to_string()))
         .header(Accept("application/vnd.travis-ci.2+json".to_string()))
