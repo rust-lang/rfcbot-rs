@@ -32,7 +32,7 @@ pub fn get_build(build: &str) -> DashResult<()> {
         let duration = job.finished_at.unwrap()
             .signed_duration_since(job.started_at.unwrap());
         let b = Build {
-            number: job.id,
+            number: response.build.id,
             builder_name: get_builder_name(&job.config),
             successful: job.state == "passed",
             message: String::new(),
@@ -76,12 +76,17 @@ fn get_builder_name(config: &ConfigFromJson) -> String {
 
 #[derive(Debug, Deserialize)]
 struct ResponseFromJson{
+    build: BuildFromJson,
     jobs: Vec<JobFromJson>
 }
 
 #[derive(Debug, Deserialize)]
-struct JobFromJson {
+struct BuildFromJson {
     id: i32,
+}
+
+#[derive(Debug, Deserialize)]
+struct JobFromJson {
     state: String,
     config: ConfigFromJson,
     started_at: Option<DateTime<UTC>>,

@@ -30,7 +30,7 @@ pub fn get_build(build: &str) -> DashResult<()> {
         let duration = job.finished.unwrap().signed_duration_since(job.started);
 
         let b = Build {
-            number: 10,
+            number: response.build.id,
             builder_name: get_builder_name(&job.name),
             successful: job.status == "success",
             message: job.status.to_owned(),
@@ -76,13 +76,13 @@ struct ResponseFromJson {
 
 #[derive(Debug, Deserialize)]
 struct BuildFromJson {
+    #[serde(rename="buildId")]
+    id: i32,
     jobs: Vec<JobFromJson>,
 }
 
 #[derive(Debug, Deserialize)]
 struct JobFromJson {
-    #[serde(rename="jobId")]
-    id: String,
     name: String,
     status: String,
     started: DateTime<UTC>,
