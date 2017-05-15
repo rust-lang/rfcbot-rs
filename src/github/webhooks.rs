@@ -161,10 +161,14 @@ fn authenticated_handler(event: Event) -> DashResult<()> {
 
         Payload::Status(status_event) => {
             if status_event.state != "pending" &&
-                status_event.branches.iter().any(|branch| branch.name == "auto") &&
-                status_event.target_url.is_some()
+                status_event.branches.iter().any(|branch| {
+                    branch.name == "auto" &&
+                    branch.commit.sha == status_event.sha
+                })
             {
-                builds::ingest_status_event(status_event.target_url.unwrap())?
+                if let Some(url) = status_event.target_url {
+                    builds::ingest_status_event(url)?
+                }
             }
         },
 
@@ -216,6 +220,7 @@ pub struct PullRequestEvent {
 
 #[derive(Debug, Deserialize)]
 pub struct StatusEvent {
+    sha: String,
     state: String,
     target_url: Option<String>,
     branches: Vec<Branch>,
@@ -229,4 +234,10 @@ pub struct Repository {
 #[derive(Debug, Deserialize)]
 pub struct Branch {
     name: String,
+    commit: Commit,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct Commit {
+    sha: String
 }
