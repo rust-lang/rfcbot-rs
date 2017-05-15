@@ -25,7 +25,7 @@ pub fn get_build(build: &str) -> DashResult<()> {
     let conn = &*DB_POOL.get()?;
 
     for job in response.jobs.iter() {
-        if job.finished_at.is_none() || job.state == "cancelled" {
+        if job.finished_at.is_none() || job.state == "canceled" {
             continue
         }
 
