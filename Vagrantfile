@@ -26,7 +26,7 @@ Vagrant.configure("2") do |config|
                       path: "vagrant/rust.sh",
                       keep_color: true,
                       privileged: false,
-                      env: { 'RUST_VERSION' => '1.15.1', },)
+                      env: { 'RUST_VERSION' => '1.17.0', },)
 
   config.vm.network :forwarded_port, guest: 4200, host: 4040
   config.vm.network :forwarded_port, guest: 5432, host: 4050
