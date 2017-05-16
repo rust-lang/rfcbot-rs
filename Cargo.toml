@@ -16,7 +16,7 @@ lazy_static = "0.2.0"
 log = "0.3.6"
 mount = "0.3.0"
 r2d2 = "0.7.1"
-r2d2-diesel = "0.12"
+r2d2-diesel = "0.13"
 router = "0.5.0"
 rust-crypto = "0.2.36"
 serde = "1.0"
@@ -31,9 +31,9 @@ version = "0.3.1"
 [dependencies.diesel]
 default-features = false
 features = ["postgres", "chrono", "large-tables"]
-version = "0.12"
+version = "0.13"
 
 [dependencies.diesel_codegen]
 default-features = false
 features = ["dotenv", "postgres"]
-version = "0.12"
+version = "0.13"
