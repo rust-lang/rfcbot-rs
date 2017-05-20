@@ -520,7 +520,9 @@ fn streaks() -> DashResult<NightlyStreakSummary> {
 
     let conn = DB_POOL.get()?;
 
-    let nightlies = release.select((date, released)).load::<Release>(&*conn)?;
+    let nightlies = release.select((date, released))
+        .order(date.asc())
+        .load::<Release>(&*conn)?;
 
     let mut last_failure = None;
     let mut longest_streak_length = 0;
