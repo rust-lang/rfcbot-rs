@@ -13,8 +13,8 @@ pub fn ingest_status_event(url: String) -> DashResult<()> {
             let build = segments.last().unwrap();
             if let Some(Host::Domain(domain)) = url.host() {
                 match domain {
-                    "ci.appveyor.com" => return appveyor::get_build(build),
-                    "travis-ci.org" => return travis::get_build(build),
+                    "ci.appveyor.com" => return appveyor::get_and_insert_build(build),
+                    "travis-ci.org" => return travis::get_and_insert_build(build),
                     _ => (),
                 }
             }

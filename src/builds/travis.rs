@@ -19,7 +19,7 @@ header! { (Accept, "Accept") => [String] }
 const ROOT_URL: &'static str = "https://api.travis-ci.org";
 const UA: &'static str = "rusty-dash/0.0.0";
 
-pub fn get_build(build: &str) -> DashResult<()> {
+pub fn get_and_insert_build(build: &str) -> DashResult<()> {
     let url = format!("{}/repos/rust-lang/rust/builds/{}", ROOT_URL, build);
     let response: ResponseFromJson = get(&url)?;
     let conn = &*DB_POOL.get()?;

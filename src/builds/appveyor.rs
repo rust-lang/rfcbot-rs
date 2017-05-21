@@ -16,7 +16,7 @@ use error::DashResult;
 
 static ROOT_URL: &'static str = "http://ci.appveyor.com/api";
 
-pub fn get_build(build: &str) -> DashResult<()> {
+pub fn get_and_insert_build(build: &str) -> DashResult<()> {
     let url = format!("{}/projects/rust-lang/rust/build/{}", ROOT_URL, build);
     let response: ResponseFromJson = get(&url)?;
 
