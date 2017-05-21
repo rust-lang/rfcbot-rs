@@ -77,7 +77,7 @@ Assuming that the VM provisions correctly (a little bit of an "if"), you should 
 
 ### Rust Version
 
-Rust 1.15 or later is required.
+Rust 1.17 or later is required.
 
 ### Environment variables
 

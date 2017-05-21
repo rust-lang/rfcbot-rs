@@ -13,7 +13,7 @@ use hyper::header::Headers;
 use hyper::net::HttpsConnector;
 use hyper::status::StatusCode;
 use hyper_native_tls::NativeTlsClient;
-use serde::Deserialize;
+use serde::de::DeserializeOwned;
 use serde_json;
 
 use config::CONFIG;
@@ -109,10 +109,10 @@ impl Client {
         self.get_models(&url, Some(&params))
     }
 
-    fn get_models<M: Deserialize>(&self,
-                                  start_url: &str,
-                                  params: Option<&ParameterMap>)
-                                  -> DashResult<Vec<M>> {
+    fn get_models<M: DeserializeOwned>(&self,
+                                       start_url: &str,
+                                       params: Option<&ParameterMap>)
+                                       -> DashResult<Vec<M>> {
 
         let mut res = try!(self.get(start_url, params));
         let mut models = self.deserialize::<Vec<M>>(&mut res)?;
@@ -252,7 +252,7 @@ impl Client {
             .send()
     }
 
-    fn deserialize<M: Deserialize>(&self, res: &mut Response) -> DashResult<M> {
+    fn deserialize<M: DeserializeOwned>(&self, res: &mut Response) -> DashResult<M> {
         let mut buf = String::new();
         res.read_to_string(&mut buf)?;
 
