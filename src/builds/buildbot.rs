@@ -62,7 +62,9 @@ impl Into<Build> for BuildFromJson {
 
         Build {
             number: self.number,
-            builder_name: self.builderName,
+            builder_name: "buildbot".to_string(),
+            builder_os: "unknown".to_string(),
+            builder_env: self.builderName,
             successful: successful,
             message: concat_msg,
             duration_secs: duration,

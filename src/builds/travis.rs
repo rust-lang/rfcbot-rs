@@ -33,7 +33,9 @@ pub fn get_and_insert_build(build: &str) -> DashResult<()> {
             .signed_duration_since(job.started_at.unwrap());
         let b = Build {
             number: response.build.id,
-            builder_name: get_builder_name(&job.config),
+            builder_name: "travis".to_string(),
+            builder_os: job.config.os.clone(),
+            builder_env: job.config.env.clone(),
             successful: job.state == "passed",
             message: String::new(),
             duration_secs: Some(duration.num_seconds() as i32),
@@ -67,10 +69,6 @@ fn get<M: DeserializeOwned>(url: &str) -> DashResult<M> {
             Err(reason.into())
         }
     }
-}
-
-fn get_builder_name(config: &ConfigFromJson) -> String {
-    unimplemented!()
 }
 
 #[derive(Debug, Deserialize)]

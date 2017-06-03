@@ -486,7 +486,9 @@ pub fn buildbot_failures_last_24_hours() -> DashResult<Vec<Build>> {
     let one_day_ago = UTC::now().naive_utc() - Duration::days(1);
 
     Ok(try!(build.select((number,
+                 builder_env,
                  builder_name,
+                 builder_os,
                  successful,
                  message,
                  duration_secs,

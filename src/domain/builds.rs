@@ -6,7 +6,9 @@ use super::schema::*;
 #[table_name="build"]
 pub struct Build {
     pub number: i32,
+    pub builder_env: String,
     pub builder_name: String,
+    pub builder_os: String,
     pub successful: bool,
     pub message: String,
     pub duration_secs: Option<i32>,
