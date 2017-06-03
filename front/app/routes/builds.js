@@ -10,7 +10,7 @@ function fixTimestamps(data) {
 
 export default Ember.Route.extend({
   model() {
-    const summary_url = `${ENV.apiBaseURL}buildbots`;
+    const summary_url = `${ENV.apiBaseURL}builds`;
     return fetch(summary_url)
       .then(response => response.json())
       .then(metrics => {

@@ -10,7 +10,7 @@ Router.map(function() {
   this.route('issues', { path: '/issues' });
   this.route('nightlies', { path: '/nightlies' });
   this.route('prs', { path: '/pullrequests' });
-  this.route('buildbots', { path: '/buildbots' });
+  this.route('builds', { path: '/builds' });
   this.route('links', { path: '/links' });
   this.route('triage', { path: '/triage' });
   this.route('fcp_user', { path: '/fcp/:username' });
