@@ -8,71 +8,79 @@ function fixTimestamps(data) {
   });
 }
 
+function getDisplayName(build) {
+  // TODO: Use better names
+  if (build.name === "buildbot") {
+    return build.env;
+  } else if (build.name === "travis") {
+    return build.env;
+  } else if (build.name === "appveyor") {
+    return build.env;
+  }
+}
+
 export default Ember.Route.extend({
   model() {
     const summary_url = `${ENV.apiBaseURL}builds`;
     return fetch(summary_url)
       .then(response => response.json())
       .then(metrics => {
-        const win_buildbot_times = [];
-        const mac_buildbot_times = [];
-        const linux_buildbot_times = [];
-        const misc_buildbot_times = [];
-        metrics.per_builder_times_mins.forEach(val => {
+        const win_build_times = [];
+        const mac_build_times = [];
+        const linux_build_times = [];
+
+        metrics.per_builder_times.forEach(val => {
+          const os = val[0].os;
           const time = {
-            name: val[0],
+            name: getDisplayName(val[0]),
             data: fixTimestamps(val[1])
           };
 
-          if (time.name.includes('auto-win')) {
-            win_buildbot_times.push(time);
-          } else if (time.name.includes('auto-linux')) {
-            linux_buildbot_times.push(time);
-          } else if (time.name.includes('auto-mac')) {
-            mac_buildbot_times.push(time);
-          } else {
-            misc_buildbot_times.push(time);
+          if (os === "windows") {
+            win_build_times.push(time);
+          } else if (os === "linux") {
+            linux_build_times.push(time);
+          } else if (os === "osx") {
+            mac_build_times.push(time);
           }
         });
 
-        const win_buildbot_fails = [];
-        const mac_buildbot_fails = [];
-        const linux_buildbot_fails = [];
-        const misc_buildbot_fails = [];
+        const win_build_fails = [];
+        const mac_build_fails = [];
+        const linux_build_fails = [];
 
         metrics.per_builder_failures.forEach(val => {
+          const os = val[0].os;
           const time = {
-            name: val[0],
+            name: getDisplayName(val[0]),
             data: fixTimestamps(val[1])
           };
 
-          if (time.name.includes('auto-win')) {
-            win_buildbot_fails.push(time);
-          } else if (time.name.includes('auto-linux')) {
-            linux_buildbot_fails.push(time);
-          } else if (time.name.includes('auto-mac')) {
-            mac_buildbot_fails.push(time);
-          } else {
-            misc_buildbot_fails.push(time);
+          if (os === "windows") {
+            win_build_fails.push(time);
+          } else if (os === "linux") {
+            linux_build_fails.push(time);
+          } else if (os === "osx") {
+            mac_build_fails.push(time);
           }
-
         });
 
         const model = {
-          linux_buildbots: {
-            per_builder_times: linux_buildbot_times,
-            per_builder_fails: linux_buildbot_fails
+          linux: {
+            per_builder_times: linux_build_times,
+            per_builder_fails: linux_build_fails
           },
-          windows_buildbots: {
-            per_builder_times: win_buildbot_times,
-            per_builder_fails: win_buildbot_fails
+          windows: {
+            per_builder_times: win_build_times,
+            per_builder_fails: win_build_fails
           },
-          mac_buildbots: {
-            per_builder_times: mac_buildbot_times,
-            per_builder_fails: mac_buildbot_fails
+          mac: {
+            per_builder_times: mac_build_times,
+            per_builder_fails: mac_build_fails
           },
           recent_failures: metrics.failures_last_day
         };
+
 
         return model;
       });

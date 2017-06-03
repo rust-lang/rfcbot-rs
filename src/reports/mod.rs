@@ -442,6 +442,7 @@ pub fn build_times(since: NaiveDateTime, until: NaiveDateTime)
         .filter(start_time.ge(since))
         .filter(start_time.le(until))
         .group_by(&name_date)
+        .order((&name_date).asc())
         .load::<((String, String, String, NaiveDate), f64)>(&*conn)?;
 
     let mut results = BTreeMap::new();
@@ -470,6 +471,7 @@ pub fn build_failures_by_day(since: NaiveDateTime, until: NaiveDateTime)
         .filter(start_time.ge(since))
         .filter(start_time.le(until))
         .group_by(&name_date)
+        .order((&name_date).asc())
         .load::<((String, String, String, NaiveDate), i64)>(&*conn)?;
 
     let mut results = BTreeMap::new();
