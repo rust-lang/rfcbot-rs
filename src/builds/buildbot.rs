@@ -60,10 +60,20 @@ impl Into<Build> for BuildFromJson {
             None
         };
 
+        let env = if self.builderName.contains("auto-win") {
+            "windows"
+        } else if self.builderName.contains("auto-linux") {
+            "linux"
+        } else if self.builderName.contains("auto-mac") {
+            "osx"
+        } else {
+            "unknown"
+        };
+
         Build {
             number: self.number,
             builder_name: "buildbot".to_string(),
-            builder_os: "unknown".to_string(),
+            builder_os: env.to_string(),
             builder_env: self.builderName,
             successful: successful,
             message: concat_msg,
