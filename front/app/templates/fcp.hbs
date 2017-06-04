@@ -11,7 +11,8 @@
                 <a
                 href="https://github.com/{{ fcp.issue.repository }}/issues/{{ fcp.issue.number }}#issuecomment-{{ fcp.statusComment.id }}"
                 target="_blank">
-                {{ fcp.issue.repository }} #{{ fcp.issue.number }}</a>: waiting for
+                {{ fcp.issue.title }} ({{ fcp.issue.repository }} #{{ fcp.issue.number }})</a>:
+                waiting for
             {{#each fcp.pendingReviewers as |r| }}
                 <a href="/fcp/{{r}}">{{ r }}</a>&nbsp;
             {{/each}}
