@@ -25,35 +25,35 @@ pub fn get_and_insert_build(build: &str) -> DashResult<()> {
     let conn = &*DB_POOL.get()?;
 
     for job in response.jobs.iter() {
-        if job.finished_at.is_none() || job.state == "canceled" {
+        if job.state == "canceled" {
             continue
         }
+        if let (Some(start), Some(end)) = (job.started_at, job.finished_at) {
+            let duration = end.signed_duration_since(start);
+            let b = Build {
+                number: response.build.id,
+                builder_name: "travis".to_string(),
+                builder_os: job.config.os.clone(),
+                builder_env: job.config.env.clone(),
+                successful: job.state == "passed",
+                message: String::new(),
+                duration_secs: Some(duration.num_seconds() as i32),
+                start_time: Some(start.naive_utc()),
+                end_time: Some(end.naive_utc()),
+            };
 
-        let duration = job.finished_at.unwrap()
-            .signed_duration_since(job.started_at.unwrap());
-        let b = Build {
-            number: response.build.id,
-            builder_name: "travis".to_string(),
-            builder_os: job.config.os.clone(),
-            builder_env: job.config.env.clone(),
-            successful: job.state == "passed",
-            message: String::new(),
-            duration_secs: Some(duration.num_seconds() as i32),
-            start_time: job.started_at.map(|dt| dt.naive_utc()),
-            end_time: job.finished_at.map(|dt| dt.naive_utc()),
-        };
-
-        {
-            debug!("Inserting Travis build {:?}", b);
-            use domain::schema::build::dsl::*;
-            diesel::insert(&b).into(build).execute(conn)?;
+            {
+                debug!("Inserting Travis build {:?}", b);
+                use domain::schema::build::dsl::*;
+                diesel::insert(&b).into(build).execute(conn)?;
+            }
         }
     }
     Ok(())
 }
 
 fn get<M: DeserializeOwned>(url: &str) -> DashResult<M> {
-    let tls = NativeTlsClient::new().unwrap();
+    let tls = NativeTlsClient::new().expect("Could not get TLS client");
     let client = Client::with_connector(HttpsConnector::new(tls));
     let mut buffer = String::new();
 
