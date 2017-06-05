@@ -428,22 +428,21 @@ pub fn open_issues_with_label(label: &str) -> DashResult<i64> {
 pub fn build_times(since: NaiveDateTime, until: NaiveDateTime)
     -> DashResult<Vec<(BuildInfo, Vec<(EpochTimestamp, f64)>)>>
 {
-    use domain::schema::build::dsl::*;
-
     let conn = try!(DB_POOL.get());
-
-    let query = "builder_name, builder_env, builder_os, date(start_time)";
-    let name_date = sql::<(Text, Text, Text, Date)>(query);
-
-    let tuples = build.select((&name_date,
-                                sql::<Double>("(AVG(duration_secs) / 60)::float")))
-        .filter(successful)
-        .filter(start_time.is_not_null())
-        .filter(start_time.ge(since))
-        .filter(start_time.le(until))
-        .group_by(&name_date)
-        .order((&name_date).asc())
-        .load::<((String, String, String, NaiveDate), f64)>(&*conn)?;
+    let tuples = {
+        use domain::schema::build::dsl::*;
+        let query = "builder_name, env, os, date(start_time)";
+        let name_date = sql::<(Text, Text, Text, Date)>(query);
+        build.select((&name_date,
+                      sql::<Double>("(AVG(duration_secs) / 60)::float")))
+            .filter(successful)
+            .filter(start_time.is_not_null())
+            .filter(start_time.ge(since))
+            .filter(start_time.le(until))
+            .group_by(&name_date)
+            .order((&name_date).asc())
+            .load::<((String, String, String, NaiveDate), f64)>(&*conn)?
+    };
 
     let mut results = BTreeMap::new();
     for ((name, env, os, date), build_minutes) in tuples {
@@ -458,21 +457,22 @@ pub fn build_times(since: NaiveDateTime, until: NaiveDateTime)
 pub fn build_failures_by_day(since: NaiveDateTime, until: NaiveDateTime)
     -> DashResult<Vec<(BuildInfo, Vec<(EpochTimestamp, i64)>)>>
 {
-    use domain::schema::build::dsl::*;
 
     let conn = try!(DB_POOL.get());
 
-    let query = "builder_name, builder_env, builder_os, date(start_time)";
-    let name_date = sql::<(Text, Text, Text, Date)>(query);
-
-    let tuples = build.select((&name_date, sql::<BigInt>("COUNT(*)")))
-        .filter(successful.ne(true))
-        .filter(start_time.is_not_null())
-        .filter(start_time.ge(since))
-        .filter(start_time.le(until))
-        .group_by(&name_date)
-        .order((&name_date).asc())
-        .load::<((String, String, String, NaiveDate), i64)>(&*conn)?;
+    let tuples = {
+        use domain::schema::build::dsl::*;
+        let query = "builder_name, env, os, date(start_time)";
+        let name_date = sql::<(Text, Text, Text, Date)>(query);
+        build.select((&name_date, sql::<BigInt>("COUNT(*)")))
+            .filter(successful.ne(true))
+            .filter(start_time.is_not_null())
+            .filter(start_time.ge(since))
+            .filter(start_time.le(until))
+            .group_by(&name_date)
+            .order((&name_date).asc())
+            .load::<((String, String, String, NaiveDate), i64)>(&*conn)?
+    };
 
     let mut results = BTreeMap::new();
     for ((name, env, os, date), build_minutes) in tuples {
@@ -492,9 +492,9 @@ pub fn build_failures_last_24_hours() -> DashResult<Vec<Build>> {
     let one_day_ago = UTC::now().naive_utc() - Duration::days(1);
 
     Ok(try!(build.select((number,
-                 builder_env,
+                 env,
                  builder_name,
-                 builder_os,
+                 os,
                  successful,
                  message,
                  duration_secs,

@@ -30,8 +30,8 @@ pub fn get_and_insert_build(build: &str) -> DashResult<()> {
             let b = Build {
                 number: response.build.id,
                 builder_name: "appveyor".to_string(),
-                builder_os: "windows".to_string(),
-                builder_env: job.name.clone(),
+                os: "windows".to_string(),
+                env: job.name.clone(),
                 successful: job.status == "success",
                 message: job.status.to_owned(),
                 duration_secs: Some(duration.num_seconds() as i32),

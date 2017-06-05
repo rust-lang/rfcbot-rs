@@ -33,8 +33,8 @@ pub fn get_and_insert_build(build: &str) -> DashResult<()> {
             let b = Build {
                 number: response.build.id,
                 builder_name: "travis".to_string(),
-                builder_os: job.config.os.clone(),
-                builder_env: job.config.env.clone(),
+                os: job.config.os.clone(),
+                env: job.config.env.clone(),
                 successful: job.state == "passed",
                 message: String::new(),
                 duration_secs: Some(duration.num_seconds() as i32),

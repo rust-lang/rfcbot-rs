@@ -1,5 +1,5 @@
 ALTER TABLE build
     DROP COLUMN builder_name,
-    DROP COLUMN builder_os;
+    DROP COLUMN os;
 ALTER TABLE build
-    RENAME COLUMN builder_env TO builder_name;
+    RENAME COLUMN env TO builder_name;
