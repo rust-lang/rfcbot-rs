@@ -17,7 +17,7 @@ use error::DashResult;
 header! { (Accept, "Accept") => [String] }
 
 const ROOT_URL: &'static str = "https://api.travis-ci.org";
-const UA: &'static str = "rusty-dash/0.0.0";
+const UA: &'static str = concat!("rusty-dash/", env!("CARGO_PKG_VERSION"));
 
 pub fn get_and_insert_build(build: &str) -> DashResult<()> {
     let url = format!("{}/repos/rust-lang/rust/builds/{}", ROOT_URL, build);

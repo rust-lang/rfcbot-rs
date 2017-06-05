@@ -15,7 +15,7 @@ pub fn ingest_status_event(url: String) -> DashResult<()> {
                 match domain {
                     "ci.appveyor.com" => return appveyor::get_and_insert_build(build),
                     "travis-ci.org" => return travis::get_and_insert_build(build),
-                    _ => (),
+                    _ => warn!("Unknown status URL found: {}", url),
                 }
             }
         }
