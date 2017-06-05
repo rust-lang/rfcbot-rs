@@ -11,7 +11,7 @@ use serde_json;
 
 use error::DashResult;
 use DB_POOL;
-use domain::buildbot::Build;
+use domain::builds::Build;
 
 #[allow(non_snake_case)]
 #[derive(Debug, Deserialize)]
@@ -60,9 +60,22 @@ impl Into<Build> for BuildFromJson {
             None
         };
 
+        let os = if self.builderName.contains("auto-win") {
+            "windows"
+        } else if self.builderName.contains("auto-linux") {
+            "linux"
+        } else if self.builderName.contains("auto-mac") {
+            "osx"
+        } else {
+            "unknown"
+        };
+
         Build {
-            number: self.number,
-            builder_name: self.builderName,
+            build_id: self.number.to_string(),
+            job_id: String::new(),
+            builder_name: "buildbot".to_string(),
+            os: os.to_string(),
+            env: self.builderName,
             successful: successful,
             message: concat_msg,
             duration_secs: duration,
@@ -109,7 +122,7 @@ pub fn ingest() -> DashResult<()> {
         for b in builds {
             use domain::schema::build::dsl::*;
             let pk = build.select(id)
-                .filter(number.eq(b.number))
+                .filter(build_id.eq(&b.build_id))
                 .filter(builder_name.eq(&b.builder_name))
                 .first::<i32>(&*conn)
                 .ok();

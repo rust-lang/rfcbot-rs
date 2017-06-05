@@ -29,9 +29,10 @@ extern crate serde;
 #[macro_use]
 extern crate serde_derive;
 extern crate serde_json;
+extern crate url;
 extern crate urlencoded;
 
-mod buildbot;
+mod builds;
 mod config;
 mod domain;
 mod error;
@@ -107,7 +108,7 @@ fn main() {
             "buildbot" => {
                 info!("Bootstrapping buildbot data.");
                 info!("{:#?}",
-                      buildbot::ingest().map(|()| "Ingestion successful."));
+                      builds::buildbot::ingest().map(|()| "Ingestion successful."));
             }
 
             _ => error!("Invalid scraping source specified."),

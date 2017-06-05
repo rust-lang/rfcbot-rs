@@ -9,6 +9,7 @@ use iron;
 use serde_json;
 
 use DB_POOL;
+use builds;
 use config::CONFIG;
 use error::DashResult;
 use github::models::{CommentFromJson, IssueFromJson, PullRequestFromJson};
@@ -96,20 +97,10 @@ fn authenticate(secret: &str, payload: &str, signature: &str) -> bool {
 
 fn parse_event(event_name: &str, body: &str) -> DashResult<Payload> {
     match event_name {
-        "issue_comment" => {
-            let payload = serde_json::from_str(body)?;
-            Ok(Payload::IssueComment(payload))
-        }
-
-        "issues" => {
-            let payload = serde_json::from_str(body)?;
-            Ok(Payload::Issues(payload))
-        }
-
-        "pull_request" => {
-            let payload = serde_json::from_str(body)?;
-            Ok(Payload::PullRequest(payload))
-        }
+        "issue_comment" => Ok(Payload::IssueComment(serde_json::from_str(body)?)),
+        "issues" => Ok(Payload::Issues(serde_json::from_str(body)?)),
+        "pull_request" => Ok(Payload::PullRequest(serde_json::from_str(body)?)),
+        "status" => Ok(Payload::Status(serde_json::from_str(body)?)),
 
         "commit_comment" |
         "create" |
@@ -130,7 +121,6 @@ fn parse_event(event_name: &str, body: &str) -> DashResult<Payload> {
         "push" |
         "repository" |
         "release" |
-        "status" |
         "team" |
         "team_add" |
         "watch" => {
@@ -169,6 +159,19 @@ fn authenticated_handler(event: Event) -> DashResult<()> {
             }
         }
 
+        Payload::Status(status_event) => {
+            if status_event.state != "pending" &&
+                status_event.branches.iter().any(|branch| {
+                    branch.name == "auto" &&
+                    branch.commit.sha == status_event.sha
+                })
+            {
+                if let Some(url) = status_event.target_url {
+                    builds::ingest_status_event(url)?
+                }
+            }
+        },
+
         Payload::Unsupported => (),
     }
 
@@ -187,6 +190,7 @@ pub enum Payload {
     Issues(IssuesEvent),
     IssueComment(IssueCommentEvent),
     PullRequest(PullRequestEvent),
+    Status(StatusEvent),
 
     Unsupported,
 }
@@ -215,6 +219,25 @@ pub struct PullRequestEvent {
 }
 
 #[derive(Debug, Deserialize)]
+pub struct StatusEvent {
+    sha: String,
+    state: String,
+    target_url: Option<String>,
+    branches: Vec<Branch>,
+}
+
+#[derive(Debug, Deserialize)]
 pub struct Repository {
     full_name: String,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct Branch {
+    name: String,
+    commit: Commit,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct Commit {
+    sha: String
 }

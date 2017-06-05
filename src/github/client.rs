@@ -9,7 +9,7 @@ use std::u32;
 use chrono::{DateTime, UTC};
 use hyper;
 use hyper::client::{RedirectPolicy, RequestBuilder, Response};
-use hyper::header::Headers;
+use hyper::header::{Headers, Authorization, UserAgent};
 use hyper::net::HttpsConnector;
 use hyper::status::StatusCode;
 use hyper_native_tls::NativeTlsClient;
@@ -26,8 +26,6 @@ pub const DELAY: u64 = 300;
 
 type ParameterMap = BTreeMap<&'static str, String>;
 
-header! { (Auth, "Authorization") => [String] }
-header! { (UA, "User-Agent") => [String] }
 header! { (TZ, "Time-Zone") => [String] }
 header! { (Accept, "Accept") => [String] }
 header! { (RateLimitRemaining, "X-RateLimit-Remaining") => [u32] }
@@ -229,7 +227,6 @@ impl Client {
 
     fn get(&self, url: &str, params: Option<&ParameterMap>)
            -> Result<Response, hyper::error::Error> {
-
         let qp_string = match params {
             Some(p) => {
                 let mut qp = String::from("?");
@@ -266,8 +263,8 @@ impl Client {
     }
 
     fn set_headers<'a>(&self, req: RequestBuilder<'a>) -> RequestBuilder<'a> {
-        req.header(Auth(format!("token {}", &self.token)))
-            .header(UA(self.ua.clone()))
+        req.header(Authorization(format!("token {}", &self.token)))
+            .header(UserAgent(self.ua.clone()))
             .header(TZ("UTC".to_string()))
             .header(Accept("application/vnd.github.v3".to_string()))
             .header(hyper::header::Connection::close())
