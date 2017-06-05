@@ -5,7 +5,8 @@ use super::schema::*;
          Ord, PartialEq, PartialOrd, Queryable, Serialize)]
 #[table_name="build"]
 pub struct Build {
-    pub number: i32,
+    pub build_id: String,
+    pub job_id: String,
     pub env: String,
     pub builder_name: String,
     pub os: String,

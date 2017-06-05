@@ -10,12 +10,22 @@ function fixTimestamps(data) {
 
 function getDisplayName(build) {
   // TODO: Use better names
-  if (build.name === "buildbot") {
+  if (build.builder_name === "buildbot") {
     return build.env;
-  } else if (build.name === "travis") {
+  } else if (build.builder_name === "travis") {
     return build.env;
-  } else if (build.name === "appveyor") {
+  } else if (build.builder_name === "appveyor") {
     return build.env;
+  }
+}
+
+function getURL(build) {
+  if (build.builder_name === "buildbot") {
+    return `https://buildbot.rust-lang.org/builders/${build.builder_name}/builds/${build.build_id}`;
+  } else if (build.builder_name === "travis") {
+    return `https://travis-ci.org/rust-lang/rust/jobs/${build.job_id}`;
+  } else if (build.builder_name === "appveyor") {
+    return `https://ci.appveyor.com/project/rust-lang/rust/build/${build.build_id}/job/${build.job_id}`;
   }
 }
 
@@ -65,7 +75,12 @@ export default Ember.Route.extend({
           }
         });
 
-        const model = {
+        const failures = metrics.failures_last_day.map(build => {
+          build.url = getURL(build);
+          return build;
+        });
+
+        return {
           linux: {
             per_builder_times: linux_build_times,
             per_builder_fails: linux_build_fails
@@ -78,11 +93,8 @@ export default Ember.Route.extend({
             per_builder_times: mac_build_times,
             per_builder_fails: mac_build_fails
           },
-          recent_failures: metrics.failures_last_day
+          recent_failures: failures,
         };
-
-
-        return model;
       });
   }
 });

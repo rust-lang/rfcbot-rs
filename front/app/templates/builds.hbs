@@ -18,7 +18,7 @@
         {{#each model.recent_failures as |build|}}
 
         <tr>
-            <td>{{build.number}}</td>
+            <td><a href="{{build.url}}" target="_blank">{{build.build_id}} -- {{ build.job_id }}</a></td>
             <td>{{build.builder_name}} -- {{ build.env }} </td>
             <td>{{build.message}}</td>
             <td>{{build.start_time}}</td>

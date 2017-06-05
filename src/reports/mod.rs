@@ -491,15 +491,16 @@ pub fn build_failures_last_24_hours() -> DashResult<Vec<Build>> {
 
     let one_day_ago = UTC::now().naive_utc() - Duration::days(1);
 
-    Ok(try!(build.select((number,
-                 env,
-                 builder_name,
-                 os,
-                 successful,
-                 message,
-                 duration_secs,
-                 start_time,
-                 end_time))
+    Ok(try!(build.select((build_id,
+                          job_id,
+                          env,
+                          builder_name,
+                          os,
+                          successful,
+                          message,
+                          duration_secs,
+                          start_time,
+                          end_time))
         .filter(successful.ne(true))
         .filter(end_time.is_not_null())
         .filter(end_time.ge(one_day_ago))

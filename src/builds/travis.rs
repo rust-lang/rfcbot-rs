@@ -31,7 +31,8 @@ pub fn get_and_insert_build(build: &str) -> DashResult<()> {
         if let (Some(start), Some(end)) = (job.started_at, job.finished_at) {
             let duration = end.signed_duration_since(start);
             let b = Build {
-                number: response.build.id,
+                build_id: response.build.id.to_string(),
+                job_id: job.id.to_string(),
                 builder_name: "travis".to_string(),
                 os: job.config.os.clone(),
                 env: job.config.env.clone(),
@@ -79,11 +80,12 @@ struct ResponseFromJson{
 
 #[derive(Debug, Deserialize)]
 struct BuildFromJson {
-    id: i32,
+    id: u64,
 }
 
 #[derive(Debug, Deserialize)]
 struct JobFromJson {
+    id: u64,
     state: String,
     config: ConfigFromJson,
     started_at: Option<DateTime<UTC>>,
