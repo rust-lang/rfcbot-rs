@@ -131,26 +131,6 @@ pub fn ingest_since(repo: &str, start: DateTime<UTC>) -> DashResult<()> {
     Ok(())
 }
 
-pub fn update_issue(repo: &str, number: i32) -> DashResult<()> {
-    let issue = GH.fetch_issue(repo, number)?;
-    let comments = GH.fetch_comments(repo, number)?;
-    let conn = &*DB_POOL.get()?;
-
-    handle_issue(conn, issue, repo)?;
-    for comment in comments {
-        handle_comment(conn, comment, repo)?;
-    }
-
-    Ok(())
-}
-
-pub fn update_pr(repo: &str, number: i32) -> DashResult<()> {
-    let pr = GH.fetch_pr(repo, number)?;
-    let conn = &*DB_POOL.get()?;
-
-    handle_pr(conn, pr, repo)
-}
-
 pub fn handle_pr(conn: &PgConnection, pr: PullRequestFromJson, repo: &str) -> DashResult<()> {
     use domain::schema::pullrequest::dsl::*;
     if let Some(ref assignee) = pr.assignee {

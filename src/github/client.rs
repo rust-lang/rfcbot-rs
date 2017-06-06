@@ -122,21 +122,6 @@ impl Client {
         Ok(models)
     }
 
-    pub fn fetch_issue(&self, repo: &str, number: i32) -> DashResult<IssueFromJson> {
-        let url = format!("{}/repos/{}/issues/{}", BASE_URL, repo, number);
-        self.deserialize(&mut self.get(&url, None)?)
-    }
-
-    pub fn fetch_comments(&self, repo: &str, number: i32) -> DashResult<Vec<CommentFromJson>> {
-        let url = format!("{}/repos/{}/issues/{}/comments", BASE_URL, repo, number);
-        self.get_models(&url, None)
-    }
-
-    pub fn fetch_pr(&self, repo: &str, number: i32) -> DashResult<PullRequestFromJson> {
-        let url = format!("{}/repos/{}/pulls/{}", BASE_URL, repo, number);
-        self.deserialize(&mut self.get(&url, None)?)
-    }
-
     pub fn fetch_pull_request(&self, pr_info: &PullRequestUrls) -> DashResult<PullRequestFromJson> {
         let url = pr_info.get("url");
 
