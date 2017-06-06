@@ -7,7 +7,6 @@ export RUST_LOG=debug,hyper=info,rustc=error,cargo=error
 export GITHUB_SCRAPE_INTERVAL=2
 export GITHUB_WEBHOOK_SECRETS="none"
 export RELEASES_SCRAPE_INTERVAL=720
-export BUILDBOT_SCRAPE_INTERVAL=80
 export SERVER_PORT=8080
 export POST_COMMENTS=false
 

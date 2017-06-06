@@ -104,13 +104,6 @@ fn main() {
                 info!("{:#?}",
                       releases::ingest_releases_since(start).map(|()| "Ingestion successful."));
             }
-
-            "buildbot" => {
-                info!("Bootstrapping buildbot data.");
-                info!("{:#?}",
-                      builds::buildbot::ingest().map(|()| "Ingestion successful."));
-            }
-
             _ => error!("Invalid scraping source specified."),
         }
     } else {

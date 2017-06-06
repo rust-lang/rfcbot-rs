@@ -89,7 +89,6 @@ Rust 1.17 or later is required.
 * `RUST_LOG`: the logging configuration for [env_logger](https://crates.io/crates/env_logger). If you're unfamiliar, you can read about it in the documentation linked on crates.io. If it's not defined, logging will default to `info!()` and above.
 * `GITHUB_SCRAPE_INTERVAL`: time (in minutes) to wait in between GitHub scrapes
 * `RELEASES_SCRAPE_INTERVAL`: time (in minutes) to wait in between nightly release scrapes
-* `BUILDBOT_SCRAPE_INTERVAL`: time (in minutes) to wait in between buildbot scrapes
 * `SERVER_PORT`: port on which the API server should listen
 * `POST_COMMENTS`: whether to post RFC bot comments on issues -- either `true` or `false`. Be very careful setting to true when testing -- it will post comments using whatever account is associated with the GitHub API key you provide.
 
@@ -116,9 +115,8 @@ Substitute `SOURCE` in that example with one of:
 
 * `github`
 * `releases`
-* `buildbot`
 
-The date can also be replaced by `all`, which will scrape all data available since 2015-05-15 (Rust's 1.0 launch). Any date will be ignored for the buildbot command, as the API doesn't support queries for recently updated items.
+The date can also be replaced by `all`, which will scrape all data available since 2015-05-15 (Rust's 1.0 launch).
 
 ## Scraping
 
@@ -127,7 +125,6 @@ The launch the scraping daemon, make sure the interval environment variables are
 * **IMPORTANT**: if the scraper daemon is killed in the middle of scraping and persisting a data source, it's a *very* good idea to run the bootstrap command for that/those data source(s). Current the database schema doesn't house any check-pointing or machine-readable confirmation of a successful scraping, which could result in erroneous holes in data for APIs which support "all results updated since TIME" queries (like GitHub). This is due to the fact that the current scraper just checks for the most recent entities in each category before telling the API how far back it wants to go.
 * In order to avoid overloading services, make sure that the intervals are not too small. Some examples:
   * The GitHub API allows (at the time of this writing) 5000 authenticated requests per hour. The GitHub scraper currently makes 1 request for every 100 updated issues, 1 request for every 100 update issue comments, and **1 request for every updated pull request**. Granted, this API limit is only likely to be an issue when bootstrapping the entire repository history, but bear it in mind if setting very low intervals (e.g. 1-2 minutes) or if using the same GitHub account for multiple API-using tools.
-  * The buildbot scraper takes 5-20 minutes as of this writing, and could potentially place significant load on the CI cluster since it requests all build records which may have to be deserialized from disk. Make sure to space this scraper out accordingly so that it is not running a significant percentage of the time.
 
 ## Deployment
 
