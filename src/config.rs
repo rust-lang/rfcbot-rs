@@ -31,7 +31,6 @@ pub struct Config {
     pub github_webhook_secrets: Vec<String>,
     pub github_interval_mins: u64,
     pub release_interval_mins: u64,
-    pub buildbot_interval_mins: u64,
     pub post_comments: bool,
 }
 
@@ -107,12 +106,6 @@ pub fn init() -> Result<Config, Vec<&'static str>> {
             Err(_) => return Err(vec![RELEASES_INTERVAL]),
         };
 
-        let bb_interval = vars.remove(BUILDBOT_INTERVAL).unwrap();
-        let bb_interval = match bb_interval.parse::<u64>() {
-            Ok(interval) => interval,
-            Err(_) => return Err(vec![BUILDBOT_INTERVAL]),
-        };
-
         let post_comments = vars.remove(POST_COMMENTS).unwrap();
         let post_comments = match post_comments.parse::<bool>() {
             Ok(pc) => pc,
@@ -131,7 +124,6 @@ pub fn init() -> Result<Config, Vec<&'static str>> {
             github_webhook_secrets: webhook_secrets,
             github_interval_mins: gh_interval,
             release_interval_mins: rel_interval,
-            buildbot_interval_mins: bb_interval,
             post_comments: post_comments,
         })
 
