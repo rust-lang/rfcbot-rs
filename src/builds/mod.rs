@@ -1,6 +1,5 @@
 use error::{DashResult, DashError};
 
-pub mod buildbot;
 mod appveyor;
 mod travis;
 
