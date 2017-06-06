@@ -63,7 +63,7 @@ pub struct BuildSummary {
 
 #[derive(Clone, Debug, Serialize, Eq, Ord, PartialEq, PartialOrd)]
 pub struct BuildInfo {
-    name: String,
+    builder_name: String,
     os: String,
     env: String,
 }
@@ -446,7 +446,7 @@ pub fn build_times(since: NaiveDateTime, until: NaiveDateTime)
 
     let mut results = BTreeMap::new();
     for ((name, env, os, date), build_minutes) in tuples {
-        results.entry(BuildInfo { name: name, env: env, os: os })
+        results.entry(BuildInfo { builder_name: name, env: env, os: os })
             .or_insert_with(Vec::new)
             .push((date.and_hms(12, 0, 0).timestamp(), build_minutes));
     }
@@ -476,7 +476,7 @@ pub fn build_failures_by_day(since: NaiveDateTime, until: NaiveDateTime)
 
     let mut results = BTreeMap::new();
     for ((name, env, os, date), build_minutes) in tuples {
-        results.entry(BuildInfo { name: name, env: env, os: os })
+        results.entry(BuildInfo { builder_name: name, env: env, os: os })
             .or_insert_with(Vec::new)
             .push((date.and_hms(12, 0, 0).timestamp(), build_minutes));
     }
