@@ -746,7 +746,7 @@ impl<'a> RfcBotCommand<'a> {
 
                 Ok(RfcBotCommand::NewConcern(command[name_start..].trim()))
             }
-            "resolved" => {
+            "resolve" | "resolved" => {
                 // TODO handle "resolve" as well, with the correct tokenization
 
                 let name_start = command.find("resolved").unwrap() + "resolved".len();
