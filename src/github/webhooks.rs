@@ -176,14 +176,14 @@ fn authenticated_handler(event: Event) -> DashResult<()> {
 }
 
 #[derive(Debug)]
-pub struct Event {
+struct Event {
     delivery_id: String,
     event_name: String,
     payload: Payload,
 }
 
 #[derive(Debug)]
-pub enum Payload {
+enum Payload {
     Issues(IssuesEvent),
     IssueComment(IssueCommentEvent),
     PullRequest(PullRequestEvent),
@@ -193,14 +193,14 @@ pub enum Payload {
 }
 
 #[derive(Debug, Deserialize)]
-pub struct IssuesEvent {
+struct IssuesEvent {
     action: String,
     issue: IssueFromJson,
     repository: Repository,
 }
 
 #[derive(Debug, Deserialize)]
-pub struct IssueCommentEvent {
+struct IssueCommentEvent {
     action: String,
     issue: IssueFromJson,
     repository: Repository,
@@ -208,7 +208,7 @@ pub struct IssueCommentEvent {
 }
 
 #[derive(Debug, Deserialize)]
-pub struct PullRequestEvent {
+struct PullRequestEvent {
     action: String,
     repository: Repository,
     number: i32,
@@ -216,23 +216,23 @@ pub struct PullRequestEvent {
 }
 
 #[derive(Debug, Deserialize)]
-pub struct Repository {
+struct Repository {
     full_name: String,
 }
 
 #[derive(Debug, Deserialize)]
-pub struct StatusEvent {
+struct StatusEvent {
     commit: Commit,
     state: String,
     target_url: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
-pub struct Commit {
+struct Commit {
     committer: Committer,
 }
 
 #[derive(Debug, Deserialize)]
-pub struct Committer {
+struct Committer {
     login: String,
 }
