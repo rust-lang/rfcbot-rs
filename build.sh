@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+set -e
+
 # prep directories
 mkdir -p ./rust-dashboard/usr/share/rust-dashboard/www
 
