@@ -908,9 +908,9 @@ impl<'a> RfcBotComment<'a> {
                         GH.edit_comment(&self.issue.repository, comment_id, &self.body)
                     }
                     None => {
-                        if let CommentType::FcpProposed(..) = self.comment_type {
-                            GH.add_label(&self.issue.repository, self.issue.number,
-                                         "entering-final-comment-period")?;
+                        if let &CommentType::FcpProposed(..) = self.comment_type {
+                            let _ = GH.add_label(&self.issue.repository, self.issue.number,
+                                                 "proposed-final-comment-period");
                         } 
                         GH.new_comment(&self.issue.repository, self.issue.number, &self.body)
                     }
