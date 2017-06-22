@@ -776,6 +776,7 @@ impl<'a> RfcBotCommand<'a> {
 struct RfcBotComment<'a> {
     issue: &'a Issue,
     body: String,
+    comment_type: &'a CommentType<'a>,
 }
 
 enum CommentType<'a> {
@@ -800,6 +801,7 @@ impl<'a> RfcBotComment<'a> {
         RfcBotComment {
             issue: issue,
             body: body,
+            comment_type: comment_type,
         }
     }
 
