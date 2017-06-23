@@ -170,6 +170,21 @@ impl Client {
         }
     }
 
+    pub fn remove_label(&self, repo: &str, issue_num: i32, label: &str) -> DashResult<()> {
+        let url = format!("{}/repos/{}/issues/{}/labels/{}",
+                          BASE_URL, repo, issue_num, label);
+        let mut res = self.delete(&url);
+
+        match res.status {
+            StatusCode::Ok => Ok(()),
+            _ => {
+                let mut body = String::new();
+                res.read_to_string(&mut body)?;
+                Err(DashError::Misc(Some(body)))
+            }
+        }
+    }
+
     pub fn new_comment(&self,
                        repo: &str,
                        issue_num: i32,
@@ -208,6 +223,10 @@ impl Client {
 
     fn post(&self, url: &str, payload: &str) -> Result<Response, hyper::error::Error> {
         self.set_headers(self.client.post(url).body(payload)).send()
+    }
+
+    fn delete(&self, url: &str) -> Result<Response, hyper::error::Error> {
+        self.set_headers(self.client.delete(url)).send()
     }
 
     fn get(&self, url: &str, params: Option<&ParameterMap>)
