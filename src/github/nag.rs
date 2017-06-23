@@ -776,6 +776,7 @@ impl<'a> RfcBotCommand<'a> {
 struct RfcBotComment<'a> {
     issue: &'a Issue,
     body: String,
+    comment_type: CommentType<'a>,
 }
 
 enum CommentType<'a> {
@@ -800,6 +801,7 @@ impl<'a> RfcBotComment<'a> {
         RfcBotComment {
             issue: issue,
             body: body,
+            comment_type: comment_type,
         }
     }
 
@@ -901,12 +903,18 @@ impl<'a> RfcBotComment<'a> {
         if CONFIG.post_comments {
 
             if self.issue.open {
-                Ok(match existing_comment {
+                match existing_comment {
                     Some(comment_id) => {
                         GH.edit_comment(&self.issue.repository, comment_id, &self.body)
                     }
-                    None => GH.new_comment(&self.issue.repository, self.issue.number, &self.body),
-                }?)
+                    None => {
+                        if let CommentType::FcpProposed(..) = self.comment_type {
+                            let _ = GH.add_label(&self.issue.repository, self.issue.number,
+                                                 "proposed-final-comment-period");
+                        } 
+                        GH.new_comment(&self.issue.repository, self.issue.number, &self.body)
+                    }
+                }
             } else {
                 info!("Skipping comment to {}#{}, the issue is no longer open",
                       self.issue.repository,
