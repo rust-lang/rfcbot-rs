@@ -776,7 +776,7 @@ impl<'a> RfcBotCommand<'a> {
 struct RfcBotComment<'a> {
     issue: &'a Issue,
     body: String,
-    comment_type: &'a CommentType<'a>,
+    comment_type: CommentType<'a>,
 }
 
 enum CommentType<'a> {
@@ -908,7 +908,7 @@ impl<'a> RfcBotComment<'a> {
                         GH.edit_comment(&self.issue.repository, comment_id, &self.body)
                     }
                     None => {
-                        if let &CommentType::FcpProposed(..) = self.comment_type {
+                        if let CommentType::FcpProposed(..) = self.comment_type {
                             let _ = GH.add_label(&self.issue.repository, self.issue.number,
                                                  "proposed-final-comment-period");
                         } 
