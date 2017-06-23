@@ -176,7 +176,7 @@ impl Client {
         let mut res = self.delete(&url);
 
         match res.status {
-            StatusCode::Ok => Ok(()),
+            StatusCode::NoContent => Ok(()),
             _ => {
                 let mut body = String::new();
                 res.read_to_string(&mut body)?;
