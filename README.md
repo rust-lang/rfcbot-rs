@@ -36,6 +36,10 @@ $ echo "POST_COMMENTS=false" >> .env
 
 **NOTE:** While the dashboard doesn't require any permissions boxes to be checked in access token creation, and the code makes every effort to avoid modifying any state through GitHub's API, there's always a risk with handing 3rd-party code your API credentials.
 
+### Database dumps
+
+It can be useful to have a database with some existing data to start from. "Bootstrap" files are available at https://www.dropbox.com/sh/dl4pxj1d49ici1f/AAAzZQxWVqQzVk_zOksn0Rbya?dl=0. They usually are behind several migrations, so you'll still need to run the migrations if you start from one.
+
 ### Running server processes in Vagrant
 
 There are three daemons to run, one each for the front-end development server, the back-end API server, and the scraper. It's recommended to run these in three separate terminal windows/tabs/sessions. Assuming the VM is already running (`vagrant up`), you'll need to run `vagrant ssh` in each terminal session to access the VM.
