@@ -173,7 +173,7 @@ impl Client {
     pub fn remove_label(&self, repo: &str, issue_num: i32, label: &str) -> DashResult<()> {
         let url = format!("{}/repos/{}/issues/{}/labels/{}",
                           BASE_URL, repo, issue_num, label);
-        let mut res = self.delete(&url);
+        let mut res = self.delete(&url)?;
 
         match res.status {
             StatusCode::NoContent => Ok(()),
