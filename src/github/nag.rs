@@ -261,8 +261,11 @@ fn evaluate_nags() -> DashResult<()> {
             // TODO only add label if FCP > 1 day
             use config::CONFIG;
             if CONFIG.post_comments {
-                let label_res =
-                    GH.add_label(&issue.repository, issue.number, "final-comment-period");
+                let label_res = GH.add_label(&issue.repository, issue.number,
+                                             "final-comment-period");
+
+                let _ = GH.remove_label(&issue.repository, issue.number,
+                                        "proposed-final-comment-period");
 
                 let added_label = match label_res {
                     Ok(()) => true,
@@ -451,6 +454,7 @@ fn cancel_fcp(author: &GitHubUser, issue: &Issue, existing: &FcpProposal) -> Das
     // leave github comment stating that FCP proposal cancelled
     let comment = RfcBotComment::new(issue, CommentType::FcpProposalCancelled(author));
     let _ = comment.post(None);
+    let _ = GH.remove_label(&issue.repository, issue.number, "proposed-final-comment-period");
 
     Ok(())
 }
