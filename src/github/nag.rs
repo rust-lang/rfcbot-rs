@@ -1,4 +1,4 @@
-use chrono::{Duration, UTC};
+use chrono::{Duration, Utc};
 use diesel::prelude::*;
 use diesel;
 
@@ -248,7 +248,7 @@ fn evaluate_nags() -> DashResult<()> {
             // i.e. either the comment claims to have posted, or we get a comment back to reconcile
 
             // FCP can start now -- update the database
-            proposal.fcp_start = Some(UTC::now().naive_utc());
+            proposal.fcp_start = Some(Utc::now().naive_utc());
             match diesel::update(fcp_proposal.find(proposal.id)).set(&proposal).execute(conn) {
                 Ok(_) => (),
                 Err(why) => {
@@ -300,7 +300,7 @@ fn evaluate_nags() -> DashResult<()> {
     }
 
     // look for any FCP proposals that entered FCP a week or more ago but aren't marked as closed
-    let one_business_week_ago = UTC::now().naive_utc() - Duration::days(10);
+    let one_business_week_ago = Utc::now().naive_utc() - Duration::days(10);
     let finished_fcps = match fcp_proposal.filter(fcp_start.le(one_business_week_ago))
         .filter(fcp_closed.eq(false))
         .load::<FcpProposal>(conn) {

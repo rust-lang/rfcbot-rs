@@ -1,4 +1,4 @@
-use chrono::{Datelike, DateTime, NaiveDate, UTC};
+use chrono::{Datelike, DateTime, NaiveDate, Utc};
 use diesel;
 use diesel::expression::dsl::*;
 use diesel::prelude::*;
@@ -16,7 +16,7 @@ lazy_static! {
         HttpsConnector::new(NativeTlsClient::new().unwrap()));
 }
 
-pub fn most_recent_update() -> DashResult<DateTime<UTC>> {
+pub fn most_recent_update() -> DashResult<DateTime<Utc>> {
     info!("finding most recent nightly release updates");
 
     let conn = try!(DB_POOL.get());
@@ -27,7 +27,7 @@ pub fn most_recent_update() -> DashResult<DateTime<UTC>> {
     };
 
     Ok(DateTime::from_utc(most_recent.expect("No releases found")
-                          .and_hms(0, 0, 0), UTC))
+                          .and_hms(0, 0, 0), Utc))
 }
 
 fn get_release_for_date(d: NaiveDate) -> DashResult<Release> {
@@ -47,7 +47,7 @@ pub fn get_releases_since(d: NaiveDate) -> DashResult<Vec<Release>> {
     let mut releases = vec![];
 
     let mut curr = d;
-    let today = UTC::today().naive_utc();
+    let today = Utc::today().naive_utc();
 
     while curr <= today {
         let curr_release = try!(get_release_for_date(curr));
@@ -58,7 +58,7 @@ pub fn get_releases_since(d: NaiveDate) -> DashResult<Vec<Release>> {
     Ok(releases)
 }
 
-pub fn ingest_releases_since(d: DateTime<UTC>) -> DashResult<()> {
+pub fn ingest_releases_since(d: DateTime<Utc>) -> DashResult<()> {
     use diesel::prelude::*;
     use domain::schema::release::dsl::*;
     let releases = try!(get_releases_since(d.date().naive_utc()));

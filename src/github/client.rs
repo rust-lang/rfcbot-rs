@@ -6,7 +6,7 @@ use std::thread::sleep;
 use std::time::Duration;
 use std::u32;
 
-use chrono::{DateTime, UTC};
+use chrono::{DateTime, Utc};
 use hyper;
 use hyper::client::{RedirectPolicy, RequestBuilder, Response};
 use hyper::header::{Headers, Authorization, UserAgent};
@@ -40,7 +40,7 @@ pub struct Client {
     ua: String,
     client: hyper::Client,
     rate_limit: u32,
-    rate_limit_timeout: DateTime<UTC>,
+    rate_limit_timeout: DateTime<Utc>,
 }
 
 impl Client {
@@ -54,7 +54,7 @@ impl Client {
             ua: CONFIG.github_user_agent.clone(),
             client: client,
             rate_limit: u32::MAX,
-            rate_limit_timeout: UTC::now(),
+            rate_limit_timeout: Utc::now(),
         }
     }
 
@@ -78,7 +78,7 @@ impl Client {
         Ok(repos)
     }
 
-    pub fn issues_since(&self, repo: &str, start: DateTime<UTC>) -> DashResult<Vec<IssueFromJson>> {
+    pub fn issues_since(&self, repo: &str, start: DateTime<Utc>) -> DashResult<Vec<IssueFromJson>> {
 
         let url = format!("{}/repos/{}/issues", BASE_URL, repo);
         let mut params = ParameterMap::new();
@@ -94,7 +94,7 @@ impl Client {
 
     pub fn comments_since(&self,
                           repo: &str,
-                          start: DateTime<UTC>)
+                          start: DateTime<Utc>)
                           -> DashResult<Vec<CommentFromJson>> {
         let url = format!("{}/repos/{}/issues/comments", BASE_URL, repo);
         let mut params = ParameterMap::new();

@@ -3,7 +3,7 @@
 use std::collections::BTreeMap;
 use std::i32;
 
-use chrono::{DateTime, UTC};
+use chrono::{DateTime, Utc};
 
 use DB_POOL;
 use domain::github::{IssueComment, IssuePartial, Milestone, PullRequest, GitHubUser};
@@ -19,10 +19,10 @@ pub struct MilestoneFromJson {
     pub creator: GitHubUser,
     pub open_issues: i32,
     pub closed_issues: i32,
-    pub created_at: DateTime<UTC>,
-    pub updated_at: DateTime<UTC>,
-    pub closed_at: Option<DateTime<UTC>>,
-    pub due_on: Option<DateTime<UTC>>,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+    pub closed_at: Option<DateTime<Utc>>,
+    pub due_on: Option<DateTime<Utc>>,
 }
 
 impl MilestoneFromJson {
@@ -66,9 +66,9 @@ pub struct IssueFromJson {
     pub locked: bool,
     pub comments: i32,
     pub pull_request: Option<PullRequestUrls>,
-    pub closed_at: Option<DateTime<UTC>>,
-    pub created_at: DateTime<UTC>,
-    pub updated_at: DateTime<UTC>,
+    pub closed_at: Option<DateTime<Utc>>,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
     pub comments_url: String,
 }
 
@@ -104,8 +104,8 @@ pub struct CommentFromJson {
     pub html_url: String,
     pub body: String,
     pub user: GitHubUser,
-    pub created_at: DateTime<UTC>,
-    pub updated_at: DateTime<UTC>,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
 }
 
 impl CommentFromJson {
@@ -156,10 +156,10 @@ pub struct PullRequestFromJson {
     pub assignee: Option<GitHubUser>,
     pub milestone: Option<MilestoneFromJson>,
     pub locked: bool,
-    pub created_at: DateTime<UTC>,
-    pub updated_at: DateTime<UTC>,
-    pub closed_at: Option<DateTime<UTC>>,
-    pub merged_at: Option<DateTime<UTC>>,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+    pub closed_at: Option<DateTime<Utc>>,
+    pub merged_at: Option<DateTime<Utc>>,
     pub commits: i32,
     pub additions: i32,
     pub deletions: i32,

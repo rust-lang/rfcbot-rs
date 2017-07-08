@@ -1,7 +1,7 @@
 use std::thread;
 use std::time::Duration;
 
-use chrono::{DateTime, UTC};
+use chrono::{DateTime, Utc};
 use crossbeam::scope;
 
 use config::{CONFIG, GH_ORGS};
@@ -48,7 +48,7 @@ pub fn start_scraping() {
     });
 }
 
-pub fn scrape_github(since: DateTime<UTC>) {
+pub fn scrape_github(since: DateTime<Utc>) {
     let mut repos = Vec::new();
     for org in &GH_ORGS {
         match github::GH.org_repos(org) {
@@ -61,7 +61,7 @@ pub fn scrape_github(since: DateTime<UTC>) {
     }
 
     info!("Scraping github activity since {:?}", since);
-    let start_time = UTC::now().naive_utc();
+    let start_time = Utc::now().naive_utc();
     for repo in repos {
         match github::ingest_since(&repo, since) {
             Ok(()) => info!("Scraped {} github successfully", repo),

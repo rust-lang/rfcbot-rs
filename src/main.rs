@@ -42,7 +42,7 @@ mod reports;
 mod scraper;
 mod server;
 
-use chrono::{DateTime, Local, TimeZone, UTC};
+use chrono::{DateTime, Local, TimeZone, Utc};
 use clap::{App, Arg, ArgMatches, SubCommand};
 use diesel::pg::PgConnection;
 use env_logger::LogBuilder;
@@ -85,7 +85,7 @@ fn main() {
     } else if let Some(args) = args.subcommand_matches("bootstrap") {
         // OK to unwrap, this has already been validated by clap
         let start = make_date_time(args.value_of("since").unwrap())
-            .unwrap_or_else(|_| UTC.ymd(2015, 5, 15).and_hms(0, 0, 0));
+            .unwrap_or_else(|_| Utc.ymd(2015, 5, 15).and_hms(0, 0, 0));
 
         let source = args.value_of("source").unwrap();
 
@@ -108,8 +108,8 @@ fn main() {
     }
 }
 
-fn make_date_time(date_str: &str) -> Result<DateTime<UTC>, chrono::ParseError> {
-    UTC.datetime_from_str(&format!("{} 00:00:00", date_str), "%Y-%m-%d %H:%M:%S")
+fn make_date_time(date_str: &str) -> Result<DateTime<Utc>, chrono::ParseError> {
+    Utc.datetime_from_str(&format!("{} 00:00:00", date_str), "%Y-%m-%d %H:%M:%S")
 }
 
 fn init_cli<'a>() -> ArgMatches<'a> {
