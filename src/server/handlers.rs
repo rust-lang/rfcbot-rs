@@ -1,7 +1,7 @@
 use std::error::Error;
 use std::fmt;
 
-use chrono::{NaiveDate, Duration, UTC};
+use chrono::{NaiveDate, Duration, Utc};
 use iron::prelude::*;
 use iron::status;
 use router::Router;
@@ -66,7 +66,7 @@ make_dated_endpoint!(builds, ci_summary);
 make_dated_endpoint!(nightlies, nightly_summary);
 
 fn parse_dates_from_query(req: &mut Request) -> IronResult<(NaiveDate, NaiveDate)> {
-    let today = UTC::today().naive_utc();
+    let today = Utc::today().naive_utc();
     let since = today - Duration::days(30);
 
     let default = Ok((since, today));

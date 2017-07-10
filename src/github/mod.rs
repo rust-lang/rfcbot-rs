@@ -6,7 +6,7 @@ pub mod models;
 mod nag;
 pub mod webhooks;
 
-use chrono::{DateTime, NaiveDate, NaiveDateTime, NaiveTime, UTC};
+use chrono::{DateTime, NaiveDate, NaiveDateTime, NaiveTime, Utc};
 use diesel::prelude::*;
 use diesel::pg::PgConnection;
 use diesel::pg::upsert::*;
@@ -24,7 +24,7 @@ lazy_static! {
     pub static ref GH: Client = Client::new();
 }
 
-pub fn most_recent_update() -> DashResult<DateTime<UTC>> {
+pub fn most_recent_update() -> DashResult<DateTime<Utc>> {
     info!("finding most recent github updates");
 
     let default_date = NaiveDateTime::new(NaiveDate::from_ymd(2015, 5, 15),
@@ -41,7 +41,7 @@ pub fn most_recent_update() -> DashResult<DateTime<UTC>> {
             .unwrap_or(default_date)
     };
 
-    Ok(DateTime::from_utc(updated, UTC))
+    Ok(DateTime::from_utc(updated, Utc))
 }
 
 pub fn record_successful_update(ingest_start: NaiveDateTime) -> DashResult<()> {
@@ -58,7 +58,7 @@ pub fn record_successful_update(ingest_start: NaiveDateTime) -> DashResult<()> {
     Ok(())
 }
 
-pub fn ingest_since(repo: &str, start: DateTime<UTC>) -> DashResult<()> {
+pub fn ingest_since(repo: &str, start: DateTime<Utc>) -> DashResult<()> {
     info!("fetching all {} issues and comments since {}", repo, start);
     let issues = try!(GH.issues_since(repo, start));
     let mut comments = try!(GH.comments_since(repo, start));

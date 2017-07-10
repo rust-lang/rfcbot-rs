@@ -1,6 +1,6 @@
 use std::io::Read;
 
-use chrono::{DateTime, UTC};
+use chrono::{DateTime, Utc};
 use diesel;
 use diesel::prelude::*;
 use hyper::Client;
@@ -88,8 +88,8 @@ struct JobFromJson {
     id: u64,
     state: String,
     config: ConfigFromJson,
-    started_at: Option<DateTime<UTC>>,
-    finished_at: Option<DateTime<UTC>>,
+    started_at: Option<DateTime<Utc>>,
+    finished_at: Option<DateTime<Utc>>,
 }
 
 #[derive(Debug, Deserialize)]

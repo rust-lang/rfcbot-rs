@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 
-use chrono::{Duration, NaiveDate, NaiveDateTime, UTC};
+use chrono::{Duration, NaiveDate, NaiveDateTime, Utc};
 use diesel::expression::dsl::*;
 use diesel::expression::AsExpression;
 use diesel::prelude::*;
@@ -489,7 +489,7 @@ pub fn build_failures_last_24_hours() -> DashResult<Vec<Build>> {
 
     let conn = try!(DB_POOL.get());
 
-    let one_day_ago = UTC::now().naive_utc() - Duration::days(1);
+    let one_day_ago = Utc::now().naive_utc() - Duration::days(1);
 
     Ok(try!(build.select((build_id,
                           job_id,
