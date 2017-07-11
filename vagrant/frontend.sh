@@ -4,7 +4,6 @@ set -e
 
 # global deps
 npm install -g ember-cli
-npm install -g bower
 
 # keep node modules in VM file system to speedup npm install and fix it on Windows/Linux machines
 mkdir -p /home/vagrant/local_front/node_modules
@@ -17,5 +16,4 @@ chown -R vagrant:vagrant /vagrant/front/node_modules
 su vagrant <<'EOF'
 cd /vagrant/front
 yarn install
-bower install
 EOF
