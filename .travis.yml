@@ -16,7 +16,6 @@ cache:
   cargo: true
   directories:
     - front/node_modules
-    - front/bower_components
 
 addons:
   postgresql: "9.5"
@@ -28,15 +27,13 @@ addons:
       - pkg-config
 
 before_install:
-  - nvm install 4
+  - nvm install 6
   - npm config set spin false
-  - npm install -g bower phantomjs-prebuilt yarn
-  - bower --version
+  - npm install -g phantomjs-prebuilt yarn
   - phantomjs --version
 install:
   - cd front/
   - yarn install
-  - bower install
   - cd ../
   - cargo install --force diesel_cli
 
@@ -51,3 +48,4 @@ before_script:
 script:
   - cargo build --verbose
   - cargo test --verbose
+  - cd front && ember build
