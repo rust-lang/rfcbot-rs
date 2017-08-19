@@ -35,8 +35,7 @@ mod config;
 mod domain;
 mod error;
 mod github;
-mod releases;
-mod reports;
+mod nag;
 mod scraper;
 mod server;
 
@@ -94,11 +93,6 @@ fn main() {
                 info!("Ingestion complete");
             }
 
-            "releases" => {
-                info!("Bootstrapping release channel data since {}.", start);
-                info!("{:#?}",
-                      releases::ingest_releases_since(start).map(|()| "Ingestion successful."));
-            }
             _ => error!("Invalid scraping source specified."),
         }
     } else {

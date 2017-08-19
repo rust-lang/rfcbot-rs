@@ -9,8 +9,6 @@ mod handlers;
 pub fn serve() {
     let mut mount = Mount::new();
 
-    mount.mount("/nightlies/", router!(releases: get "/" => handlers::nightlies));
-
     mount.mount("/fcp/",
                 router!(
         allfcps: get "/all" => handlers::list_fcps,
