@@ -103,6 +103,7 @@ I'm testing with PostgreSQL 9.5. To init, make sure `DATABASE_URL` is set, and:
 ```
 cargo install diesel_cli
 diesel migration run
+diesel print-schema > src/domain/schema.rs
 ```
 
 That should have the database you've specified ready to receive data. Then you can run some of the bootstrapping commands (see below). Alternatively, you can use `bootstrap.sql` to get a nice starting point for the database (note that this isn't maintained regularly).
