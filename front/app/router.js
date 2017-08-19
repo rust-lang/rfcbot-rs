@@ -9,7 +9,6 @@ const Router = Ember.Router.extend({
 Router.map(function() {
   this.route('summary', { path: '/' });
   this.route('nightlies', { path: '/nightlies' });
-  this.route('prs', { path: '/pullrequests' });
   this.route('links', { path: '/links' });
   this.route('triage', { path: '/triage' });
   this.route('fcp_user', { path: '/fcp/:username' });
