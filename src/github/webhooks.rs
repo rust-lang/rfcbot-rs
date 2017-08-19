@@ -9,7 +9,6 @@ use iron;
 use serde_json;
 
 use DB_POOL;
-use builds;
 use config::CONFIG;
 use error::DashResult;
 use github::models::{CommentFromJson, IssueFromJson, PullRequestFromJson};
@@ -100,7 +99,6 @@ fn parse_event(event_name: &str, body: &str) -> DashResult<Payload> {
         "issue_comment" => Ok(Payload::IssueComment(serde_json::from_str(body)?)),
         "issues" => Ok(Payload::Issues(serde_json::from_str(body)?)),
         "pull_request" => Ok(Payload::PullRequest(serde_json::from_str(body)?)),
-        "status" => Ok(Payload::Status(serde_json::from_str(body)?)),
 
         "commit_comment" |
         "create" |
@@ -121,6 +119,7 @@ fn parse_event(event_name: &str, body: &str) -> DashResult<Payload> {
         "push" |
         "repository" |
         "release" |
+        "status" |
         "team" |
         "team_add" |
         "watch" => {
@@ -159,16 +158,6 @@ fn authenticated_handler(event: Event) -> DashResult<()> {
             }
         }
 
-        Payload::Status(status_event) => {
-            if status_event.state != "pending" &&
-                status_event.commit.committer.login == "bors"
-            {
-                if let Some(url) = status_event.target_url {
-                    builds::ingest_status_event(url)?
-                }
-            }
-        },
-
         Payload::Unsupported => (),
     }
 
@@ -187,7 +176,6 @@ enum Payload {
     Issues(IssuesEvent),
     IssueComment(IssueCommentEvent),
     PullRequest(PullRequestEvent),
-    Status(StatusEvent),
 
     Unsupported,
 }

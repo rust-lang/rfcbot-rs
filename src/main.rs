@@ -32,7 +32,6 @@ extern crate serde_json;
 extern crate url;
 extern crate urlencoded;
 
-mod builds;
 mod config;
 mod domain;
 mod error;
