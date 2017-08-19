@@ -1,6 +1,5 @@
 use chrono::{Duration, NaiveDate, NaiveDateTime};
 use diesel::expression::dsl::*;
-use diesel::expression::AsExpression;
 use diesel::prelude::*;
 use diesel::select;
 use diesel::types::{BigInt, Bool, Date, Double, Integer, Text, VarChar};
@@ -33,18 +32,6 @@ pub struct BorsRetry {
 }
 
 #[derive(Clone, Debug, Serialize)]
-pub struct IssueSummary {
-    opened_per_day: Vec<(EpochTimestamp, i64)>,
-    closed_per_day: Vec<(EpochTimestamp, i64)>,
-    days_open_before_close: Vec<(EpochTimestamp, f64)>,
-    current_open_age_days_mean: f64,
-    num_open_p_high_issues: i64,
-    num_open_regression_nightly_issues: i64,
-    num_open_regression_beta_issues: i64,
-    num_open_regression_stable_issues: i64,
-}
-
-#[derive(Clone, Debug, Serialize)]
 pub struct ReleaseSummary {
     nightlies: Vec<Release>,
     streak_summary: NightlyStreakSummary,
@@ -64,31 +51,6 @@ pub struct NightlyStreakSummary {
     longest_end: NaiveDate,
     current_length_days: u32,
     last_failure: Option<NaiveDate>,
-}
-
-pub fn issue_summary(since: NaiveDate, until: NaiveDate) -> DashResult<IssueSummary> {
-    let since = since.and_hms(0, 0, 0);
-    let until = until.and_hms(23, 59, 59);
-
-    let current_issue_age = try!(open_issues_avg_days_old());
-    let issue_open_time = try!(issues_open_time_before_close(since, until));
-    let issues_open_per_day = try!(issues_opened_per_day(since, until));
-    let issues_close_per_day = try!(issues_closed_per_day(since, until));
-    let num_p_high = try!(open_issues_with_label("P-high"));
-    let nightly_regress = try!(open_issues_with_label("regression-from-stable-to-nightly"));
-    let beta_regress = try!(open_issues_with_label("regression-from-stable-to-beta"));
-    let stable_regress = try!(open_issues_with_label("regression-from-stable-to-stable"));
-
-    Ok(IssueSummary {
-        opened_per_day: issues_open_per_day,
-        closed_per_day: issues_close_per_day,
-        days_open_before_close: issue_open_time,
-        current_open_age_days_mean: current_issue_age,
-        num_open_p_high_issues: num_p_high,
-        num_open_regression_nightly_issues: nightly_regress,
-        num_open_regression_beta_issues: beta_regress,
-        num_open_regression_stable_issues: stable_regress,
-    })
 }
 
 pub fn pr_summary(since: NaiveDate, until: NaiveDate) -> DashResult<PullRequestSummary> {
@@ -237,95 +199,6 @@ pub fn bors_retries_last_week() -> DashResult<Vec<BorsRetry>> {
         pr.number = i.number \
         ORDER BY ic.created_at DESC"))
         .load(&*conn)))
-}
-
-pub fn issues_opened_per_day(since: NaiveDateTime,
-                             until: NaiveDateTime)
-                             -> DashResult<Vec<(EpochTimestamp, i64)>> {
-    use domain::schema::issue::dsl::*;
-
-    let conn = try!(DB_POOL.get());
-    let d = sql::<Date>("d");
-    Ok(try!(issue.select(sql::<(Date, BigInt)>("created_at::date as d, COUNT(*)"))
-            .filter(created_at.ge(since))
-            .filter(created_at.le(until))
-            .group_by(&d)
-            .order((&d).asc())
-            .get_results::<(NaiveDate, i64)>(&*conn))
-        .into_iter()
-        .map(|(t, c)| (t.and_hms(12, 0, 0).timestamp(), c))
-        .collect())
-}
-
-pub fn issues_closed_per_day(since: NaiveDateTime,
-                             until: NaiveDateTime)
-                             -> DashResult<Vec<(EpochTimestamp, i64)>> {
-    use domain::schema::issue::dsl::*;
-
-    let conn = try!(DB_POOL.get());
-    let d = sql::<Date>("d");
-    Ok(try!(issue.select(sql::<(Date, BigInt)>("closed_at::date as d, COUNT(*)"))
-            .filter(closed_at.is_not_null())
-            .filter(closed_at.ge(since))
-            .filter(closed_at.le(until))
-            .group_by(&d)
-            .order((&d).asc())
-            .get_results::<(NaiveDate, i64)>(&*conn))
-        .into_iter()
-        .map(|(t, c)| (t.and_hms(12, 0, 0).timestamp(), c))
-        .collect())
-}
-
-pub fn issues_open_time_before_close(since: NaiveDateTime,
-                                     until: NaiveDateTime)
-                                     -> DashResult<Vec<(EpochTimestamp, f64)>> {
-    use domain::schema::issue::dsl::*;
-
-    let conn = try!(DB_POOL.get());
-
-    let w = sql::<Text>("iso_closed_week");
-    let mut results = try!(issue.select(sql::<(Double, Text)>("\
-                                             \
-                                           AVG(EXTRACT(EPOCH FROM closed_at) - EXTRACT(EPOCH \
-                                           FROM created_at)) / (60 * 60 * 24), \
-                                           \
-                                           EXTRACT(ISOYEAR FROM closed_at)::text || '-' || \
-                                           EXTRACT(WEEK FROM closed_at)::text || '-6' AS \
-                                           iso_closed_week"))
-            .filter(closed_at.is_not_null())
-            .filter(closed_at.ge(since))
-            .filter(closed_at.le(until))
-            .group_by(&w)
-            .get_results::<(f64, String)>(&*conn))
-        .into_iter()
-        .map(|(time, week)| {
-            let d = NaiveDate::parse_from_str(&week, "%G-%V-%w").unwrap();
-            let d = d.and_hms(12, 0, 0).timestamp();
-            (d, time)
-        })
-        .collect::<Vec<(EpochTimestamp, f64)>>();
-
-    results.sort_by(|&(d1, _), &(d2, _)| d1.cmp(&d2));
-    Ok(results)
-}
-
-pub fn open_issues_avg_days_old() -> DashResult<f64> {
-    use domain::schema::issue::dsl::*;
-    let conn = try!(DB_POOL.get());
-    Ok(try!(issue.select(sql::<Double>("AVG(EXTRACT(EPOCH FROM (now() - created_at))) / \
-                                              (60 * 60 * 24)"))
-        .filter(closed_at.is_null())
-        .first(&*conn)))
-}
-
-pub fn open_issues_with_label(label: &str) -> DashResult<i64> {
-    use domain::schema::issue::dsl::*;
-    let conn = try!(DB_POOL.get());
-
-    Ok(try!(issue.select(count_star())
-        .filter(closed_at.is_null())
-        .filter(AsExpression::<Text>::as_expression(label).eq(any(labels)))
-        .first(&*conn)))
 }
 
 pub fn nightly_releases(since: NaiveDateTime,
