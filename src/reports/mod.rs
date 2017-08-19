@@ -1,6 +1,4 @@
-use std::collections::BTreeMap;
-
-use chrono::{Duration, NaiveDate, NaiveDateTime, Utc};
+use chrono::{Duration, NaiveDate, NaiveDateTime};
 use diesel::expression::dsl::*;
 use diesel::expression::AsExpression;
 use diesel::prelude::*;
@@ -8,7 +6,6 @@ use diesel::select;
 use diesel::types::{Array, BigInt, Bool, Date, Double, Integer, Nullable, Text, Timestamp, VarChar};
 
 use DB_POOL;
-use domain::builds::Build;
 use domain::github::Issue;
 use domain::releases::Release;
 use error::DashResult;
@@ -52,13 +49,6 @@ pub struct IssueSummary {
 pub struct ReleaseSummary {
     nightlies: Vec<Release>,
     streak_summary: NightlyStreakSummary,
-}
-
-#[derive(Clone, Debug, Serialize)]
-pub struct BuildSummary {
-    per_builder_times: Vec<(BuildInfo, Vec<(EpochTimestamp, f64)>)>,
-    per_builder_failures: Vec<(BuildInfo, Vec<(EpochTimestamp, i64)>)>,
-    failures_last_day: Vec<Build>,
 }
 
 #[derive(Clone, Debug, Serialize, Eq, Ord, PartialEq, PartialOrd)]
@@ -125,21 +115,6 @@ pub fn pr_summary(since: NaiveDate, until: NaiveDate) -> DashResult<PullRequestS
         days_open_before_close: pr_open_time,
         current_open_age_days_mean: current_pr_age,
         bors_retries: bors_retries,
-    })
-}
-
-pub fn ci_summary(since: NaiveDate, until: NaiveDate) -> DashResult<BuildSummary> {
-    let since = since.and_hms(0, 0, 0);
-    let until = until.and_hms(23, 59, 59);
-
-    let per_builder_times = try!(build_times(since, until));
-    let per_builder_fails = try!(build_failures_by_day(since, until));
-    let failures_last_day = try!(build_failures_last_24_hours());
-
-    Ok(BuildSummary {
-        per_builder_times: per_builder_times,
-        per_builder_failures: per_builder_fails,
-        failures_last_day: failures_last_day,
     })
 }
 
@@ -423,89 +398,6 @@ pub fn open_issues_with_label(label: &str) -> DashResult<i64> {
         .filter(closed_at.is_null())
         .filter(AsExpression::<Text>::as_expression(label).eq(any(labels)))
         .first(&*conn)))
-}
-
-pub fn build_times(since: NaiveDateTime, until: NaiveDateTime)
-    -> DashResult<Vec<(BuildInfo, Vec<(EpochTimestamp, f64)>)>>
-{
-    let conn = try!(DB_POOL.get());
-    let tuples = {
-        use domain::schema::build::dsl::*;
-        let query = "builder_name, env, os, date(start_time)";
-        let name_date = sql::<(Text, Text, Text, Date)>(query);
-        build.select((&name_date,
-                      sql::<Double>("(AVG(duration_secs) / 60)::float")))
-            .filter(successful)
-            .filter(start_time.is_not_null())
-            .filter(start_time.ge(since))
-            .filter(start_time.le(until))
-            .group_by(&name_date)
-            .order((&name_date).asc())
-            .load::<((String, String, String, NaiveDate), f64)>(&*conn)?
-    };
-
-    let mut results = BTreeMap::new();
-    for ((name, env, os, date), build_minutes) in tuples {
-        results.entry(BuildInfo { builder_name: name, env: env, os: os })
-            .or_insert_with(Vec::new)
-            .push((date.and_hms(12, 0, 0).timestamp(), build_minutes));
-    }
-
-    Ok(results.into_iter().collect())
-}
-
-pub fn build_failures_by_day(since: NaiveDateTime, until: NaiveDateTime)
-    -> DashResult<Vec<(BuildInfo, Vec<(EpochTimestamp, i64)>)>>
-{
-
-    let conn = try!(DB_POOL.get());
-
-    let tuples = {
-        use domain::schema::build::dsl::*;
-        let query = "builder_name, env, os, date(start_time)";
-        let name_date = sql::<(Text, Text, Text, Date)>(query);
-        build.select((&name_date, sql::<BigInt>("COUNT(*)")))
-            .filter(successful.ne(true))
-            .filter(start_time.is_not_null())
-            .filter(start_time.ge(since))
-            .filter(start_time.le(until))
-            .group_by(&name_date)
-            .order((&name_date).asc())
-            .load::<((String, String, String, NaiveDate), i64)>(&*conn)?
-    };
-
-    let mut results = BTreeMap::new();
-    for ((name, env, os, date), build_minutes) in tuples {
-        results.entry(BuildInfo { builder_name: name, env: env, os: os })
-            .or_insert_with(Vec::new)
-            .push((date.and_hms(12, 0, 0).timestamp(), build_minutes));
-    }
-
-    Ok(results.into_iter().collect())
-}
-
-pub fn build_failures_last_24_hours() -> DashResult<Vec<Build>> {
-    use domain::schema::build::dsl::*;
-
-    let conn = try!(DB_POOL.get());
-
-    let one_day_ago = Utc::now().naive_utc() - Duration::days(1);
-
-    Ok(try!(build.select((build_id,
-                          job_id,
-                          env,
-                          builder_name,
-                          os,
-                          successful,
-                          message,
-                          duration_secs,
-                          start_time,
-                          end_time))
-        .filter(successful.ne(true))
-        .filter(end_time.is_not_null())
-        .filter(end_time.ge(one_day_ago))
-        .order(end_time.desc())
-        .load::<Build>(&*conn)))
 }
 
 pub fn nightly_releases(since: NaiveDateTime,
