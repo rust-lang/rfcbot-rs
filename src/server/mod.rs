@@ -10,7 +10,6 @@ pub fn serve() {
     let mut mount = Mount::new();
 
     mount.mount("/pullrequests/", router!(prs: get "/" => handlers::pull_requests));
-    mount.mount("/issues/", router!(issues: get "/" => handlers::issues));
     mount.mount("/nightlies/", router!(releases: get "/" => handlers::nightlies));
 
     mount.mount("/fcp/",
