@@ -3,10 +3,9 @@ use diesel::expression::dsl::*;
 use diesel::expression::AsExpression;
 use diesel::prelude::*;
 use diesel::select;
-use diesel::types::{Array, BigInt, Bool, Date, Double, Integer, Nullable, Text, Timestamp, VarChar};
+use diesel::types::{BigInt, Bool, Date, Double, Integer, Text, VarChar};
 
 use DB_POOL;
-use domain::github::Issue;
 use domain::releases::Release;
 use error::DashResult;
 
@@ -67,11 +66,6 @@ pub struct NightlyStreakSummary {
     last_failure: Option<NaiveDate>,
 }
 
-#[derive(Clone, Debug, Serialize)]
-pub struct HotIssueSummary {
-    issues: Vec<Issue>,
-}
-
 pub fn issue_summary(since: NaiveDate, until: NaiveDate) -> DashResult<IssueSummary> {
     let since = since.and_hms(0, 0, 0);
     let until = until.and_hms(23, 59, 59);
@@ -126,72 +120,6 @@ pub fn nightly_summary(since: NaiveDate, until: NaiveDate) -> DashResult<Release
         nightlies: nightly_releases(since, until)?,
         streak_summary: streaks()?,
     })
-}
-
-pub fn hot_issues_summary() -> DashResult<HotIssueSummary> {
-    Ok(HotIssueSummary {issues: hottest_issues_last_month()?})
-}
-
-pub fn hottest_issues_last_month() -> DashResult<Vec<Issue>> {
-
-    let conn = try!(DB_POOL.get());
-
-    Ok(try!(select(sql::<(Integer,
-                          Integer,
-                          Nullable<Integer>,
-                          Integer,
-                          Nullable<Integer>,
-                          Bool,
-                          Bool,
-                          VarChar,
-                          VarChar,
-                          Bool,
-                          Nullable<Timestamp>,
-                          Timestamp,
-                          Timestamp,
-                          Array<VarChar>,
-                          VarChar)>("i.id, \
-          i.number, \
-          i.fk_milestone, \
-          i.fk_user, \
-          i.fk_assignee, \
-          i.open, \
-          i.is_pull_request, \
-          i.title, \
-          i.body, \
-          i.locked, \
-          i.closed_at, \
-          i.created_at, \
-          i.updated_at, \
-          i.labels, \
-          i.repository \
-        FROM issue i, issuecomment ic, githubuser u \
-        WHERE \
-          i.id = ic.fk_issue AND \
-          ic.created_at >= NOW() - '14 days'::interval AND \
-          i.open AND \
-          ic.fk_user = u.id AND \
-          u.login != 'bors' AND \
-          ic.body NOT LIKE '%@bors%' \
-        GROUP BY \
-          i.id, \
-          i.number, \
-          i.fk_milestone, \
-          i.fk_user, \
-          i.fk_assignee, \
-          i.open, \
-          i.is_pull_request, \
-          i.title, \
-          i.body, \
-          i.locked, \
-          i.closed_at, \
-          i.created_at, \
-          i.updated_at, \
-          i.labels, \
-          i.repository \
-        ORDER BY COUNT(ic.*) DESC \
-        LIMIT 50"))
-        .load::<Issue>(&*conn)))
 }
 
 pub fn prs_opened_per_day(since: NaiveDateTime,

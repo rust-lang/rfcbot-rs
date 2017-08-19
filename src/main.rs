@@ -14,7 +14,6 @@ extern crate hex;
 #[macro_use]
 extern crate hyper;
 extern crate hyper_native_tls;
-#[macro_use]
 extern crate iron;
 #[macro_use]
 extern crate lazy_static;

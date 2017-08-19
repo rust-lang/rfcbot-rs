@@ -12,7 +12,6 @@ pub fn serve() {
     mount.mount("/pullrequests/", router!(prs: get "/" => handlers::pull_requests));
     mount.mount("/issues/", router!(issues: get "/" => handlers::issues));
     mount.mount("/nightlies/", router!(releases: get "/" => handlers::nightlies));
-    mount.mount("/hot-issues/", router!(hotissues: get "/" => handlers::hot_issues));
 
     mount.mount("/fcp/",
                 router!(
