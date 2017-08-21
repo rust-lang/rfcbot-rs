@@ -47,7 +47,6 @@ const GITHUB_TOKEN: &'static str = "GITHUB_ACCESS_TOKEN";
 const GITHUB_WEBHOOK_SECRETS: &'static str = "GITHUB_WEBHOOK_SECRETS";
 const GITHUB_UA: &'static str = "GITHUB_USER_AGENT";
 const GITHUB_INTERVAL: &'static str = "GITHUB_SCRAPE_INTERVAL";
-const BUILDBOT_INTERVAL: &'static str = "BUILDBOT_SCRAPE_INTERVAL";
 const POST_COMMENTS: &'static str = "POST_COMMENTS";
 
 // this is complex, but we'll shortly need a lot more config items
@@ -62,7 +61,6 @@ pub fn init() -> Result<Config, Vec<&'static str>> {
                     GITHUB_WEBHOOK_SECRETS,
                     GITHUB_UA,
                     GITHUB_INTERVAL,
-                    BUILDBOT_INTERVAL,
                     POST_COMMENTS];
 
     for var in keys {
