@@ -1,20 +1,4 @@
 table! {
-    build (id) {
-        id -> Int4,
-        build_id -> Varchar,
-        env -> Text,
-        successful -> Bool,
-        message -> Text,
-        duration_secs -> Nullable<Int4>,
-        start_time -> Nullable<Timestamp>,
-        end_time -> Nullable<Timestamp>,
-        builder_name -> Text,
-        job_id -> Text,
-        os -> Text,
-    }
-}
-
-table! {
     fcp_concern (id) {
         id -> Int4,
         fk_proposal -> Int4,
@@ -140,14 +124,6 @@ table! {
         deletions -> Int4,
         changed_files -> Int4,
         repository -> Varchar,
-    }
-}
-
-table! {
-    release (id) {
-        id -> Int4,
-        date -> Date,
-        released -> Bool,
     }
 }
 
