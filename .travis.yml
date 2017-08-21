@@ -35,13 +35,15 @@ install:
   - cd front/
   - yarn install
   - cd ../
-  - cargo install --force diesel_cli
+  - cargo install --force diesel_cli --no-default-features --features "postgres"
 
 before_script:
-  - source ./vagrant/vagrant_env.sh
+  - export RUST_LOG=debug,hyper=info,rustc=error,cargo=error
+  - export GITHUB_WEBHOOK_SECRETS="none"
+  - export POST_COMMENTS=false
+  - export RUST_BACKTRACE=1
+  - export PATH=$PATH:$HOME/.cargo/bin
   - export DATABASE_URL='postgres://localhost/dashboard'
-  - unset CARGO_TARGET_DIR
-
   - diesel setup
   - diesel migration run
 
