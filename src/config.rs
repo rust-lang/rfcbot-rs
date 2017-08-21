@@ -30,7 +30,6 @@ pub struct Config {
     pub github_user_agent: String,
     pub github_webhook_secrets: Vec<String>,
     pub github_interval_mins: u64,
-    pub release_interval_mins: u64,
     pub post_comments: bool,
 }
 
@@ -48,7 +47,6 @@ const GITHUB_TOKEN: &'static str = "GITHUB_ACCESS_TOKEN";
 const GITHUB_WEBHOOK_SECRETS: &'static str = "GITHUB_WEBHOOK_SECRETS";
 const GITHUB_UA: &'static str = "GITHUB_USER_AGENT";
 const GITHUB_INTERVAL: &'static str = "GITHUB_SCRAPE_INTERVAL";
-const RELEASES_INTERVAL: &'static str = "RELEASES_SCRAPE_INTERVAL";
 const BUILDBOT_INTERVAL: &'static str = "BUILDBOT_SCRAPE_INTERVAL";
 const POST_COMMENTS: &'static str = "POST_COMMENTS";
 
@@ -64,7 +62,6 @@ pub fn init() -> Result<Config, Vec<&'static str>> {
                     GITHUB_WEBHOOK_SECRETS,
                     GITHUB_UA,
                     GITHUB_INTERVAL,
-                    RELEASES_INTERVAL,
                     BUILDBOT_INTERVAL,
                     POST_COMMENTS];
 
@@ -100,12 +97,6 @@ pub fn init() -> Result<Config, Vec<&'static str>> {
             Err(_) => return Err(vec![GITHUB_INTERVAL]),
         };
 
-        let rel_interval = vars.remove(RELEASES_INTERVAL).unwrap();
-        let rel_interval = match rel_interval.parse::<u64>() {
-            Ok(interval) => interval,
-            Err(_) => return Err(vec![RELEASES_INTERVAL]),
-        };
-
         let post_comments = vars.remove(POST_COMMENTS).unwrap();
         let post_comments = match post_comments.parse::<bool>() {
             Ok(pc) => pc,
@@ -123,7 +114,6 @@ pub fn init() -> Result<Config, Vec<&'static str>> {
             github_user_agent: gh_ua,
             github_webhook_secrets: webhook_secrets,
             github_interval_mins: gh_interval,
-            release_interval_mins: rel_interval,
             post_comments: post_comments,
         })
 
