@@ -8,7 +8,7 @@ Deployed to http://rusty-dash.com right now.
 
 * [Development](#development)
   * [Configuring environment variables](#configuring-environment-variables)
-  * [Running server processes in Vagrant](#running-server-processes-in-vagrant)
+  * [Running server processes](#running-server-processes)
   * [Database Connection](#database-connection)
 * [Configuration](#configuration)
   * [Rust Version](#rust-version)
