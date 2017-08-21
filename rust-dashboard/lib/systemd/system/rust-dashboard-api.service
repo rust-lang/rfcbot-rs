@@ -5,7 +5,7 @@ After=postgresql.service nginx.service
 
 [Service]
 EnvironmentFile=/etc/rust-dashboard/env
-ExecStart=/usr/bin/rust-dashboard serve
+ExecStart=/usr/bin/rust-dashboard
 Restart=always
 
 [Install]
