@@ -4,8 +4,6 @@ name = "rust-dashboard"
 version = "0.1.0"
 
 [dependencies]
-clap = "2.2.5"
-crossbeam = "0.2.9"
 dotenv = "0.9.0"
 env_logger = "0.4"
 hex = "0.2.0"

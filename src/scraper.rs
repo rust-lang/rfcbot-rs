@@ -1,16 +1,15 @@
+use std::thread::{spawn, JoinHandle};
 use std::thread;
 use std::time::Duration;
 
 use chrono::{DateTime, Utc};
-use crossbeam::scope;
 
 use config::{CONFIG, GH_ORGS};
 use github;
 
-pub fn start_scraping() {
-    // spawn the github scraper
-    scope(|scope| {
-        scope.spawn(|| {
+pub fn start_scraping() -> JoinHandle<()> {
+    // spawn the github scraper in the background
+    spawn(|| {
             let sleep_duration = Duration::from_secs(CONFIG.github_interval_mins * 60);
             loop {
                 match github::most_recent_update() {
@@ -22,8 +21,7 @@ pub fn start_scraping() {
                       CONFIG.github_interval_mins);
                 thread::sleep(sleep_duration);
             }
-        });
-    });
+        })
 }
 
 pub fn scrape_github(since: DateTime<Utc>) {

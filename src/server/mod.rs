@@ -1,4 +1,8 @@
+use std::thread::{spawn, JoinHandle};
+
 use iron::prelude::*;
+use iron::error::HttpResult;
+use iron::Listening;
 use mount::Mount;
 
 use config::CONFIG;
@@ -6,7 +10,7 @@ use github::webhooks;
 
 mod handlers;
 
-pub fn serve() {
+pub fn serve() -> JoinHandle<HttpResult<Listening>> {
     let mut mount = Mount::new();
 
     mount.mount("/fcp/",
@@ -21,5 +25,5 @@ pub fn serve() {
 
     let server_addr = format!("0.0.0.0:{}", CONFIG.server_port);
     info!("Starting API server running at {}", &server_addr);
-    Iron::new(mount).http(&*server_addr).unwrap();
+    spawn(move || { Iron::new(mount).http(&*server_addr) })
 }
