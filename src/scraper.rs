@@ -10,18 +10,18 @@ use github;
 pub fn start_scraping() -> JoinHandle<()> {
     // spawn the github scraper in the background
     spawn(|| {
-            let sleep_duration = Duration::from_secs(CONFIG.github_interval_mins * 60);
-            loop {
-                match github::most_recent_update() {
-                    Ok(gh_most_recent) => scrape_github(gh_most_recent),
-                    Err(why) => error!("Unable to determine most recent GH update: {:?}", why)
-                }
-                info!("GitHub scraper sleeping for {} seconds ({} minutes)",
-                      sleep_duration.as_secs(),
-                      CONFIG.github_interval_mins);
-                thread::sleep(sleep_duration);
+        let sleep_duration = Duration::from_secs(CONFIG.github_interval_mins * 60);
+        loop {
+            match github::most_recent_update() {
+                Ok(gh_most_recent) => scrape_github(gh_most_recent),
+                Err(why) => error!("Unable to determine most recent GH update: {:?}", why),
             }
-        })
+            info!("GitHub scraper sleeping for {} seconds ({} minutes)",
+                  sleep_duration.as_secs(),
+                  CONFIG.github_interval_mins);
+            thread::sleep(sleep_duration);
+        }
+    })
 }
 
 pub fn scrape_github(since: DateTime<Utc>) {
@@ -41,12 +41,12 @@ pub fn scrape_github(since: DateTime<Utc>) {
     for repo in repos {
         match github::ingest_since(&repo, since) {
             Ok(()) => info!("Scraped {} github successfully", repo),
-            Err(why) => error!("Unable to scrape github {}: {:?}", repo, why)
+            Err(why) => error!("Unable to scrape github {}: {:?}", repo, why),
         }
     }
 
     match github::record_successful_update(start_time) {
         Ok(_) => {}
-        Err(why) => error!("Problem recording successful update: {:?}", why)
+        Err(why) => error!("Problem recording successful update: {:?}", why),
     }
 }

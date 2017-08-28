@@ -82,7 +82,9 @@ impl IssueFromJson {
             open: self.state == "open",
             is_pull_request: self.pull_request.is_some(),
             title: self.title.replace(0x00 as char, ""),
-            body: self.body.unwrap_or_else(String::new).replace(0x00 as char, ""),
+            body: self.body
+                .unwrap_or_else(String::new)
+                .replace(0x00 as char, ""),
             locked: self.locked,
             closed_at: self.closed_at.map(|t| t.naive_utc()),
             created_at: self.created_at.naive_utc(),
@@ -129,20 +131,21 @@ impl CommentFromJson {
 
         let conn = try!(DB_POOL.get());
 
-        let issue_id = try!(issue.select(id)
-            .filter(number.eq(issue_number))
-            .filter(repository.eq(repo))
-            .first::<i32>(&*conn));
+        let issue_id = try!(issue
+                                .select(id)
+                                .filter(number.eq(issue_number))
+                                .filter(repository.eq(repo))
+                                .first::<i32>(&*conn));
 
         Ok(IssueComment {
-            id: self.id,
-            fk_issue: issue_id,
-            fk_user: self.user.id,
-            body: self.body.replace(0x00 as char, ""),
-            created_at: self.created_at.naive_utc(),
-            updated_at: self.updated_at.naive_utc(),
-            repository: repo.to_string(),
-        })
+               id: self.id,
+               fk_issue: issue_id,
+               fk_user: self.user.id,
+               body: self.body.replace(0x00 as char, ""),
+               created_at: self.created_at.naive_utc(),
+               updated_at: self.updated_at.naive_utc(),
+               repository: repo.to_string(),
+           })
     }
 }
 

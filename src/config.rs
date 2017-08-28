@@ -36,7 +36,7 @@ pub struct Config {
 impl Config {
     pub fn check(&self) -> bool {
         !self.db_url.is_empty() && !self.github_access_token.is_empty() &&
-            !self.github_user_agent.is_empty()
+        !self.github_user_agent.is_empty()
     }
 }
 
@@ -105,22 +105,22 @@ pub fn init() -> Result<Config, Vec<&'static str>> {
         let webhook_secrets = webhook_secrets.split(',').map(String::from).collect();
 
         Ok(Config {
-            server_port: port,
-            db_url: db_url,
-            db_pool_size: db_pool_size,
-            github_access_token: gh_token,
-            github_user_agent: gh_ua,
-            github_webhook_secrets: webhook_secrets,
-            github_interval_mins: gh_interval,
-            post_comments: post_comments,
-        })
+               server_port: port,
+               db_url: db_url,
+               db_pool_size: db_pool_size,
+               github_access_token: gh_token,
+               github_user_agent: gh_ua,
+               github_webhook_secrets: webhook_secrets,
+               github_interval_mins: gh_interval,
+               post_comments: post_comments,
+           })
 
     } else {
 
         Err(vars.iter()
-            .filter(|&(_, v)| v.is_err())
-            .map(|(&k, _)| k)
-            .collect())
+                .filter(|&(_, v)| v.is_err())
+                .map(|(&k, _)| k)
+                .collect())
 
     }
 }

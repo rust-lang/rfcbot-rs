@@ -34,7 +34,8 @@ pub fn most_recent_update() -> DashResult<DateTime<Utc>> {
 
     let updated: NaiveDateTime = {
         use domain::schema::githubsync::dsl::*;
-        githubsync.select(ran_at)
+        githubsync
+            .select(ran_at)
             .filter(successful.eq(true))
             .order(ran_at.desc())
             .first(conn)
@@ -139,7 +140,8 @@ pub fn handle_pr(conn: &PgConnection, pr: PullRequestFromJson, repo: &str) -> Da
 
     let pr: PullRequest = pr.with_repo(repo);
     diesel::insert(&pr.on_conflict((repository, number), do_update().set(&pr)))
-        .into(pullrequest).execute(conn)?;
+        .into(pullrequest)
+        .execute(conn)?;
     Ok(())
 }
 
@@ -150,12 +152,18 @@ pub fn handle_comment(conn: &PgConnection, comment: CommentFromJson, repo: &str)
 
     // We only want to run `nag::update_nags` on insert to avoid
     // double-processing commits, so we can't use upsert here
-    if issuecomment::table.find(comment.id).get_result::<IssueComment>(conn).is_ok() {
-        diesel::update(issuecomment::table.find(comment.id)).set(&comment)
+    if issuecomment::table
+           .find(comment.id)
+           .get_result::<IssueComment>(conn)
+           .is_ok() {
+        diesel::update(issuecomment::table.find(comment.id))
+            .set(&comment)
             .execute(conn)?;
         Ok(())
     } else {
-        diesel::insert(&comment).into(issuecomment::table).execute(conn)?;
+        diesel::insert(&comment)
+            .into(issuecomment::table)
+            .execute(conn)?;
         match nag::update_nags(&comment) {
             Ok(()) => Ok(()),
             Err(why) => {
@@ -179,16 +187,17 @@ pub fn handle_issue(conn: &PgConnection, issue: IssueFromJson, repo: &str) -> Da
     let (i, milestone) = issue.with_repo(repo);
 
     if let Some(milestone) = milestone {
-        diesel::insert(&milestone.on_conflict(milestone::id,
-                                              do_update().set(&milestone)))
-            .into(milestone::table).execute(conn)?;
+        diesel::insert(&milestone.on_conflict(milestone::id, do_update().set(&milestone)))
+            .into(milestone::table)
+            .execute(conn)?;
     }
 
     // handle issue itself
     {
         use domain::schema::issue::dsl::*;
         diesel::insert(&i.on_conflict((repository, number), do_update().set(&i)))
-            .into(issue).execute(conn)?;
+            .into(issue)
+            .execute(conn)?;
     }
 
     Ok(())
@@ -196,7 +205,8 @@ pub fn handle_issue(conn: &PgConnection, issue: IssueFromJson, repo: &str) -> Da
 
 pub fn handle_user(conn: &PgConnection, user: &GitHubUser) -> DashResult<()> {
     diesel::insert(&user.on_conflict(githubuser::id, do_update().set(user)))
-        .into(githubuser::table).execute(conn)?;
+        .into(githubuser::table)
+        .execute(conn)?;
     Ok(())
 }
 
@@ -207,12 +217,14 @@ mod tests {
 
     #[test]
     fn test_handle_user() {
-        let db_url = env::var("DATABASE_URL")
-            .expect("DATABASE_URL must be set");
+        let db_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
         let conn = PgConnection::establish(&db_url)
             .expect(&format!("Error connecting to {}", db_url));
 
-        let user = GitHubUser {id: -1, login: "A".to_string()};
+        let user = GitHubUser {
+            id: -1,
+            login: "A".to_string(),
+        };
         let query = githubuser::table.filter(githubuser::id.eq(user.id));
 
         // User should not exist
@@ -227,7 +239,10 @@ mod tests {
         assert_eq!(query.load::<GitHubUser>(&conn), Ok(vec![user.clone()]));
 
         // User has been inserted, but login has changed
-        let new_user = GitHubUser {id: user.id, login: user.login + "_new"};
+        let new_user = GitHubUser {
+            id: user.id,
+            login: user.login + "_new",
+        };
         handle_user(&conn, &new_user).expect("Unable to handle user!");
         assert_eq!(query.load::<GitHubUser>(&conn), Ok(vec![new_user.clone()]));
 

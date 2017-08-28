@@ -19,7 +19,9 @@ pub fn update_nags(comment: &IssueComment) -> DashResult<()> {
 
     let issue = issue::table.find(comment.fk_issue).first::<Issue>(conn)?;
 
-    let author = githubuser::table.find(comment.fk_user).first::<GitHubUser>(conn)?;
+    let author = githubuser::table
+        .find(comment.fk_user)
+        .first::<GitHubUser>(conn)?;
 
     let subteam_members = subteam_members(&issue)?;
 
@@ -80,48 +82,50 @@ fn update_proposal_review_status(proposal_id: i32) -> DashResult<()> {
         return Ok(());
     }
 
-    let comment: IssueComment = issuecomment::table.find(proposal.fk_bot_tracking_comment)
+    let comment: IssueComment = issuecomment::table
+        .find(proposal.fk_bot_tracking_comment)
         .first(conn)?;
 
     // parse the status comment and mark any new reviews as reviewed
-    let reviewed = comment.body
+    let reviewed = comment
+        .body
         .lines()
-        .filter_map(|line| {
-            if line.starts_with("* [") {
-                let l = line.trim_left_matches("* [");
-                let reviewed = l.starts_with('x');
-                let remaining = l.trim_left_matches("x] @").trim_left_matches(" ] @");
+        .filter_map(|line| if line.starts_with("* [") {
+                        let l = line.trim_left_matches("* [");
+                        let reviewed = l.starts_with('x');
+                        let remaining = l.trim_left_matches("x] @").trim_left_matches(" ] @");
 
-                if let Some(username) = remaining.split_whitespace().next() {
-                    trace!("reviewer parsed as reviewed? {} (line: \"{}\")",
-                           reviewed,
-                           l);
+                        if let Some(username) = remaining.split_whitespace().next() {
+                            trace!("reviewer parsed as reviewed? {} (line: \"{}\")",
+                                   reviewed,
+                                   l);
 
-                    if reviewed { Some(username) } else { None }
-                } else {
-                    warn!("An empty usename showed up in comment {} for proposal {}",
-                          comment.id,
-                          proposal.id);
-                    None
-                }
-            } else {
-                None
-            }
-        });
+                            if reviewed { Some(username) } else { None }
+                        } else {
+                            warn!("An empty usename showed up in comment {} for proposal {}",
+                                  comment.id,
+                                  proposal.id);
+                            None
+                        }
+                    } else {
+                        None
+                    });
 
     for username in reviewed {
-        let user: GitHubUser = githubuser::table.filter(githubuser::login.eq(username))
+        let user: GitHubUser = githubuser::table
+            .filter(githubuser::login.eq(username))
             .first(conn)?;
 
         {
             use domain::schema::fcp_review_request::dsl::*;
-            let mut review_request: FcpReviewRequest =
-                fcp_review_request.filter(fk_proposal.eq(proposal.id))
-                    .filter(fk_reviewer.eq(user.id))
-                    .first(conn)?;
+            let mut review_request: FcpReviewRequest = fcp_review_request
+                .filter(fk_proposal.eq(proposal.id))
+                .filter(fk_reviewer.eq(user.id))
+                .first(conn)?;
 
             review_request.reviewed = true;
-            diesel::update(fcp_review_request.find(review_request.id)).set(&review_request)
+            diesel::update(fcp_review_request.find(review_request.id))
+                .set(&review_request)
                 .execute(conn)?;
         }
     }
@@ -137,8 +141,9 @@ fn evaluate_nags() -> DashResult<()> {
     let conn = &*DB_POOL.get()?;
 
     // first process all "pending" proposals (unreviewed or remaining concerns)
-    let pending_proposals = match fcp_proposal.filter(fcp_start.is_null())
-        .load::<FcpProposal>(conn) {
+    let pending_proposals = match fcp_proposal
+              .filter(fcp_start.is_null())
+              .load::<FcpProposal>(conn) {
         Ok(p) => p,
         Err(why) => {
             error!("Unable to retrieve list of pending proposals: {:?}", why);
@@ -147,8 +152,9 @@ fn evaluate_nags() -> DashResult<()> {
     };
 
     for mut proposal in pending_proposals {
-        let initiator = match githubuser::table.find(proposal.fk_initiator)
-            .first::<GitHubUser>(conn) {
+        let initiator = match githubuser::table
+                  .find(proposal.fk_initiator)
+                  .first::<GitHubUser>(conn) {
             Ok(i) => i,
             Err(why) => {
                 error!("Unable to retrieve proposal initiator for proposal id {}: {:?}",
@@ -215,8 +221,10 @@ fn evaluate_nags() -> DashResult<()> {
         };
 
         let num_active_reviews = reviews.iter().filter(|&&(_, ref r)| !r.reviewed).count();
-        let num_active_concerns =
-            concerns.iter().filter(|&&(_, ref c)| c.fk_resolved_comment.is_none()).count();
+        let num_active_concerns = concerns
+            .iter()
+            .filter(|&&(_, ref c)| c.fk_resolved_comment.is_none())
+            .count();
 
         // update existing status comment with reviews & concerns
         let status_comment = RfcBotComment::new(&issue, CommentType::FcpProposed(
@@ -225,8 +233,9 @@ fn evaluate_nags() -> DashResult<()> {
                     &reviews,
                     &concerns));
 
-        let previous_comment: IssueComment =
-            issuecomment.filter(issuecomment_id.eq(proposal.fk_bot_tracking_comment)).first(conn)?;
+        let previous_comment: IssueComment = issuecomment
+            .filter(issuecomment_id.eq(proposal.fk_bot_tracking_comment))
+            .first(conn)?;
 
         if previous_comment.body != status_comment.body {
             // if the comment body in the database equals the new one we generated, then no change
@@ -249,7 +258,9 @@ fn evaluate_nags() -> DashResult<()> {
 
             // FCP can start now -- update the database
             proposal.fcp_start = Some(Utc::now().naive_utc());
-            match diesel::update(fcp_proposal.find(proposal.id)).set(&proposal).execute(conn) {
+            match diesel::update(fcp_proposal.find(proposal.id))
+                      .set(&proposal)
+                      .execute(conn) {
                 Ok(_) => (),
                 Err(why) => {
                     error!("Unable to mark FCP {} as started: {:?}", proposal.id, why);
@@ -261,10 +272,11 @@ fn evaluate_nags() -> DashResult<()> {
             // TODO only add label if FCP > 1 day
             use config::CONFIG;
             if CONFIG.post_comments {
-                let label_res = GH.add_label(&issue.repository, issue.number,
-                                             "final-comment-period");
+                let label_res =
+                    GH.add_label(&issue.repository, issue.number, "final-comment-period");
 
-                let _ = GH.remove_label(&issue.repository, issue.number,
+                let _ = GH.remove_label(&issue.repository,
+                                        issue.number,
                                         "proposed-final-comment-period");
 
                 let added_label = match label_res {
@@ -301,9 +313,10 @@ fn evaluate_nags() -> DashResult<()> {
 
     // look for any FCP proposals that entered FCP a week or more ago but aren't marked as closed
     let one_business_week_ago = Utc::now().naive_utc() - Duration::days(10);
-    let finished_fcps = match fcp_proposal.filter(fcp_start.le(one_business_week_ago))
-        .filter(fcp_closed.eq(false))
-        .load::<FcpProposal>(conn) {
+    let finished_fcps = match fcp_proposal
+              .filter(fcp_start.le(one_business_week_ago))
+              .filter(fcp_closed.eq(false))
+              .load::<FcpProposal>(conn) {
         Ok(f) => f,
         Err(why) => {
             error!("Unable to retrieve FCPs that need to be marked as finished: {:?}",
@@ -328,7 +341,9 @@ fn evaluate_nags() -> DashResult<()> {
 
         // update the fcp
         proposal.fcp_closed = true;
-        match diesel::update(fcp_proposal.find(proposal.id)).set(&proposal).execute(conn) {
+        match diesel::update(fcp_proposal.find(proposal.id))
+                  .set(&proposal)
+                  .execute(conn) {
             Ok(_) => (),
             Err(why) => {
                 error!("Unable to update FCP {}: {:?}", proposal.id, why);
@@ -356,13 +371,15 @@ fn list_review_requests(proposal_id: i32) -> DashResult<Vec<(GitHubUser, FcpRevi
 
     let conn = &*DB_POOL.get()?;
 
-    let reviews = fcp_review_request::table.filter(fcp_review_request::fk_proposal.eq(proposal_id))
+    let reviews = fcp_review_request::table
+        .filter(fcp_review_request::fk_proposal.eq(proposal_id))
         .load::<FcpReviewRequest>(conn)?;
 
     let mut w_reviewers = Vec::with_capacity(reviews.len());
 
     for review in reviews {
-        let initiator = githubuser::table.filter(githubuser::id.eq(review.fk_reviewer))
+        let initiator = githubuser::table
+            .filter(githubuser::id.eq(review.fk_reviewer))
             .first::<GitHubUser>(conn)?;
 
         w_reviewers.push((initiator, review));
@@ -378,14 +395,16 @@ fn list_concerns_with_authors(proposal_id: i32) -> DashResult<Vec<(GitHubUser, F
 
     let conn = &*DB_POOL.get()?;
 
-    let concerns = fcp_concern::table.filter(fcp_concern::fk_proposal.eq(proposal_id))
+    let concerns = fcp_concern::table
+        .filter(fcp_concern::fk_proposal.eq(proposal_id))
         .order(fcp_concern::name)
         .load::<FcpConcern>(conn)?;
 
     let mut w_authors = Vec::with_capacity(concerns.len());
 
     for concern in concerns {
-        let initiator = githubuser::table.filter(githubuser::id.eq(concern.fk_initiator))
+        let initiator = githubuser::table
+            .filter(githubuser::id.eq(concern.fk_initiator))
             .first::<GitHubUser>(conn)?;
 
         w_authors.push((initiator, concern));
@@ -403,14 +422,17 @@ fn resolve_applicable_feedback_requests(author: &GitHubUser,
     let conn = &*DB_POOL.get()?;
 
     // check for an open feedback request, close since no longer applicable
-    let existing_request = rfc_feedback_request.filter(fk_requested.eq(author.id))
+    let existing_request = rfc_feedback_request
+        .filter(fk_requested.eq(author.id))
         .filter(fk_issue.eq(issue.id))
         .first::<FeedbackRequest>(conn)
         .optional()?;
 
     if let Some(mut request) = existing_request {
         request.fk_feedback_comment = Some(comment.id);
-        diesel::update(rfc_feedback_request.find(request.id)).set(&request).execute(conn)?;
+        diesel::update(rfc_feedback_request.find(request.id))
+            .set(&request)
+            .execute(conn)?;
     }
 
     Ok(())
@@ -424,18 +446,22 @@ fn subteam_members(issue: &Issue) -> DashResult<Vec<GitHubUser>> {
     let conn = &*DB_POOL.get()?;
 
     // retrieve all of the teams tagged on this issue
-    let team = teams::table.filter(teams::label.eq(any(&issue.labels))).load::<Team>(conn)?;
+    let team = teams::table
+        .filter(teams::label.eq(any(&issue.labels)))
+        .load::<Team>(conn)?;
 
     let team_ids = team.into_iter().map(|t| t.id).collect::<Vec<_>>();
 
     // get all the members of those teams
-    let members = memberships::table.filter(memberships::fk_team.eq(any(team_ids)))
+    let members = memberships::table
+        .filter(memberships::fk_team.eq(any(team_ids)))
         .load::<Membership>(conn)?;
 
     let member_ids = members.into_iter().map(|m| m.fk_member).collect::<Vec<_>>();
 
     // resolve each member into an actual user
-    let users = githubuser::table.filter(githubuser::id.eq(any(member_ids)))
+    let users = githubuser::table
+        .filter(githubuser::id.eq(any(member_ids)))
         .order(githubuser::login)
         .load::<GitHubUser>(conn)?;
 
@@ -449,12 +475,15 @@ fn cancel_fcp(author: &GitHubUser, issue: &Issue, existing: &FcpProposal) -> Das
 
     // if exists delete FCP with associated concerns, reviews, feedback requests
     // db schema has ON DELETE CASCADE
-    diesel::delete(fcp_proposal.filter(id.eq(existing.id))).execute(conn)?;
+    diesel::delete(fcp_proposal.filter(id.eq(existing.id)))
+        .execute(conn)?;
 
     // leave github comment stating that FCP proposal cancelled
     let comment = RfcBotComment::new(issue, CommentType::FcpProposalCancelled(author));
     let _ = comment.post(None);
-    let _ = GH.remove_label(&issue.repository, issue.number, "proposed-final-comment-period");
+    let _ = GH.remove_label(&issue.repository,
+                            issue.number,
+                            "proposed-final-comment-period");
 
     Ok(())
 }
@@ -509,7 +538,8 @@ impl<'a> RfcBotCommand<'a> {
         let existing_proposal = {
             use domain::schema::fcp_proposal::dsl::*;
 
-            fcp_proposal.filter(fk_issue.eq(issue.id))
+            fcp_proposal
+                .filter(fk_issue.eq(issue.id))
                 .first::<FcpProposal>(conn)
                 .optional()?
         };
@@ -534,10 +564,13 @@ impl<'a> RfcBotCommand<'a> {
                     // at this point our new comment doesn't yet exist in the database, so
                     // we need to insert it
                     let gh_comment = gh_comment.with_repo(&issue.repository)?;
-                    match diesel::insert(&gh_comment).into(issuecomment::table).execute(conn) {
-                        Ok(_) => {},
+                    match diesel::insert(&gh_comment)
+                              .into(issuecomment::table)
+                              .execute(conn) {
+                        Ok(_) => {}
                         Err(why) => {
-                            warn!("Had an issue inserting the new record, probably received a webhook for it: {:?}", why);
+                            warn!("issue inserting new record, maybe received webhook for it: {:?}",
+                                  why);
                         }
                     }
 
@@ -551,25 +584,28 @@ impl<'a> RfcBotCommand<'a> {
                         fcp_closed: false,
                     };
 
-                    let proposal = diesel::insert(&proposal).into(fcp_proposal)
+                    let proposal = diesel::insert(&proposal)
+                        .into(fcp_proposal)
                         .get_result::<FcpProposal>(conn)?;
 
                     debug!("proposal inserted into the database");
 
                     // generate review requests for all relevant subteam members
 
-                    let review_requests = issue_subteam_members.iter()
+                    let review_requests = issue_subteam_members
+                        .iter()
                         .map(|member| {
-                            // let's assume the initiator has reviewed it
-                            NewFcpReviewRequest {
-                                fk_proposal: proposal.id,
-                                fk_reviewer: member.id,
-                                reviewed: member.id == author.id,
-                            }
-                        })
+                                 // let's assume the initiator has reviewed it
+                                 NewFcpReviewRequest {
+                                     fk_proposal: proposal.id,
+                                     fk_reviewer: member.id,
+                                     reviewed: member.id == author.id,
+                                 }
+                             })
                         .collect::<Vec<_>>();
 
-                    diesel::insert(&review_requests).into(fcp_review_request::table)
+                    diesel::insert(&review_requests)
+                        .into(fcp_review_request::table)
                         .execute(conn)?;
 
                     // they're in the database, but now we need them paired with githubuser
@@ -604,7 +640,8 @@ impl<'a> RfcBotCommand<'a> {
 
                 if let Some(proposal) = existing_proposal {
 
-                    let review_request = fcp_review_request.filter(fk_proposal.eq(proposal.id))
+                    let review_request = fcp_review_request
+                        .filter(fk_proposal.eq(proposal.id))
                         .filter(fk_reviewer.eq(author.id))
                         .first::<FcpReviewRequest>(conn)
                         .optional()?;
@@ -627,7 +664,8 @@ impl<'a> RfcBotCommand<'a> {
                     // check for existing concern
                     use domain::schema::fcp_concern::dsl::*;
 
-                    let existing_concern = fcp_concern.filter(fk_proposal.eq(proposal.id))
+                    let existing_concern = fcp_concern
+                        .filter(fk_proposal.eq(proposal.id))
                         .filter(name.eq(concern_name))
                         .first::<FcpConcern>(conn)
                         .optional()?;
@@ -643,7 +681,9 @@ impl<'a> RfcBotCommand<'a> {
                             fk_initiating_comment: comment.id,
                         };
 
-                        diesel::insert(&new_concern).into(fcp_concern).execute(conn)?;
+                        diesel::insert(&new_concern)
+                            .into(fcp_concern)
+                            .execute(conn)?;
                     }
 
                 }
@@ -656,7 +696,8 @@ impl<'a> RfcBotCommand<'a> {
                     // check for existing concern
                     use domain::schema::fcp_concern::dsl::*;
 
-                    let existing_concern = fcp_concern.filter(fk_proposal.eq(proposal.id))
+                    let existing_concern = fcp_concern
+                        .filter(fk_proposal.eq(proposal.id))
                         .filter(fk_initiator.eq(author.id))
                         .filter(name.eq(concern_name))
                         .first::<FcpConcern>(conn)
@@ -669,7 +710,8 @@ impl<'a> RfcBotCommand<'a> {
                         // mark concern as resolved by adding resolved_comment
                         concern.fk_resolved_comment = Some(comment.id);
 
-                        diesel::update(fcp_concern.find(concern.id)).set(&concern)
+                        diesel::update(fcp_concern.find(concern.id))
+                            .set(&concern)
                             .execute(conn)?;
                     }
 
@@ -683,15 +725,16 @@ impl<'a> RfcBotCommand<'a> {
                 // we'll just assume that this user exists...it's very unlikely that someone
                 // will request feedback from a user who's *never* commented or committed
                 // on/to a rust-lang* repo
-                let requested_user = githubuser::table.filter(githubuser::login.eq(username))
+                let requested_user = githubuser::table
+                    .filter(githubuser::login.eq(username))
                     .first::<GitHubUser>(conn)?;
 
                 // check for existing feedback request
-                let existing_request =
-                    rfc_feedback_request.filter(fk_requested.eq(requested_user.id))
-                        .filter(fk_issue.eq(issue.id))
-                        .first::<FeedbackRequest>(conn)
-                        .optional()?;
+                let existing_request = rfc_feedback_request
+                    .filter(fk_requested.eq(requested_user.id))
+                    .filter(fk_issue.eq(issue.id))
+                    .first::<FeedbackRequest>(conn)
+                    .optional()?;
 
                 if existing_request.is_none() {
                     // create feedback request
@@ -703,7 +746,9 @@ impl<'a> RfcBotCommand<'a> {
                         fk_feedback_comment: None,
                     };
 
-                    diesel::insert(&new_request).into(rfc_feedback_request).execute(conn)?;
+                    diesel::insert(&new_request)
+                        .into(rfc_feedback_request)
+                        .execute(conn)?;
                 }
             }
         }
@@ -714,7 +759,8 @@ impl<'a> RfcBotCommand<'a> {
     pub fn from_str(command: &'a str) -> DashResult<RfcBotCommand<'a>> {
 
         // get the tokens for the command line (starts with a bot mention)
-        let command = command.lines()
+        let command = command
+            .lines()
             .find(|&l| l.starts_with(RFC_BOT_MENTION))
             .ok_or(DashError::Misc(None))?
             .trim_left_matches(RFC_BOT_MENTION)
@@ -763,8 +809,10 @@ impl<'a> RfcBotCommand<'a> {
             "reviewed" => Ok(RfcBotCommand::Reviewed),
             "f?" => {
 
-                let user = tokens.next()
-                    .ok_or_else(|| DashError::Misc(Some("no user specified".to_string())))?;
+                let user =
+                    tokens
+                        .next()
+                        .ok_or_else(|| DashError::Misc(Some("no user specified".to_string())))?;
 
                 if user.is_empty() {
                     return Err(DashError::Misc(Some("no user specified".to_string())));
@@ -871,7 +919,11 @@ impl<'a> RfcBotComment<'a> {
                 format!("@{} proposal cancelled.", initiator.login)
             }
 
-            CommentType::FcpAllReviewedNoConcerns { author, status_comment_id, added_label } => {
+            CommentType::FcpAllReviewedNoConcerns {
+                author,
+                status_comment_id,
+                added_label,
+            } => {
                 let mut msg = String::new();
 
                 msg.push_str(":bell: **This is now entering its final comment period**, ");
@@ -913,9 +965,10 @@ impl<'a> RfcBotComment<'a> {
                     }
                     None => {
                         if let CommentType::FcpProposed(..) = self.comment_type {
-                            let _ = GH.add_label(&self.issue.repository, self.issue.number,
+                            let _ = GH.add_label(&self.issue.repository,
+                                                 self.issue.number,
                                                  "proposed-final-comment-period");
-                        } 
+                        }
                         GH.new_comment(&self.issue.repository, self.issue.number, &self.body)
                     }
                 }

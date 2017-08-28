@@ -36,7 +36,8 @@ pub struct NewFcpReviewRequest {
     pub reviewed: bool,
 }
 
-#[derive(AsChangeset, Clone, Debug, Deserialize, Eq, Ord, PartialEq, PartialOrd, Queryable, Serialize)]
+#[derive(AsChangeset, Clone, Debug, Deserialize, Eq, Ord,
+         PartialEq, PartialOrd, Queryable, Serialize)]
 #[table_name="fcp_review_request"]
 pub struct FcpReviewRequest {
     pub id: i32,

@@ -144,7 +144,10 @@ impl Client {
                 }
 
                 if tokens[1] == "rel=\"next\"" {
-                    let url = tokens[0].trim_left_matches('<').trim_right_matches('>').to_string();
+                    let url = tokens[0]
+                        .trim_left_matches('<')
+                        .trim_right_matches('>')
+                        .to_string();
                     return Some(url);
                 }
             }
@@ -154,8 +157,7 @@ impl Client {
     }
 
     pub fn add_label(&self, repo: &str, issue_num: i32, label: &str) -> DashResult<()> {
-        let url = format!("{}/repos/{}/issues/{}/labels",
-                          BASE_URL, repo, issue_num);
+        let url = format!("{}/repos/{}/issues/{}/labels", BASE_URL, repo, issue_num);
         let payload = serde_json::to_string(&[label])?;
 
         let mut res = self.post(&url, &payload)?;
@@ -172,7 +174,10 @@ impl Client {
 
     pub fn remove_label(&self, repo: &str, issue_num: i32, label: &str) -> DashResult<()> {
         let url = format!("{}/repos/{}/issues/{}/labels/{}",
-                          BASE_URL, repo, issue_num, label);
+                          BASE_URL,
+                          repo,
+                          issue_num,
+                          label);
         let mut res = self.delete(&url)?;
 
         match res.status {
@@ -206,7 +211,10 @@ impl Client {
                         comment_num: i32,
                         text: &str)
                         -> DashResult<CommentFromJson> {
-        let url = format!("{}/repos/{}/issues/comments/{}", BASE_URL, repo, comment_num);
+        let url = format!("{}/repos/{}/issues/comments/{}",
+                          BASE_URL,
+                          repo,
+                          comment_num);
 
         let mut obj = BTreeMap::new();
         obj.insert("body", text);
@@ -218,7 +226,8 @@ impl Client {
     }
 
     fn patch(&self, url: &str, payload: &str) -> Result<Response, hyper::error::Error> {
-        self.set_headers(self.client.patch(url).body(payload)).send()
+        self.set_headers(self.client.patch(url).body(payload))
+            .send()
     }
 
     fn post(&self, url: &str, payload: &str) -> Result<Response, hyper::error::Error> {
@@ -229,7 +238,9 @@ impl Client {
         self.set_headers(self.client.delete(url)).send()
     }
 
-    fn get(&self, url: &str, params: Option<&ParameterMap>)
+    fn get(&self,
+           url: &str,
+           params: Option<&ParameterMap>)
            -> Result<Response, hyper::error::Error> {
         let qp_string = match params {
             Some(p) => {
@@ -249,8 +260,7 @@ impl Client {
 
         debug!("GETing: {}", &url);
 
-        self.set_headers(self.client.get(&url))
-            .send()
+        self.set_headers(self.client.get(&url)).send()
     }
 
     fn deserialize<M: DeserializeOwned>(&self, res: &mut Response) -> DashResult<M> {
