@@ -54,13 +54,9 @@ impl FromData for Event {
             }
         };
 
-        let mut authenticated = false;
-
         for secret in &CONFIG.github_webhook_secrets {
             if authenticate(secret, &body, signature) {
                 // once we know it's from github, we'll parse it
-
-                authenticated = true;
 
                 let payload = match parse_event(event_name, &body) {
                     Ok(p) => p,
