@@ -5,47 +5,54 @@ use crypto::mac::Mac;
 use crypto::mac::MacResult;
 use crypto::sha1::Sha1;
 use hex::FromHex;
-use iron;
+use rocket::http::Status;
+use rocket::data::{self, Data, FromData};
+use rocket::request::Request;
+use rocket::outcome::Outcome::*;
 use serde_json;
 
-use DB_POOL;
 use config::CONFIG;
-use error::DashResult;
+use error::{DashError, DashResult};
 use github::models::{CommentFromJson, IssueFromJson, PullRequestFromJson};
-use github::{handle_comment, handle_issue, handle_pr};
 
-/// signature for request
-/// see [this document](https://developer.github.com/webhooks/securing/) for more information
-header! {(XHubSignature, "X-Hub-Signature") => [String]}
-
-/// name of Github event
-/// see [this document](https://developer.github.com/webhooks/#events) for available types
-header! {(XGithubEvent, "X-Github-Event") => [String]}
-
-/// unique id for each delivery
-header! {(XGithubDelivery, "X-Github-Delivery") => [String]}
-
-pub fn handler(req: &mut iron::Request) -> iron::IronResult<iron::Response> {
-    match inner_handler(req) {
-        Ok(()) => (),
-        Err(why) => error!("Error processing webhook: {:?}", why),
-    }
-
-    Ok(iron::Response::with((iron::status::Ok, "ok")))
+#[derive(Debug)]
+pub struct Event {
+    pub delivery_id: String,
+    pub event_name: String,
+    pub payload: Payload,
 }
 
-fn inner_handler(req: &mut iron::Request) -> DashResult<()> {
-    if let (Some(&XGithubEvent(ref event_name)),
-            Some(&XGithubDelivery(ref delivery_id)),
-            Some(&XHubSignature(ref signature))) =
-        (req.headers.get::<XGithubEvent>(),
-         req.headers.get::<XGithubDelivery>(),
-         req.headers.get::<XHubSignature>()) {
+impl FromData for Event {
+    type Error = &'static str;
+    fn from_data(request: &Request, data: Data) -> data::Outcome<Self, Self::Error> {
+        let headers = request.headers();
 
-        // unfortunately we need to read untrusted input before authenticating
-        // b/c we need to sha the request payload
+        // see [this document](https://developer.github.com/webhooks/securing/) for more information
+        let signature = match headers.get_one("X-Hub-Signature") {
+            Some(s) => s,
+            None => return Failure((Status::BadRequest, "missing signature header")),
+        };
+
+        // see [this document](https://developer.github.com/webhooks/#events) for available types
+        let event_name = match headers.get_one("X-Github-Event") {
+            Some(e) => e,
+            None => return Failure((Status::BadRequest, "missing event header")),
+        };
+
+        // unique id for each delivery
+        let delivery_id = match headers.get_one("X-Github-Delivery") {
+            Some(d) => d,
+            None => return Failure((Status::BadRequest, "missing delivery header")),
+        };
+
         let mut body = String::new();
-        req.body.read_to_string(&mut body)?;
+        match data.open().read_to_string(&mut body) {
+            Ok(_) => (),
+            Err(why) => {
+                error!("unable to read request body: {:?}", why);
+                return Failure((Status::InternalServerError, "unable to read request body"));
+            }
+        };
 
         let mut authenticated = false;
 
@@ -55,7 +62,19 @@ fn inner_handler(req: &mut iron::Request) -> DashResult<()> {
 
                 authenticated = true;
 
-                let payload = parse_event(event_name, &body)?;
+                let payload = match parse_event(event_name, &body) {
+                    Ok(p) => p,
+                    Err(DashError::Serde(why)) => {
+                        info!("failed to parse webhook payload: {:?}", why);
+                        return Failure((Status::BadRequest,
+                                        "failed to deserialize request payload"));
+                    }
+                    Err(why) => {
+                        error!("non-json-parsing error with webhook payload: {:?}", why);
+                        return Failure((Status::InternalServerError,
+                                        "unknown failure, check the logs"));
+                    }
+                };
 
                 let full_event = Event {
                     delivery_id: delivery_id.to_owned(),
@@ -67,17 +86,13 @@ fn inner_handler(req: &mut iron::Request) -> DashResult<()> {
                       full_event.event_name,
                       full_event.delivery_id);
 
-                authenticated_handler(full_event)?;
-                break;
+                return Success(full_event);
             }
         }
 
-        if !authenticated {
-            warn!("Received invalid webhook: {:?}", req);
-        }
+        warn!("Received invalid webhook: {:?}", request);
+        Failure((Status::Forbidden, "unable to authenticate webhook"))
     }
-
-    Ok(())
 }
 
 fn authenticate(secret: &str, payload: &str, signature: &str) -> bool {
@@ -135,44 +150,9 @@ fn parse_event(event_name: &str, body: &str) -> DashResult<Payload> {
     }
 }
 
-fn authenticated_handler(event: Event) -> DashResult<()> {
-    let conn = &*DB_POOL.get()?;
-
-    match event.payload {
-        Payload::Issues(issue_event) => {
-            handle_issue(conn, issue_event.issue, &issue_event.repository.full_name)?;
-        }
-
-        Payload::PullRequest(pr_event) => {
-            handle_pr(conn, pr_event.pull_request, &pr_event.repository.full_name)?;
-        }
-
-        Payload::IssueComment(comment_event) => {
-            // possible race conditions if we get a comment hook before the issue one (or we
-            // missed the issue one), so make sure the issue exists first
-
-            if comment_event.action != "deleted" {
-                // TODO handle deleted comments properly
-                handle_issue(conn, comment_event.issue, &comment_event.repository.full_name)?;
-                handle_comment(conn, comment_event.comment, &comment_event.repository.full_name)?;
-            }
-        }
-
-        Payload::Unsupported => (),
-    }
-
-    Ok(())
-}
 
 #[derive(Debug)]
-struct Event {
-    delivery_id: String,
-    event_name: String,
-    payload: Payload,
-}
-
-#[derive(Debug)]
-enum Payload {
+pub enum Payload {
     Issues(IssuesEvent),
     IssueComment(IssueCommentEvent),
     PullRequest(PullRequestEvent),
@@ -181,46 +161,46 @@ enum Payload {
 }
 
 #[derive(Debug, Deserialize)]
-struct IssuesEvent {
-    action: String,
-    issue: IssueFromJson,
-    repository: Repository,
+pub struct IssuesEvent {
+    pub action: String,
+    pub issue: IssueFromJson,
+    pub repository: Repository,
 }
 
 #[derive(Debug, Deserialize)]
-struct IssueCommentEvent {
-    action: String,
-    issue: IssueFromJson,
-    repository: Repository,
-    comment: CommentFromJson,
+pub struct IssueCommentEvent {
+    pub action: String,
+    pub issue: IssueFromJson,
+    pub repository: Repository,
+    pub comment: CommentFromJson,
 }
 
 #[derive(Debug, Deserialize)]
-struct PullRequestEvent {
-    action: String,
-    repository: Repository,
-    number: i32,
-    pull_request: PullRequestFromJson,
+pub struct PullRequestEvent {
+    pub action: String,
+    pub repository: Repository,
+    pub number: i32,
+    pub pull_request: PullRequestFromJson,
 }
 
 #[derive(Debug, Deserialize)]
-struct Repository {
-    full_name: String,
+pub struct Repository {
+    pub full_name: String,
 }
 
 #[derive(Debug, Deserialize)]
-struct StatusEvent {
-    commit: Commit,
-    state: String,
-    target_url: Option<String>,
+pub struct StatusEvent {
+    pub commit: Commit,
+    pub state: String,
+    pub target_url: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
-struct Commit {
-    committer: Committer,
+pub struct Commit {
+    pub committer: Committer,
 }
 
 #[derive(Debug, Deserialize)]
-struct Committer {
-    login: String,
+pub struct Committer {
+    pub login: String,
 }

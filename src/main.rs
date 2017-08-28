@@ -1,4 +1,5 @@
-// Copyright 2016 Adam Perry. Dual-licensed MIT and Apache 2.0 (see LICENSE files for details).
+#![feature(plugin)]
+#![plugin(rocket_codegen)]
 
 extern crate chrono;
 extern crate crypto;
@@ -8,20 +9,19 @@ extern crate diesel;
 extern crate diesel_codegen;
 extern crate dotenv;
 extern crate env_logger;
+extern crate handlebars;
 extern crate hex;
 #[macro_use]
 extern crate hyper;
 extern crate hyper_native_tls;
-extern crate iron;
 #[macro_use]
 extern crate lazy_static;
 #[macro_use]
 extern crate log;
-extern crate mount;
 extern crate r2d2;
 extern crate r2d2_diesel;
-#[macro_use]
-extern crate router;
+extern crate rocket;
+extern crate rocket_contrib;
 extern crate serde;
 #[macro_use]
 extern crate serde_derive;
@@ -70,7 +70,10 @@ fn main() {
 
     // FIXME(dikaiosune) need to handle panics in both the listeners and crash the server
     let _ = scraper::start_scraping();
-    let _ = server::serve();
+    let server_handle = server::serve();
+
+    // block
+    //server_handle.join().expect("problem running server!").expect("problem while running server");
 }
 
 // initialize the database connection pool

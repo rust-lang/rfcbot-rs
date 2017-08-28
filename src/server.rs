@@ -1,54 +1,78 @@
-use std::thread::{spawn, JoinHandle};
+use rocket;
 
-use iron::prelude::*;
-use iron::error::HttpResult;
-use iron::{status, Listening};
-use mount::Mount;
-use router::Router;
-use serde_json::ser;
 
-use config::CONFIG;
-use error::DashError;
-use github::webhooks;
-use nag;
 
-pub fn serve() -> JoinHandle<HttpResult<Listening>> {
-    let mut mount = Mount::new();
-
-    mount.mount("/fcp/",
-                router!(
-        allfcps: get "/all" => list_fcps,
-        usernamefcps: get "/:username" => member_nags
-    ));
-
-    mount.mount("/github-webhook", router!(ghwebhook: post "/" => webhooks::handler));
-
-    // middleware goes here
-
-    let server_addr = format!("0.0.0.0:{}", CONFIG.server_port);
-    info!("Starting API server running at {}", &server_addr);
-    spawn(move || { Iron::new(mount).http(&*server_addr) })
+pub fn serve() {
+    rocket::ignite()
+        .mount("/api", routes![api::all_fcps, api::member_fcps])
+        .mount("/", routes![html::all_fcps, html::member_fcps])
+        .launch();
 }
 
-pub fn list_fcps(_: &mut Request) -> IronResult<Response> {
-    let nag_report = nag::all_fcps()?;
+mod html {
+    //use handlebars::Handlebars;
+    use error::DashResult;
+    // use nag;
 
-    Ok(Response::with((status::Ok,
-                       ser::to_string(&nag_report).map_err(|e| -> DashError {
-                           e.into()
-                       })?)))
+    #[get("/")]
+    fn all_fcps() -> DashResult<String> {
+        //FIXME implement
+        Ok(String::from(""))
+    }
+
+    #[get("/fcp/<username>")]
+    fn member_fcps(username: String) -> DashResult<String> { Ok(String::from("")) }
 }
 
-pub fn member_nags(req: &mut Request) -> IronResult<Response> {
-    let username = match req.extensions.get::<Router>().unwrap().find("username") {
-        Some(u) => u,
-        None => return Ok(Response::with((status::BadRequest, "Invalid team member username."))),
-    };
+mod api {
+    use rocket_contrib::Json;
+    use DB_POOL;
+    use domain::github::GitHubUser;
+    use error::DashResult;
+    use github::{handle_comment, handle_issue, handle_pr};
+    use github::webhooks::{Event, Payload};
+    use nag;
 
-    Ok(Response::with((status::Ok,
-                       try!(ser::to_string(&try!(nag::individual_nags(username)))
-                           .map_err(|e| {
-                               let e: DashError = e.into();
-                               e
-                           })))))
+    #[get("/all")]
+    pub fn all_fcps() -> DashResult<Json<Vec<nag::FcpWithInfo>>> { Ok(Json(nag::all_fcps()?)) }
+
+    #[get("/<username>")]
+    pub fn member_fcps(username: String)
+                       -> DashResult<Json<(GitHubUser, Vec<nag::IndividualFcp>)>> {
+        Ok(Json(nag::individual_nags(&username)?))
+    }
+
+    #[post("/github-webhook", data="<event>")]
+    pub fn github_webhook(event: Event) -> DashResult<()> {
+        let conn = &*DB_POOL.get()?;
+
+        match event.payload {
+            Payload::Issues(issue_event) => {
+                handle_issue(conn, issue_event.issue, &issue_event.repository.full_name)?;
+            }
+
+            Payload::PullRequest(pr_event) => {
+                handle_pr(conn, pr_event.pull_request, &pr_event.repository.full_name)?;
+            }
+
+            Payload::IssueComment(comment_event) => {
+                // possible race conditions if we get a comment hook before the issue one (or we
+                // missed the issue one), so make sure the issue exists first
+
+                if comment_event.action != "deleted" {
+                    // TODO handle deleted comments properly
+                    handle_issue(conn,
+                                 comment_event.issue,
+                                 &comment_event.repository.full_name)?;
+                    handle_comment(conn,
+                                   comment_event.comment,
+                                   &comment_event.repository.full_name)?;
+                }
+            }
+
+            Payload::Unsupported => (),
+        }
+
+        Ok(())
+    }
 }
