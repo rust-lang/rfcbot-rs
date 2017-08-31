@@ -1,0 +1,24 @@
+<small>
+  <a href="/">[ home ]</a>
+</small>
+<h3>{{model.user.login}}'s proposals for review</h3>
+
+<ul>
+{{#each model.fcps as |f|}}
+  <li>
+    {{f.proposal.disposition}}: <b><a href="https://github.com/{{f.issue.repository}}/issues/{{f.issue.number}}" target="_blank">
+        {{f.issue.title}}
+    </a></b>
+
+    <ul><li>
+    <a href="https://github.com/{{f.issue.repository}}/issues/{{f.issue.number}}#issuecomment-{{f.proposal.fk_initiating_comment}}" target="_blank">
+    proposal
+    </a>
+    |
+    <a href="https://github.com/{{f.issue.repository}}/issues/{{f.issue.number}}#issuecomment-{{f.proposal.fk_bot_tracking_comment}}" target="_blank">
+    checklist
+    </a>
+    </li></ul>
+  </li>
+{{/each}}
+</ul>

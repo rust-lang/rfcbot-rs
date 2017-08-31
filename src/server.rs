@@ -23,7 +23,12 @@ mod html {
     fn all_fcps() -> DashResult<content::Html<String>> {
         let mut teams = BTreeMap::new();
         for fcp in nag::all_fcps()? {
-            let nag::FcpWithInfo { fcp, reviews, issue, status_comment } = fcp;
+            let nag::FcpWithInfo {
+                fcp,
+                reviews,
+                issue,
+                status_comment,
+            } = fcp;
 
             let mut pending_reviewers = reviews
                 .into_iter()
@@ -41,31 +46,41 @@ mod html {
             });
 
             for label in issue.labels.iter().filter(|l| l.starts_with("T-")).cloned() {
-                teams.entry(label).or_insert_with(Vec::new).push(record.clone());
+                teams
+                    .entry(label)
+                    .or_insert_with(Vec::new)
+                    .push(record.clone());
             }
         }
 
-        let context = teams.into_iter().map(|(team_label, fcps)| {
-            json!({
+        let context = teams
+            .into_iter()
+            .map(|(team_label, fcps)| {
+                     json!({
                 "team": team_label,
                 "fcps": fcps,
             })
-        }).collect::<Vec<_>>();
+                 })
+            .collect::<Vec<_>>();
 
-        let rendered = TEMPLATES
-            .render("all", &json!({"model": context}))?;
+        let rendered = TEMPLATES.render("all", &json!({"model": context}))?;
         println!("rendered\n{}", &rendered);
         Ok(content::Html(rendered))
     }
 
     #[get("/fcp/<username>")]
     fn member_fcps(username: String) -> DashResult<content::Html<String>> {
-        let fcps = nag::individual_nags(&username)?;
-        Ok(content::Html(TEMPLATES
-                             .render("user",
-                                     &json!({
-                                               "model": fcps
-                                           }))?))
+        let (user, fcps) = nag::individual_nags(&username)?;
+
+        let context = json!({
+            "model": {
+                "user": user,
+                "fcps": fcps,
+            }
+        });
+
+        let rendered = TEMPLATES.render("user", &context)?;
+        Ok(content::Html(rendered))
     }
 }
 
