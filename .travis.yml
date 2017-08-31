@@ -8,6 +8,8 @@ rust:
 
 cache:
   cargo: true
+  directories:
+  - $HOME/.rustup
 
 addons:
   postgresql: "9.5"
