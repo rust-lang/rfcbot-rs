@@ -18,6 +18,7 @@ addons:
       - pkg-config
 
 install:
+  - rustup default nightly-2017-08-26
   - cargo install --force diesel_cli --no-default-features --features "postgres"
 
 before_script:
