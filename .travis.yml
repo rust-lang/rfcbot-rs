@@ -34,6 +34,6 @@ before_script:
   - diesel migration run
 
 script:
-  - diesel print-schema > ./current_schema && cmp --silent src/domain/schema.rs ./current_schema
+  - diesel print-schema > ./current_schema && cmp src/domain/schema.rs ./current_schema
   - cargo build --verbose
   - cargo test --verbose

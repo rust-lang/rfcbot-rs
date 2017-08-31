@@ -21,7 +21,13 @@ Deployed to http://rusty-dash.com right now.
 
 ## Development
 
-A development environment is available using Vagrant. [Install Vagrant](https://www.vagrantup.com/docs/installation/) along with a VM provider (tested with VirtualBox). It's a good idea to install the [vagrant-vbguest](https://github.com/dotless-de/vagrant-vbguest) plugin, as well. Once Vagrant and a VM provider are installed, you'll need to configure a couple of environment variables, (potentially) run DB migrations, and start the server processes. If you run into any issues provisioning the development environment, please file an issue!
+### Rust Version
+
+Rust nightly is required, as rfcbot uses [Rocket](rocket.rs) now. Pin `rustup` to the correct version:
+
+```
+$ rustup override set nightly-2017-08-26
+```
 
 ### Configuring environment variables
 
@@ -63,14 +69,6 @@ $ cargo run
 If you want to perform any database action, make sure you have a reachable installation of PostgreSQL that is configured with the DATABASE_URL environment variable.
 
 ## Configuration
-
-### Rust Version
-
-Rust nightly is required, as rfcbot uses [Rocket](rocket.rs) now. Pin `rustup` to the correct version:
-
-```
-$ rustup override set nightly-2017-08-26
-```
 
 ### Environment variables
 
