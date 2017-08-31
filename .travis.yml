@@ -35,6 +35,8 @@ before_script:
 
 script:
   - diesel print-schema > ./current_schema
+  - ls -la src/domain/schema.rs
+  - cat src/domain/schema.rs
   - cmp src/domain/schema.rs ./current_schema
   - cargo build --verbose
   - cargo test --verbose
