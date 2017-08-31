@@ -4,18 +4,10 @@ notifications:
 
 language: rust
 rust:
-  - 1.18.0
-  - stable
-  - beta
   - nightly
 
-matrix:
-  allow_failures:
-    - nightly
 cache:
   cargo: true
-  directories:
-    - front/node_modules
 
 addons:
   postgresql: "9.5"
@@ -23,18 +15,9 @@ addons:
     packages:
       - curl
       - libpq-dev
-      - phantomjs
       - pkg-config
 
-before_install:
-  - nvm install 6
-  - npm config set spin false
-  - npm install -g phantomjs-prebuilt yarn ember-cli
-  - phantomjs --version
 install:
-  - cd front/
-  - yarn install
-  - cd ../
   - cargo install --force diesel_cli --no-default-features --features "postgres"
 
 before_script:
@@ -51,4 +34,3 @@ script:
   - diesel print-schema > ./current_schema && cmp --silent src/domain/schema.rs ./current_schema
   - cargo build --verbose
   - cargo test --verbose
-  - cd front && ember build

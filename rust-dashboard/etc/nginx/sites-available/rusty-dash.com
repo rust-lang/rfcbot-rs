@@ -13,7 +13,7 @@ server {
         location / {
                 proxy_set_header Host $host;
                 proxy_set_header X-Real-IP $remote_addr;
-                proxy_pass http://localhost:8080/;
+                proxy_pass http://localhost:8000/;
         }
 
         ssl_certificate /etc/letsencrypt/live/rusty-dash.com/fullchain.pem;

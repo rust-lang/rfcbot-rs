@@ -56,14 +56,7 @@ To run the back-end API server and scraper:
 $ cargo run
 ```
 
-**NOTE:** The API server process needs to be manually restarted whenever you want to see code changes reflected in their behavior, or whenever you run migrations on the test database. A `Ctrl+C` followed by `Up` and `Enter` usually works if running them through cargo.
-
-To install dependencies for the front-end development server and run it:
-
-```
-$ cd front
-$ ember server --proxy=http://localhost:8081
-```
+**NOTE:** The API server process needs to be manually restarted whenever you want to see code changes reflected in their behavior, or whenever you run migrations on the test database. A `Ctrl+C` followed by `Up` and `Enter` usually works if running them through cargo. `cargo watch` is also a nice tool.
 
 ### Database connection
 
@@ -73,9 +66,15 @@ If you want to perform any database action, make sure you have a reachable insta
 
 ### Rust Version
 
-Rust 1.18 or later is required.
+Rust nightly is required, as rfcbot uses [Rocket](rocket.rs) now. Pin `rustup` to the correct version:
+
+```
+$ rustup override set nightly-2017-08-26
+```
 
 ### Environment variables
+
+Note that you can configure the Rocket web server using environment variables like `ROCKET_PORT`, according to the Rocket [configuration guide](https://rocket.rs/guide/configuration/).
 
 * `DATABASE_URL`: postgres database URL
 * `DATABASE_POOL_SIZE`: number of connections to maintain in the pool
@@ -84,7 +83,6 @@ Rust 1.18 or later is required.
 * `GITHUB_WEBHOOK_SECRETS`: a comma-delimited string of the secrets used for any ingestion webhooks. The webhook handler will attempt to validate any POST'd webhook against each secret until it either finds a matching one or runs out.
 * `RUST_LOG`: the logging configuration for [env_logger](https://crates.io/crates/env_logger). If you're unfamiliar, you can read about it in the documentation linked on crates.io. If it's not defined, logging will default to `info!()` and above.
 * `GITHUB_SCRAPE_INTERVAL`: time (in minutes) to wait in between GitHub scrapes
-* `SERVER_PORT`: port on which the API server should listen
 * `POST_COMMENTS`: whether to post RFC bot comments on issues -- either `true` or `false`. Be very careful setting to true when testing -- it will post comments using whatever account is associated with the GitHub API key you provide.
 
 ## Database
@@ -107,7 +105,7 @@ psql -d $DB_NAME_HERE -f bootstrap.sql
 
 Setup a postgres database and user on a server with `dpkg` (recent Ubuntu is what's tested), and install nginx.
 
-Run `build.sh` on that with a compatible nightly installed (2016-10-18 right now). This will create a `rust-dashboard.deb` in the repo root. Install with `dpkg -i rust-dashboard.deb`, configure `/etc/rust-dashboard/env` from the example file there, and start the services:
+Run `build.sh` on that machine. This will create a `rust-dashboard.deb` in the repo root. Install with `dpkg -i rust-dashboard.deb`, configure `/etc/rust-dashboard/env` from the example file there, and start the services:
 
 ```bash
 sudo systemctl enable rust-dashboard-api

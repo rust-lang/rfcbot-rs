@@ -23,7 +23,6 @@ lazy_static! {
 
 #[derive(Debug)]
 pub struct Config {
-    pub server_port: u32,
     pub db_url: String,
     pub db_pool_size: u32,
     pub github_access_token: String,
@@ -40,7 +39,6 @@ impl Config {
     }
 }
 
-const SERVER_PORT: &'static str = "SERVER_PORT";
 const DB_URL: &'static str = "DATABASE_URL";
 const DB_POOL_SIZE: &'static str = "DATABASE_POOL_SIZE";
 const GITHUB_TOKEN: &'static str = "GITHUB_ACCESS_TOKEN";
@@ -54,8 +52,7 @@ const POST_COMMENTS: &'static str = "POST_COMMENTS";
 pub fn init() -> Result<Config, Vec<&'static str>> {
 
     let mut vars: BTreeMap<&'static str, Result<String, _>> = BTreeMap::new();
-    let keys = vec![SERVER_PORT,
-                    DB_URL,
+    let keys = vec![DB_URL,
                     DB_POOL_SIZE,
                     GITHUB_TOKEN,
                     GITHUB_WEBHOOK_SECRETS,
@@ -72,12 +69,6 @@ pub fn init() -> Result<Config, Vec<&'static str>> {
         let mut vars = vars.into_iter()
             .map(|(k, v)| (k, v.unwrap()))
             .collect::<BTreeMap<_, _>>();
-
-        let port = vars.remove(SERVER_PORT).unwrap();
-        let port = match port.parse::<u32>() {
-            Ok(p) => p,
-            Err(_) => return Err(vec![SERVER_PORT]),
-        };
 
         let db_url = vars.remove(DB_URL).unwrap();
         let db_pool_size = vars.remove(DB_POOL_SIZE).unwrap();
@@ -105,7 +96,6 @@ pub fn init() -> Result<Config, Vec<&'static str>> {
         let webhook_secrets = webhook_secrets.split(',').map(String::from).collect();
 
         Ok(Config {
-               server_port: port,
                db_url: db_url,
                db_pool_size: db_pool_size,
                github_access_token: gh_token,
