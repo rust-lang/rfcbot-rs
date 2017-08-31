@@ -19,12 +19,12 @@ pub enum DashError {
     Serde(serde_json::error::Error),
     R2d2Timeout(r2d2::GetTimeout),
     DieselError(diesel::result::Error),
-    Template(handlebars::TemplateRenderError),
+    Template(handlebars::RenderError),
     Misc(Option<String>),
 }
 
-impl From<handlebars::TemplateRenderError> for DashError {
-    fn from(e: handlebars::TemplateRenderError) -> Self { DashError::Template(e) }
+impl From<handlebars::RenderError> for DashError {
+    fn from(e: handlebars::RenderError) -> Self { DashError::Template(e) }
 }
 
 impl From<hyper::error::Error> for DashError {

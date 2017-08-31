@@ -7,10 +7,10 @@ use error::DashResult;
 
 #[derive(Serialize)]
 pub struct FcpWithInfo {
-    fcp: FcpProposal,
-    reviews: Vec<(GitHubUser, bool)>,
-    issue: Issue,
-    status_comment: IssueComment,
+    pub fcp: FcpProposal,
+    pub reviews: Vec<(GitHubUser, bool)>,
+    pub issue: Issue,
+    pub status_comment: IssueComment,
 }
 
 pub fn all_fcps() -> DashResult<Vec<FcpWithInfo>> {

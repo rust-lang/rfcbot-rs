@@ -1,0 +1,22 @@
+<h3>pending proposals</h3>
+{{#each model }}
+<h4><code>{{ this.team }}</code></h4>
+
+<ul>
+    {{#each this.fcps as |fcp| }}
+    <li>
+        <b><a href="https://github.com/{{ fcp.issue.repository }}/issues/{{ fcp.issue.number }}#issuecomment-{{ fcp.statusComment.id }}"
+            target="_blank">
+                {{ fcp.issue.title }} ({{ fcp.issue.repository }}#{{ fcp.issue.number }})</a></b>
+
+        <ul><li>
+        {{#each fcp.pendingReviewers as |r| }}
+        <a href="/fcp/{{r}}">{{ r }}</a>&nbsp;
+        {{else}}
+        pending concerns
+        {{/each}}
+        </li></ul>
+    </li>
+    {{/each}}
+</ul>
+{{/each}}

@@ -10,15 +10,7 @@ server {
         listen 443 ssl http2 default_server;
         listen [::]:443 ssl http2 default_server;
 
-        root /usr/share/rust-dashboard/www;
-
-        index index.html;
-
         location / {
-                try_files $uri $uri/ /index.html =404;
-        }
-
-        location /api/ {
                 proxy_set_header Host $host;
                 proxy_set_header X-Real-IP $remote_addr;
                 proxy_pass http://localhost:8080/;
