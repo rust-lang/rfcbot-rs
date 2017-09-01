@@ -145,3 +145,20 @@ table! {
         label -> Varchar,
     }
 }
+
+joinable!(fcp_concern -> githubuser (fk_initiator));
+joinable!(fcp_concern -> fcp_proposal (fk_proposal));
+joinable!(fcp_proposal -> githubuser (fk_initiator));
+joinable!(fcp_proposal -> issue (fk_issue));
+joinable!(fcp_review_request -> fcp_proposal (fk_proposal));
+joinable!(fcp_review_request -> githubuser (fk_reviewer));
+joinable!(issue -> milestone (fk_milestone));
+joinable!(issuecomment -> issue (fk_issue));
+joinable!(issuecomment -> githubuser (fk_user));
+joinable!(memberships -> githubuser (fk_member));
+joinable!(memberships -> teams (fk_team));
+joinable!(milestone -> githubuser (fk_creator));
+joinable!(pullrequest -> githubuser (fk_assignee));
+joinable!(pullrequest -> milestone (fk_milestone));
+joinable!(rfc_feedback_request -> issuecomment (fk_feedback_comment));
+joinable!(rfc_feedback_request -> issue (fk_issue));
