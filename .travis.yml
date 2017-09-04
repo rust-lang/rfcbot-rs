@@ -34,7 +34,5 @@ before_script:
   - diesel migration run
 
 script:
-  - diesel print-schema > ./current_schema
-  - diff ./src/domain/schema.rs ./current_schema
   - cargo build --verbose
   - cargo test --verbose
