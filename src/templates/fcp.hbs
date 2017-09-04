@@ -5,6 +5,7 @@
 <ul>
     {{#each this.fcps as |fcp| }}
     <li>
+        {{ fcp.disposition }}:
         <b><a href="https://github.com/{{ fcp.issue.repository }}/issues/{{ fcp.issue.number }}#issuecomment-{{ fcp.statusComment.id }}"
             target="_blank">
                 {{ fcp.issue.title }} ({{ fcp.issue.repository }}#{{ fcp.issue.number }})</a></b>
