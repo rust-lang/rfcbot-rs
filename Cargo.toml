@@ -13,7 +13,7 @@ hyper-native-tls = "0.2.1"
 lazy_static = "0.2.0"
 log = "0.3.6"
 r2d2 = "0.7.1"
-r2d2-diesel = "0.14"
+r2d2-diesel = "0.16"
 rocket = "0.3.2"
 rocket_codegen = "0.3.2"
 rocket_contrib = "0.3.2"
@@ -31,9 +31,9 @@ version = "0.4"
 [dependencies.diesel]
 default-features = false
 features = ["postgres", "chrono", "large-tables"]
-version = "0.14"
+version = "0.16"
 
 [dependencies.diesel_codegen]
 default-features = false
 features = ["dotenv", "postgres"]
-version = "0.14"
+version = "0.16"
