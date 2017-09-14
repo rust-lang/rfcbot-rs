@@ -73,6 +73,8 @@ To register blocking concerns on the FCP proposal, use `@rfcbot concern NAME_OF_
 
 To indicate that your concern has been resolved, use `@rfcbot resolved NAME_OF_CONCERN`. Note that as of this writing, only the original author can mark their concern as resolved.
 
+Note that only one concern per comment is allowed.
+
 ### Feedback Requests
 
 To request feedback from a user not on the tagged team(s), use `@rfcbot f? @username`. This will create an entry in the database which will be marked as resolved once that user has commented on the issue/PR. Note that these feedback requests will not block start/end of an FCP. If you need to block FCP on that user's feedback, you may want to create a new concern that you can resolve.
