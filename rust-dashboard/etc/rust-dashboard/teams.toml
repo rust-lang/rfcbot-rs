@@ -1,0 +1,117 @@
+[Core]
+label = "T-Core"
+ping = "rust-lang/core"
+members = [
+  "alexcrichton",
+  "aturon",
+  "carols10cents",
+  "erickt",
+  "nikomatsakis",
+  "nrc",
+  "steveklabnik",
+  "wycats",
+]
+
+[Language]
+label = "T-lang"
+ping = "rust-lang/lang"
+members = [
+  "aturon",
+  "cramertj",
+  "eddyb",
+  "nikomatsakis",
+  "nrc",
+  "pnkfelix",
+  "withoutboats",
+]
+
+[Libraries]
+label = "T-libs"
+ping = "rust-lang/libs"
+members = [
+  "alexcrichton",
+  "aturon",
+  "BurntSushi",
+  "dtolnay",
+  "Kimundi",
+  "sfackler",
+]
+
+[Compiler]
+label = "T-Compiler"
+ping = "rust-lang/compiler"
+members = [
+  "Aatch",
+  "arielb1",
+  "eddyb",
+  "estebank",
+  "jseyfried",
+  "michaelwoerister",
+  "nikomatsakis",
+  "nrc",
+  "petrochenkov",
+  "pnkfelix",
+]
+
+[Tools]
+label = "T-tools"
+ping = "rust-lang/tools"
+members = [
+  "alexcrichton",
+  "carols10cents",
+  "japaric",
+  "michaelwoerister",
+  "nrc",
+  "vadimcn",
+  "wycats",
+]
+
+[Documentation]
+label = "T-doc"
+ping = "rust-lang/docs"
+members = [
+  "frewsxcv",
+  "GuillaumeGomez",
+  "jonathandturner",
+  "QuietMisdreavus",
+  "steveklabnik",
+]
+
+[Infrastructure]
+label = "T-infra"
+ping = "rust-lang/infra"
+members = [
+  "aidanhs",
+  "alexcrichton",
+  "aturon",
+  "carols10cents",
+  "erickt",
+  "frewsxcv",
+  "Mark-Simulacrum",
+  "shepmaster",
+  "TimNN",
+]
+
+[Cargo]
+label = "T-cargo"
+ping = "rust-lang/cargo"
+members = [
+  "alexcrichton",
+  "aturon",
+  "carols10cents",
+  "joshtriplett",
+  "matklad",
+  "withoutboats",
+  "wycats",
+]
+
+["Dev tools"]
+label = "T-dev-tools"
+ping = "rust-lang/dev-tools"
+members = [
+  "japaric",
+  "jonathandturner",
+  "killercup",
+  "michaelwoerister",
+  "nrc",
+]
