@@ -1,5 +1,5 @@
-DELETE FROM memberships m USING githubuser u, teams t
-WHERE
-    m.fk_member = u.id AND
-    m.fk_team = t.id AND
-    u.login = 'joshtriplett' AND t.ping = 'rust-lang/cargo';
+INSERT INTO memberships (fk_member, fk_team)
+SELECT u.id, t.id
+FROM githubuser u, teams t
+WHERE t.ping = 'rust-lang/cargo' AND
+    u.login LIKE '_osh_riplett';
