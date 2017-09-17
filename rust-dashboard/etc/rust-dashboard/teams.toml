@@ -41,7 +41,6 @@ members = [
 label = "T-Compiler"
 ping = "rust-lang/compiler"
 members = [
-  "Aatch",
   "arielb1",
   "eddyb",
   "estebank",
@@ -53,26 +52,12 @@ members = [
   "pnkfelix",
 ]
 
-[Tools]
-label = "T-tools"
-ping = "rust-lang/tools"
-members = [
-  "alexcrichton",
-  "carols10cents",
-  "japaric",
-  "michaelwoerister",
-  "nrc",
-  "vadimcn",
-  "wycats",
-]
-
 [Documentation]
 label = "T-doc"
 ping = "rust-lang/docs"
 members = [
   "frewsxcv",
   "GuillaumeGomez",
-  "jonathandturner",
   "QuietMisdreavus",
   "steveklabnik",
 ]
@@ -86,7 +71,6 @@ members = [
   "aturon",
   "carols10cents",
   "erickt",
-  "frewsxcv",
   "Mark-Simulacrum",
   "shepmaster",
   "TimNN",
