@@ -63,7 +63,7 @@ mod html {
                  })
             .collect::<Vec<_>>();
 
-        let rendered = TEMPLATES.render("all", &json!({"model": context}))?;
+        let rendered = TEMPLATES.render("all", &json!({ "model": context }))?;
         println!("rendered\n{}", &rendered);
         Ok(content::Html(rendered))
     }
@@ -102,7 +102,7 @@ mod api {
         Ok(Json(nag::individual_nags(&username)?))
     }
 
-    #[post("/github-webhook", data="<event>")]
+    #[post("/github-webhook", data = "<event>")]
     pub fn github_webhook(event: Event) -> DashResult<()> {
         let conn = &*DB_POOL.get()?;
 
