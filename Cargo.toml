@@ -21,6 +21,7 @@ rust-crypto = "0.2.36"
 serde = "1.0"
 serde_derive = "1.0"
 serde_json = "1.0"
+toml = "0.4"
 url = "1.4"
 urlencoded = "0.5"
 

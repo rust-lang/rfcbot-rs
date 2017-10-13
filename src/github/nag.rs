@@ -1,15 +1,18 @@
+use std::collections::BTreeSet;
+
 use chrono::{Duration, Utc};
 use diesel::prelude::*;
 use diesel;
 
 use config::RFC_BOT_MENTION;
 use DB_POOL;
-use domain::github::{GitHubUser, Issue, IssueComment, Membership, Team};
+use domain::github::{GitHubUser, Issue, IssueComment};
 use domain::rfcbot::{FcpConcern, FcpProposal, FcpReviewRequest, FeedbackRequest, NewFcpProposal,
                      NewFcpConcern, NewFcpReviewRequest, NewFeedbackRequest};
 use domain::schema::*;
 use error::*;
 use github::models::CommentFromJson;
+use teams::TEAMS;
 use super::GH;
 
 // TODO check if new subteam label added for existing proposals
@@ -441,27 +444,22 @@ fn resolve_applicable_feedback_requests(author: &GitHubUser,
 /// Check if an issue comment is written by a member of one of the subteams labelled on the issue.
 fn subteam_members(issue: &Issue) -> DashResult<Vec<GitHubUser>> {
     use diesel::pg::expression::dsl::any;
-    use domain::schema::{teams, memberships, githubuser};
+    use domain::schema::githubuser;
 
     let conn = &*DB_POOL.get()?;
 
     // retrieve all of the teams tagged on this issue
-    let team = teams::table
-        .filter(teams::label.eq(any(&issue.labels)))
-        .load::<Team>(conn)?;
-
-    let team_ids = team.into_iter().map(|t| t.id).collect::<Vec<_>>();
-
-    // get all the members of those teams
-    let members = memberships::table
-        .filter(memberships::fk_team.eq(any(team_ids)))
-        .load::<Membership>(conn)?;
-
-    let member_ids = members.into_iter().map(|m| m.fk_member).collect::<Vec<_>>();
+    // cannot WAIT for by-ref/by-val inference
+    let member_logins = TEAMS.iter()
+        .filter(|&(ref label, _)| issue.labels.contains(&label.0))
+        .flat_map(|(_, team)| &team.member_logins)
+        .collect::<BTreeSet<_>>()
+        .into_iter() // diesel won't work with btreeset, and dedup has weird lifetime errors
+        .collect::<Vec<_>>();
 
     // resolve each member into an actual user
     let users = githubuser::table
-        .filter(githubuser::id.eq(any(member_ids)))
+        .filter(githubuser::login.eq(any(&member_logins)))
         .order(githubuser::login)
         .load::<GitHubUser>(conn)?;
 

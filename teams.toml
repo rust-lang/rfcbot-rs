@@ -1,5 +1,5 @@
-[Core]
-label = "T-Core"
+[T-core]
+name = "Core"
 ping = "rust-lang/core"
 members = [
   "alexcrichton",
@@ -12,8 +12,8 @@ members = [
   "wycats",
 ]
 
-[Language]
-label = "T-lang"
+[T-lang]
+name = "Language"
 ping = "rust-lang/lang"
 members = [
   "aturon",
@@ -25,8 +25,8 @@ members = [
   "withoutboats",
 ]
 
-[Libraries]
-label = "T-libs"
+[T-libs]
+name = "Libraries"
 ping = "rust-lang/libs"
 members = [
   "alexcrichton",
@@ -37,8 +37,8 @@ members = [
   "sfackler",
 ]
 
-[Compiler]
-label = "T-Compiler"
+[T-compiler]
+name = "Compiler"
 ping = "rust-lang/compiler"
 members = [
   "arielb1",
@@ -52,8 +52,8 @@ members = [
   "pnkfelix",
 ]
 
-[Documentation]
-label = "T-doc"
+[T-doc]
+name = "Documentation"
 ping = "rust-lang/docs"
 members = [
   "frewsxcv",
@@ -62,8 +62,8 @@ members = [
   "steveklabnik",
 ]
 
-[Infrastructure]
-label = "T-infra"
+[T-infra]
+name = "Infrastructure"
 ping = "rust-lang/infra"
 members = [
   "aidanhs",
@@ -76,8 +76,8 @@ members = [
   "TimNN",
 ]
 
-[Cargo]
-label = "T-cargo"
+[T-cargo]
+name = "Cargo"
 ping = "rust-lang/cargo"
 members = [
   "alexcrichton",
@@ -89,8 +89,8 @@ members = [
   "wycats",
 ]
 
-["Dev tools"]
-label = "T-dev-tools"
+[T-dev-tools]
+name = "Dev tools"
 ping = "rust-lang/dev-tools"
 members = [
   "japaric",

@@ -149,20 +149,3 @@ pub struct PullRequest {
     pub changed_files: i32,
     pub repository: String,
 }
-
-#[derive(AsChangeset, Clone, Debug, Deserialize, Eq, Ord, PartialEq, PartialOrd, Queryable)]
-#[table_name="teams"]
-pub struct Team {
-    pub id: i32,
-    pub name: String,
-    pub ping: String,
-    pub label: String,
-}
-
-#[derive(AsChangeset, Clone, Debug, Deserialize, Eq, Ord, PartialEq, PartialOrd, Queryable)]
-#[table_name="memberships"]
-pub struct Membership {
-    pub id: i32,
-    pub fk_member: i32,
-    pub fk_team: i32,
-}

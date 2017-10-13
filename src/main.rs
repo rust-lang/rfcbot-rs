@@ -27,6 +27,7 @@ extern crate serde;
 extern crate serde_derive;
 #[macro_use]
 extern crate serde_json;
+extern crate toml;
 extern crate url;
 extern crate urlencoded;
 
@@ -37,6 +38,7 @@ mod github;
 mod nag;
 mod scraper;
 mod server;
+mod teams;
 
 use chrono::Local;
 use diesel::pg::PgConnection;
@@ -68,6 +70,10 @@ fn main() {
     debug!("Logging initialized.");
     let _ = CONFIG.check();
     let _ = DB_POOL.get().expect("Unable to test connection pool.");
+
+    // we want to panic if we're unable to find any of the usernames
+    let parsed_teams = teams::TEAMS.keys().collect::<Vec<_>>();
+    info!("parsed teams: {:?}", parsed_teams);
 
     // FIXME(dikaiosune) need to handle panics in both the listeners and crash the server
     let _ = scraper::start_scraping();
