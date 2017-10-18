@@ -20,7 +20,7 @@ addons:
       - pkg-config
 
 install:
-  - rustup default nightly-2017-08-26
+  - rustup default $(cat rust-toolchain)
   - cargo install --force diesel_cli --no-default-features --features "postgres"
 
 before_script:
