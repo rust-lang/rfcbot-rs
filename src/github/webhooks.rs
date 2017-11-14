@@ -87,6 +87,8 @@ impl FromData for Event {
         }
 
         warn!("Received invalid webhook: {:?}", request);
+        warn!("Invalid webhook body: {}", body);
+        warn!("Tried {} webhook secrets", CONFIG.github_webhook_secrets.len());
         Failure((Status::Forbidden, "unable to authenticate webhook"))
     }
 }
