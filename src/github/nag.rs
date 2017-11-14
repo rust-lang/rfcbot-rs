@@ -482,6 +482,9 @@ fn cancel_fcp(author: &GitHubUser, issue: &Issue, existing: &FcpProposal) -> Das
     let _ = GH.remove_label(&issue.repository,
                             issue.number,
                             "proposed-final-comment-period");
+    let _ = GH.remove_label(&issue.repository,
+                            issue.number,
+                            "final-comment-period");
 
     Ok(())
 }
