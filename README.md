@@ -1,6 +1,6 @@
-# rust-dashboard
+# rfcbot-rs
 
-[![Travis](https://img.shields.io/travis/rust-lang/rust.svg)](https://travis-ci.org/dikaiosune/rust-dashboard)
+[![Travis](https://img.shields.io/travis/rust-lang/rust.svg)](https://travis-ci.org/dikaiosune/rfcbot-rs)
 
 Deployed to http://rusty-dash.com right now.
 
@@ -29,18 +29,13 @@ Rust nightly is required, as rfcbot uses [Rocket](rocket.rs) now. Pin `rustup` t
 $ rustup override set nightly-2017-08-26
 ```
 
-### Configuring environment variables
+### Heroku CLI
 
-Most of the configuration has some default set (see [vagrant_env.sh](https://github.com/dikaiosune/rust-dashboard/blob/master/vagrant_env.sh)), but you'll need to configure access to the GitHub API for testing the scraper. Something like this in the root project directory should suffice:
+https://devcenter.heroku.com/articles/heroku-cli
 
-```
-$ touch .env
-$ echo "GITHUB_ACCESS_TOKEN=your_github_access_token_see_config_section_for_details" >> .env
-$ echo "GITHUB_USER_AGENT=your_github_username" >> .env
-$ echo "POST_COMMENTS=false" >> .env
-```
+### Environment variables
 
-**NOTE:** While the dashboard doesn't require any permissions boxes to be checked in access token creation, and the code makes every effort to avoid modifying any state through GitHub's API, there's always a risk with handing 3rd-party code your API credentials.
+See config.rs for the environment variables expected. Also, rocket env vars are supported.
 
 ### Database dumps
 
@@ -101,16 +96,7 @@ psql -d $DB_NAME_HERE -f bootstrap.sql
 
 ## Deployment
 
-Setup a postgres database and user on a server with `dpkg` (recent Ubuntu is what's tested), and install nginx.
-
-Run `build.sh` on that machine. This will create a `rust-dashboard.deb` in the repo root. Install with `dpkg -i rust-dashboard.deb`, configure `/etc/rust-dashboard/env` from the example file there, and start the services:
-
-```bash
-sudo systemctl enable rust-dashboard-api
-sudo systemctl start rust-dashboard-api
-```
-
-Hopefully, that'll all *just work*. Haha.
+Deployed to Heroku (hopefully soon!) via TravisCI.
 
 ## License
 

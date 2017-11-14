@@ -1,6 +1,6 @@
 [package]
 authors = ["Adam Perry <adam.n.perry@gmail.com>"]
-name = "rust-dashboard"
+name = "rfcbot-rs"
 version = "0.1.0"
 
 [dependencies]
