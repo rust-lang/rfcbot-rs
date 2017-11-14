@@ -64,7 +64,6 @@ mod html {
             .collect::<Vec<_>>();
 
         let rendered = TEMPLATES.render("all", &json!({ "model": context }))?;
-        println!("rendered\n{}", &rendered);
         Ok(content::Html(rendered))
     }
 
