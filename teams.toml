@@ -72,6 +72,7 @@ members = [
   "aturon",
   "carols10cents",
   "erickt",
+  "kennytm",
   "Mark-Simulacrum",
   "shepmaster",
   "TimNN",
@@ -94,9 +95,11 @@ members = [
 name = "Dev tools"
 ping = "rust-lang/dev-tools"
 members = [
+  "fitzgen",
   "japaric",
   "jonathandturner",
   "killercup",
+  "matklad",
   "michaelwoerister",
   "nrc",
 ]
