@@ -2,7 +2,7 @@
 
 [![Travis](https://img.shields.io/travis/rust-lang/rust.svg)](https://travis-ci.org/dikaiosune/rfcbot-rs)
 
-Deployed to http://rusty-dash.com right now.
+Deployed to https://rfcbot.rs right now.
 
 ## ToC
 
