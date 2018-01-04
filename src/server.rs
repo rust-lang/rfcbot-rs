@@ -7,6 +7,8 @@ pub fn serve() {
     let _hbars = &*TEMPLATES;
 
     loop {
+        let port = ::std::env::var("ROCKET_PORT").unwrap_or(String::from("OOPS"));
+        info!("Attempting to launch Rocket at port {}...", &port);
         let result = catch_unwind(|| {
             rocket::ignite()
                 .mount(
