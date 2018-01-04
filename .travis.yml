@@ -9,7 +9,7 @@ rust:
 cache:
   cargo: true
   directories:
-  - $HOME/.rustup
+    - $HOME/.rustup
 
 addons:
   postgresql: "9.5"
@@ -36,3 +36,9 @@ before_script:
 script:
   - cargo build --verbose
   - cargo test --verbose
+before_deploy:
+  - DATABASE_URL=$(heroku config:get DATABASE_URL -a rfcbot-rs) diesel migration run
+deploy:
+  provider: heroku
+  api_key:
+    secure: TJiRIbC1cb+mPRR2kB1K/WWmF7XPgqRiZ1PLxdwC8Nfdo/MB+2S+TklNL+951l9R4PZy/+Ul2qkJED89S7AUnO3FxnKUz69DSgB61Ux0iLuaCRPYVgrn7jGFuyChSaFVh+WehTiU84qawhQyC1mbGmEbjXbjaYL0SmQJMOLy+FeYtBGZvdapScTjhtmWRzlmUCl1mZI11qUgcJHZdoiUPgnE/MdwtOVI7qO2adhERYHViEjaia1uIl/ALNmtSOvB3Jr5yjB/N2fga8Sw6uwJIVts8sBpY75ipr2UyiPj/ftSYoOZoTJAtBtRxnkiA0mo6T+YdsniSvef+muztcDHTUZbHegbAK98dVKfH3ailhZME8/26LxyWis6cL42DYtpNjiUTo1IZlu1J91+1mTmWLcnTZE3iRCBcOGvP4DwUXMshegADCcDO6WAC9jqnt0a025FeMMv4EmULgt1J+weA9moctPHQfow1aWSjoYq/FcIX/8feL97+oHRSxBNAopBr2eDIksjiOmmQuxMH9dFKlXUVRfGV+W8afU+QwHXUnKr5pGJqRd21UDUDJMzjgb1Yke5YDAho+SjbLOKYt/ITnBnFvV4N9UjiVdOkNoCXJtqjJU3fYlqAIAyReuYZ1YS06cZ3ojfnGqce0OEwQ1bdktnPWEdKKpzretYn3IRCVs=
