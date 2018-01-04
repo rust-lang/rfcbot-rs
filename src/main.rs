@@ -75,7 +75,7 @@ fn main() {
     let parsed_teams = teams::TEAMS.keys().collect::<Vec<_>>();
     info!("parsed teams: {:?}", parsed_teams);
 
-    // FIXME(dikaiosune) need to handle panics in both the listeners and crash the server
+    // FIXME(anp) need to handle panics in both the listeners and crash the server
     let _ = scraper::start_scraping();
     let _server_handle = server::serve();
 

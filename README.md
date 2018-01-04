@@ -1,6 +1,6 @@
 # rfcbot-rs
 
-[![Travis](https://img.shields.io/travis/rust-lang/rust.svg)](https://travis-ci.org/dikaiosune/rfcbot-rs)
+[![Travis](https://img.shields.io/travis/rust-lang/rust.svg)](https://travis-ci.org/anp/rfcbot-rs)
 
 Deployed to https://rfcbot.rs right now.
 
