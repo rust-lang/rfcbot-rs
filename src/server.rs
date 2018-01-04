@@ -1,3 +1,4 @@
+use std::panic::catch_unwind;
 use handlebars::Handlebars;
 use rocket;
 
@@ -5,11 +6,21 @@ pub fn serve() {
     // in debug builds this will force an init, good enough for testing
     let _hbars = &*TEMPLATES;
 
-    rocket::ignite()
-        .mount("/api",
-               routes![api::all_fcps, api::member_fcps, api::github_webhook])
-        .mount("/", routes![html::all_fcps, html::member_fcps])
-        .launch();
+    loop {
+        let result = catch_unwind(|| {
+            rocket::ignite()
+                .mount(
+                    "/api",
+                    routes![api::all_fcps, api::member_fcps, api::github_webhook],
+                )
+                .mount("/", routes![html::all_fcps, html::member_fcps])
+                .launch();
+        });
+
+        if let Err(why) = result {
+            error!("Rocket failed to ignite: {:?}", why);
+        }
+    }
 }
 
 mod html {
@@ -56,11 +67,11 @@ mod html {
         let context = teams
             .into_iter()
             .map(|(team_label, fcps)| {
-                     json!({
+                json!({
                 "team": team_label,
                 "fcps": fcps,
             })
-                 })
+            })
             .collect::<Vec<_>>();
 
         let rendered = TEMPLATES.render("all", &json!({ "model": context }))?;
@@ -96,8 +107,9 @@ mod api {
     pub fn all_fcps() -> DashResult<Json<Vec<nag::FcpWithInfo>>> { Ok(Json(nag::all_fcps()?)) }
 
     #[get("/<username>")]
-    pub fn member_fcps(username: String)
-                       -> DashResult<Json<(GitHubUser, Vec<nag::IndividualFcp>)>> {
+    pub fn member_fcps(
+        username: String,
+    ) -> DashResult<Json<(GitHubUser, Vec<nag::IndividualFcp>)>> {
         Ok(Json(nag::individual_nags(&username)?))
     }
 
@@ -120,12 +132,16 @@ mod api {
 
                 if comment_event.action != "deleted" {
                     // TODO handle deleted comments properly
-                    handle_issue(conn,
-                                 comment_event.issue,
-                                 &comment_event.repository.full_name)?;
-                    handle_comment(conn,
-                                   comment_event.comment,
-                                   &comment_event.repository.full_name)?;
+                    handle_issue(
+                        conn,
+                        comment_event.issue,
+                        &comment_event.repository.full_name,
+                    )?;
+                    handle_comment(
+                        conn,
+                        comment_event.comment,
+                        &comment_event.repository.full_name,
+                    )?;
                 }
             }
 
