@@ -1,1 +1,1 @@
-web: ROCKET_PORT=$PORT ./target/release/rfcbot-rs
+web: ROCKET_PORT=$PORT ROCKET_ENV=prod ./target/release/rfcbot-rs
