@@ -35,6 +35,8 @@ members = [
   "dtolnay",
   "Kimundi",
   "sfackler",
+  "KodrAus",
+  "withoutboats",
 ]
 
 [T-compiler]
