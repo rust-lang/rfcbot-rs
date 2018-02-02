@@ -910,7 +910,7 @@ impl<'a> RfcBotComment<'a> {
                 msg.push_str("at any point in this process, please speak up!\n");
 
                 msg.push_str("\nSee [this document](");
-                msg.push_str("https://github.com/anp/rfcbot-rs/blob/master/RFCBOT.md");
+                msg.push_str("https://github.com/anp/rfcbot-rs/blob/master/README.md");
                 msg.push_str(") for info about what commands tagged team members can give me.");
 
                 msg
