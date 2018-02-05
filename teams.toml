@@ -91,7 +91,6 @@ members = [
   "aturon",
   "carols10cents",
   "joshtriplett",
-  "matklad",
   "withoutboats",
   "wycats",
 ]
@@ -103,7 +102,6 @@ members = [
   "fitzgen",
   "japaric",
   "killercup",
-  "matklad",
   "michaelwoerister",
   "nrc",
 ]
