@@ -42,14 +42,15 @@ members = [
 name = "Compiler"
 ping = "rust-lang/compiler"
 members = [
-  "arielb1",
   "cramertj",
   "eddyb",
   "estebank",
   "jseyfried",
   "michaelwoerister",
+  "nagisa",
   "nikomatsakis",
   "nrc",
+  "oli-obk",
   "petrochenkov",
   "pnkfelix",
   "Zoxc",
