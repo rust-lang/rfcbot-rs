@@ -17,7 +17,7 @@ addons:
     - pkg-config
 install:
 - rustup default $(cat rust-toolchain)
-- cargo install cargo-install-update || true
+- cargo install cargo-update || true
 - cargo install-update-config --default-features false --feature postgres diesel_cli
 - cargo install-update -i diesel_cli
 before_script:
