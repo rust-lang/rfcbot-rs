@@ -17,7 +17,8 @@ addons:
     - pkg-config
 install:
 - rustup default $(cat rust-toolchain)
-- cargo install --force diesel_cli --no-default-features --features "postgres"
+- cargo install cargo-install-update || true
+- cargo install-update -i diesel_cli --no-default-features --features "postgres"
 before_script:
 - export RUST_LOG=debug,hyper=info,rustc=error,cargo=error
 - export GITHUB_WEBHOOK_SECRETS="none"
