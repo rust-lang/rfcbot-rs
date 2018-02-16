@@ -1,4 +1,5 @@
 use std::collections::BTreeSet;
+use std::sync::Mutex;
 
 use chrono::{Duration, Utc};
 use diesel::prelude::*;
@@ -15,9 +16,15 @@ use github::models::CommentFromJson;
 use teams::TEAMS;
 use super::GH;
 
+lazy_static! {
+    static ref NAG_LOCK: Mutex<()> = Mutex::new(());
+}
+
 // TODO check if new subteam label added for existing proposals
 
 pub fn update_nags(comment: &IssueComment) -> DashResult<()> {
+    let _in_progress_marker = NAG_LOCK.lock().unwrap();
+
     let conn = &*DB_POOL.get()?;
 
     let issue = issue::table.find(comment.fk_issue).first::<Issue>(conn)?;
