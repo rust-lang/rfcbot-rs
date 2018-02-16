@@ -223,7 +223,8 @@ fn evaluate_nags() -> DashResult<()> {
             }
         };
 
-        let num_active_reviews = reviews.iter().filter(|&&(_, ref r)| !r.reviewed).count();
+        let num_outstanding_reviews = reviews.iter().filter(|&&(_, ref r)| !r.reviewed).count();
+        let num_complete_reviews = reviews.len() - num_outstanding_reviews;
         let num_active_concerns = concerns
             .iter()
             .filter(|&&(_, ref c)| c.fk_resolved_comment.is_none())
@@ -255,7 +256,9 @@ fn evaluate_nags() -> DashResult<()> {
             };
         }
 
-        if num_active_reviews == 0 && num_active_concerns == 0 {
+        let majority_complete = num_outstanding_reviews < num_complete_reviews;
+
+        if num_active_concerns == 0 && majority_complete && num_outstanding_reviews < 3 {
             // TODO only record the fcp as started if we know that we successfully commented
             // i.e. either the comment claims to have posted, or we get a comment back to reconcile
 
