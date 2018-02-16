@@ -33,7 +33,6 @@ ping = "rust-lang/libs"
 members = [
   "alexcrichton",
   "dtolnay",
-  "Kimundi",
   "sfackler",
   "withoutboats",
 ]
