@@ -23,7 +23,7 @@ lazy_static! {
 // TODO check if new subteam label added for existing proposals
 
 pub fn update_nags(comment: &IssueComment) -> DashResult<()> {
-    let _in_progress_marker = NAG_LOCK.lock().unwrap();
+    let _in_progress_marker = NAG_LOCK.lock();
 
     let conn = &*DB_POOL.get()?;
 
