@@ -1,5 +1,6 @@
 use std::collections::BTreeSet;
 use std::sync::Mutex;
+use std::fmt;
 
 use chrono::{Duration, Utc};
 use diesel::prelude::*;
@@ -16,20 +17,39 @@ use github::models::CommentFromJson;
 use teams::TEAMS;
 use super::GH;
 
-const LABEL_FFCP: &'static str = "finished-final-comment-period";
-const LABEL_PFCP: &'static str = "proposed-final-comment-period";
-const LABEL_FCP: &'static str = "final-comment-period";
+#[derive(Copy, Clone, PartialEq, Eq, Hash)]
+pub enum Label {
+    FFCP,
+    PFCP,
+    FCP,
+    Postponed,
+    Closed,
+    DispositionMerge,
+    DispositionClose,
+    DispositionPostpone,
+}
 
-const LABEL_POSTPONED: &'static str = "postponed";
-const LABEL_CLOSED: &'static str = "closed";
+impl Label {
+    fn as_str(self) -> &'static str {
+        use self::Label::*;
+        match self {
+            FFCP => "finished-final-comment-period",
+            PFCP => "proposed-final-comment-period",
+            FCP => "final-comment-period",
+            Postponed => "postponed",
+            Closed => "closed",
+            DispositionMerge => "disposition-merge",
+            DispositionClose => "disposition-close",
+            DispositionPostpone => "disposition-postpone",
+        }
+    }
+}
 
-const LABEL_DISPOSITION_MERGE: &'static str = "disposition-merge";
-const LABEL_DISPOSITION_CLOSE: &'static str = "disposition-close";
-const LABEL_DISPOSITION_POSTPONE: &'static str = "disposition-postpone";
-
-const FCP_REPR_MERGE: &'static str = "merge";
-const FCP_REPR_CLOSE: &'static str = "close";
-const FCP_REPR_POSTPONE: &'static str = "postpone";
+impl fmt::Display for Label {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        fmt.write_str(self.as_str())
+    }
+}
 
 lazy_static! {
     static ref NAG_LOCK: Mutex<()> = Mutex::new(());
@@ -158,18 +178,18 @@ fn update_proposal_review_status(proposal_id: i32) -> DashResult<()> {
     Ok(())
 }
 
-fn remove_issue_label(issue: &Issue, label: &str) {
-    let _ = GH.remove_label(&issue.repository, issue.number, label);
+fn remove_issue_label(issue: &Issue, label: Label) {
+    let _ = GH.remove_label(&issue.repository, issue.number, label.as_str());
 }
 
-fn remove_issue_labels(issue: &Issue, labels: &[&str]) {
-    for label in labels {
+fn remove_issue_labels(issue: &Issue, labels: &[Label]) {
+    for &label in labels {
         remove_issue_label(issue, label);
     }
 }
 
-fn add_issue_label(issue: &Issue, label: &str) -> DashResult<()> {
-    GH.add_label(&issue.repository, issue.number, label)
+fn add_issue_label(issue: &Issue, label: Label) -> DashResult<()> {
+    GH.add_label(&issue.repository, issue.number, label.as_str())
 }
 
 fn close_pull_request(issue: &Issue) {
@@ -320,8 +340,8 @@ fn evaluate_nags() -> DashResult<()> {
             // TODO only add label if FCP > 1 day
             use config::CONFIG;
             if CONFIG.post_comments {
-                let label_res = add_issue_label(&issue, LABEL_FCP);
-                remove_issue_label(&issue, LABEL_PFCP);
+                let label_res = add_issue_label(&issue, Label::FCP);
+                remove_issue_label(&issue, Label::PFCP);
                 let added_label = match label_res {
                     Ok(()) => true,
                     Err(why) => {
@@ -409,8 +429,8 @@ fn evaluate_nags() -> DashResult<()> {
         let disp = FcpDisposition::from_str(&proposal.disposition)?;
 
         // Add FFCP label and remove FCP label.
-        let label_res = add_issue_label(&issue, LABEL_FFCP);
-        remove_issue_label(&issue, LABEL_FCP);
+        let label_res = add_issue_label(&issue, Label::FFCP);
+        remove_issue_label(&issue, Label::FCP);
         let added_label = match label_res {
             Ok(()) => true,
             Err(why) => {
@@ -450,13 +470,13 @@ fn evaluate_nags() -> DashResult<()> {
                     // auto-merge RFCs and create the tracking issue.
                 },
                 FcpDisposition::Close => {
-                    let _ = add_issue_label(&issue, LABEL_CLOSED);
-                    remove_issue_label(&issue, LABEL_DISPOSITION_CLOSE);
+                    let _ = add_issue_label(&issue, Label::Closed);
+                    remove_issue_label(&issue, Label::DispositionClose);
                     close_pull_request(&issue);
                 },
                 FcpDisposition::Postpone => {
-                    let _ = add_issue_label(&issue, LABEL_POSTPONED);
-                    remove_issue_label(&issue, LABEL_DISPOSITION_POSTPONE);
+                    let _ = add_issue_label(&issue, Label::Postponed);
+                    remove_issue_label(&issue, Label::DispositionPostpone);
                     close_pull_request(&issue);
                 },
             }
@@ -577,11 +597,11 @@ fn cancel_fcp(author: &GitHubUser, issue: &Issue, existing: &FcpProposal) -> Das
     let comment = RfcBotComment::new(issue, CommentType::FcpProposalCancelled(author));
     let _ = comment.post(None);
     remove_issue_labels(&issue, &[
-        LABEL_FCP,
-        LABEL_PFCP,
-        LABEL_DISPOSITION_MERGE,
-        LABEL_DISPOSITION_CLOSE,
-        LABEL_DISPOSITION_POSTPONE
+        Label::FCP,
+        Label::PFCP,
+        Label::DispositionMerge,
+        Label::DispositionClose,
+        Label::DispositionPostpone,
     ]);
 
     Ok(())
@@ -604,6 +624,10 @@ pub enum FcpDisposition {
     Postpone,
 }
 
+const FCP_REPR_MERGE: &'static str = "merge";
+const FCP_REPR_CLOSE: &'static str = "close";
+const FCP_REPR_POSTPONE: &'static str = "postpone";
+
 impl FcpDisposition {
     pub fn repr(self) -> &'static str {
         match self {
@@ -622,11 +646,11 @@ impl FcpDisposition {
         }
     }
 
-    pub fn label(self) -> &'static str {
+    pub fn label(self) -> Label {
         match self {
-            FcpDisposition::Merge => LABEL_DISPOSITION_MERGE,
-            FcpDisposition::Close => LABEL_DISPOSITION_CLOSE,
-            FcpDisposition::Postpone => LABEL_DISPOSITION_POSTPONE,
+            FcpDisposition::Merge => Label::DispositionMerge,
+            FcpDisposition::Close => Label::DispositionClose,
+            FcpDisposition::Postpone => Label::DispositionPostpone,
         }
     }
 }
@@ -1003,11 +1027,11 @@ impl<'a> RfcBotComment<'a> {
         }
     }
 
-    fn couldnt_add_label<'b>(msg: &mut String, author: &'b GitHubUser, label: &str) {
+    fn couldnt_add_label<'b>(msg: &mut String, author: &'b GitHubUser, label: Label) {
         msg.push_str("\n\n*psst @");
         msg.push_str(&author.login);
         msg.push_str(", I wasn't able to add the `");
-        msg.push_str(label);
+        msg.push_str(label.as_str());
         msg.push_str("` label, please do so.*");
     }
 
@@ -1086,7 +1110,7 @@ impl<'a> RfcBotComment<'a> {
                 msg.push_str("). :bell:");
 
                 if !added_label {
-                    Self::couldnt_add_label(&mut msg, author, LABEL_FCP);
+                    Self::couldnt_add_label(&mut msg, author, Label::FCP);
                 }
 
                 msg
@@ -1118,7 +1142,7 @@ impl<'a> RfcBotComment<'a> {
                 }
 
                 if !added_label {
-                    Self::couldnt_add_label(&mut msg, author, LABEL_FFCP);
+                    Self::couldnt_add_label(&mut msg, author, Label::FFCP);
                 }
 
                 msg
@@ -1136,7 +1160,7 @@ impl<'a> RfcBotComment<'a> {
 
     fn maybe_add_pfcp_label(&self) {
         if let CommentType::FcpProposed(_, disposition, ..) = self.comment_type {
-            let _ = add_issue_label(&self.issue, LABEL_PFCP);
+            let _ = add_issue_label(&self.issue, Label::PFCP);
             let _ = add_issue_label(&self.issue, disposition.label());
         }
     }
