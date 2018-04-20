@@ -535,6 +535,66 @@ impl FcpDisposition {
     }
 }
 
+/// Parses the text of a subcommand.
+fn parse_command_text<'a>(command: &'a str, subcommand: &'a str) -> &'a str {
+    let name_start = command.find(subcommand).unwrap() + subcommand.len();
+    command[name_start..].trim()
+}
+
+/// Parses all subcommands under the fcp command.
+/// If `fcp_context` is set to false, `@rfcbot <subcommand>`
+/// was passed and not `@rfcbot fcp <subcommand>`.
+fn parse_fcp_subcommand<'a>(
+    command: &'a str,
+    subcommand: &'a str,
+    fcp_context: bool
+) -> DashResult<RfcBotCommand<'a>> {
+    match subcommand {
+        // Parse a FCP merge command:
+        "merge" | "merged" | "merging" | "merges" =>
+            Ok(RfcBotCommand::FcpPropose(FcpDisposition::Merge)),
+
+        // Parse a FCP close command:
+        "close" | "closed" | "closing" | "closes" =>
+            Ok(RfcBotCommand::FcpPropose(FcpDisposition::Close)),
+
+        // Parse a FCP postpone command:
+        "postpone" | "postponed" | "postponing" | "postpones" =>
+            Ok(RfcBotCommand::FcpPropose(FcpDisposition::Postpone)),
+
+        // Parse a FCP cancel command:
+        "cancel" | "canceled" | "canceling" | "cancels" =>
+            Ok(RfcBotCommand::FcpCancel),
+
+        // Parse a FCP reviewed command:
+        "reviewed" | "review" | "reviewing" | "reviews" =>
+            Ok(RfcBotCommand::Reviewed),
+
+        // Parse a FCP concern command:
+        "concern" | "concerned" | "concerning" | "concerns" => {
+            debug!("Parsed command as NewConcern");
+            let what = parse_command_text(command, subcommand);
+            Ok(RfcBotCommand::NewConcern(what))
+        },
+
+        // Parse a FCP resolve command:
+        "resolve" | "resolved" | "resolving" | "resolves" => {
+            debug!("Parsed command as ResolveConcern");
+            let what = parse_command_text(command, subcommand);
+            Ok(RfcBotCommand::ResolveConcern(what))
+        },
+
+        _ => {
+            Err(if fcp_context {
+                error!("unrecognized subcommand for fcp: {}", subcommand);
+                DashError::Misc(Some(format!("found bad subcommand: {}", subcommand)))
+            } else {
+                DashError::Misc(None)
+            })
+        }
+    }
+}
+
 impl<'a> RfcBotCommand<'a> {
     pub fn process(self,
                    author: &GitHubUser,
@@ -768,7 +828,6 @@ impl<'a> RfcBotCommand<'a> {
     }
 
     pub fn from_str(command: &'a str) -> DashResult<RfcBotCommand<'a>> {
-
         // get the tokens for the command line (starts with a bot mention)
         let command = command
             .lines()
@@ -788,38 +847,9 @@ impl<'a> RfcBotCommand<'a> {
 
                 debug!("Parsed command as new FCP proposal");
 
-                match subcommand {
-                    "merge" => Ok(RfcBotCommand::FcpPropose(FcpDisposition::Merge)),
-                    "close" => Ok(RfcBotCommand::FcpPropose(FcpDisposition::Close)),
-                    "postpone" => Ok(RfcBotCommand::FcpPropose(FcpDisposition::Postpone)),
-                    "cancel" => Ok(RfcBotCommand::FcpCancel),
-                    _ => {
-                        error!("unrecognized subcommand for fcp: {}", subcommand);
-                        Err(DashError::Misc(Some(format!("found bad subcommand: {}", subcommand))))
-                    }
-                }
+                parse_fcp_subcommand(command, subcommand, true)
             }
-            "concern" => {
-
-                let name_start = command.find("concern").unwrap() + "concern".len();
-
-                debug!("Parsed command as NewConcern");
-
-                Ok(RfcBotCommand::NewConcern(command[name_start..].trim()))
-            }
-            "resolve" | "resolved" => {
-                // TODO handle "resolve" as well, with the correct tokenization
-
-                let name_start = command.find("resolved").unwrap() + "resolved".len();
-
-                debug!("Parsed command as ResolveConcern");
-
-                Ok(RfcBotCommand::ResolveConcern(command[name_start..].trim()))
-
-            }
-            "reviewed" => Ok(RfcBotCommand::Reviewed),
             "f?" => {
-
                 let user =
                     tokens
                         .next()
@@ -831,7 +861,7 @@ impl<'a> RfcBotCommand<'a> {
 
                 Ok(RfcBotCommand::FeedbackRequest(&user[1..]))
             }
-            _ => Err(DashError::Misc(None)),
+            _ => parse_fcp_subcommand(command, invocation, false),
         }
     }
 }
@@ -1004,106 +1034,91 @@ impl<'a> RfcBotComment<'a> {
 mod test {
     use super::*;
 
-    #[test]
-    fn success_fcp_reviewed() {
-        let body = "@rfcbot: reviewed";
-        let body_no_colon = "@rfcbot reviewed";
-
-        let with_colon = RfcBotCommand::from_str(body).unwrap();
-        let without_colon = RfcBotCommand::from_str(body_no_colon).unwrap();
-
-        assert_eq!(with_colon, without_colon);
-        assert_eq!(with_colon, RfcBotCommand::Reviewed);
+    macro_rules! justification {
+        () => { "\n\nSome justification here." };
     }
 
-    #[test]
-    fn success_fcp_merge() {
-        let body = "@rfcbot: fcp merge\n\nSome justification here.";
-        let body_no_colon = "@rfcbot fcp merge\n\nSome justification here.";
-
-        let with_colon = RfcBotCommand::from_str(body).unwrap();
-        let without_colon = RfcBotCommand::from_str(body_no_colon).unwrap();
-
-        assert_eq!(with_colon, without_colon);
-        assert_eq!(with_colon, RfcBotCommand::FcpPropose(FcpDisposition::Merge));
-    }
-
-    #[test]
-    fn success_fcp_close() {
-        let body = "@rfcbot: fcp close\n\nSome justification here.";
-        let body_no_colon = "@rfcbot fcp close\n\nSome justification here.";
-
-        let with_colon = RfcBotCommand::from_str(body).unwrap();
-        let without_colon = RfcBotCommand::from_str(body_no_colon).unwrap();
-
-        assert_eq!(with_colon, without_colon);
-        assert_eq!(with_colon, RfcBotCommand::FcpPropose(FcpDisposition::Close));
-    }
-
-    #[test]
-    fn success_fcp_postpone() {
-        let body = "@rfcbot: fcp postpone\n\nSome justification here.";
-        let body_no_colon = "@rfcbot fcp postpone\n\nSome justification here.";
-
-        let with_colon = RfcBotCommand::from_str(body).unwrap();
-        let without_colon = RfcBotCommand::from_str(body_no_colon).unwrap();
-
-        assert_eq!(with_colon, without_colon);
-        assert_eq!(with_colon,
-                   RfcBotCommand::FcpPropose(FcpDisposition::Postpone));
-    }
-
-    #[test]
-    fn success_fcp_cancel() {
-        let body = "@rfcbot: fcp cancel\n\nSome justification here.";
-        let body_no_colon = "@rfcbot fcp cancel\n\nSome justification here.";
-
-        let with_colon = RfcBotCommand::from_str(body).unwrap();
-        let without_colon = RfcBotCommand::from_str(body_no_colon).unwrap();
-
-        assert_eq!(with_colon, without_colon);
-        assert_eq!(with_colon, RfcBotCommand::FcpCancel);
-    }
-
-    #[test]
-    fn success_concern() {
-        let body = "@rfcbot: concern CONCERN_NAME
+    macro_rules! some_text {
+        ($important: expr) => {
+            concat!(" ", $important, "
 someothertext
 somemoretext
 
-somemoretext";
-        let body_no_colon = "@rfcbot concern CONCERN_NAME
-someothertext
-somemoretext
-
-somemoretext";
-
-        let with_colon = RfcBotCommand::from_str(body).unwrap();
-        let without_colon = RfcBotCommand::from_str(body_no_colon).unwrap();
-
-        assert_eq!(with_colon, without_colon);
-        assert_eq!(with_colon, RfcBotCommand::NewConcern("CONCERN_NAME"));
+somemoretext")
+        };
     }
 
-    #[test]
-    fn success_resolve() {
-        let body = "@rfcbot: resolved CONCERN_NAME
-someothertext
-somemoretext
+    macro_rules! test_from_str {
+        ($test: ident, [$($cmd: expr),+], $message: expr, $expected: expr) => {
+            test_from_str!($test, [$(concat!($cmd, $message)),+], $expected);
+        };
 
-somemoretext";
-        let body_no_colon = "@rfcbot resolved CONCERN_NAME
-someothertext
-somemoretext
+        ($test: ident, [$($cmd: expr),+], $expected: expr) => {
+            #[test]
+            fn $test() {
+                let expected = $expected;
 
-somemoretext";
+                $({
+                    let body = concat!("@rfcbot: ", $cmd);
+                    let body_no_colon = concat!("@rfcbot ", $cmd);
 
-        let with_colon = RfcBotCommand::from_str(body).unwrap();
-        let without_colon = RfcBotCommand::from_str(body_no_colon).unwrap();
+                    let with_colon = RfcBotCommand::from_str(body).unwrap();
+                    let without_colon = RfcBotCommand::from_str(body_no_colon).unwrap();
 
-        assert_eq!(with_colon, without_colon);
-        assert_eq!(with_colon, RfcBotCommand::ResolveConcern("CONCERN_NAME"));
+                    assert_eq!(with_colon, without_colon);
+                    assert_eq!(with_colon, expected);
+                })+
+            }
+        };
     }
+
+    test_from_str!(success_fcp_reviewed,
+        ["reviewed", "review", "reviewing", "reviews",
+         "fcp reviewed", "fcp review", "fcp reviewing",
+         "pr reviewed", "pr review", "pr reviewing"],
+        RfcBotCommand::Reviewed);
+
+    test_from_str!(success_fcp_merge,
+        ["merge", "merged", "merging", "merges",
+         "fcp merge", "fcp merged", "fcp merging", "fcp merges",
+         "pr merge", "pr merged", "pr merging", "pr merges"],
+        justification!(),
+        RfcBotCommand::FcpPropose(FcpDisposition::Merge));
+
+    test_from_str!(success_fcp_close,
+        ["close", "closed", "closing", "closes",
+         "fcp close", "fcp closed", "fcp closing", "fcp closes",
+         "pr close", "pr closed", "pr closing", "pr closes"],
+        justification!(),
+        RfcBotCommand::FcpPropose(FcpDisposition::Close));
+
+    test_from_str!(success_fcp_postpone,
+        ["postpone", "postponed", "postponing", "postpones",
+         "fcp postpone", "fcp postponed", "fcp postponing", "fcp postpones",
+         "pr postpone", "pr postponed", "pr postponing", "pr postpones"],
+        justification!(),
+        RfcBotCommand::FcpPropose(FcpDisposition::Postpone));
+
+    test_from_str!(success_fcp_cancel,
+        ["cancel", "canceled", "canceling", "cancels",
+         "fcp cancel", "fcp canceled", "fcp canceling", "fcp cancels",
+         "pr cancel", "pr canceled", "pr canceling", "pr cancels"],
+        justification!(),
+        RfcBotCommand::FcpCancel);
+
+    test_from_str!(success_concern,
+        ["concern", "concerned", "concerning", "concerns",
+         "fcp concern", "fcp concerned", "fcp concerning", "fcp concerns",
+         "pr concern", "pr concerned", "pr concerning", "pr concerns"],
+        some_text!("CONCERN_NAME"),
+        RfcBotCommand::NewConcern("CONCERN_NAME"));
+
+    test_from_str!(success_resolve,
+        ["resolve", "resolved", "resolving", "resolves",
+         "fcp resolve", "fcp resolved", "fcp resolving", "fcp resolves",
+         "pr resolve", "pr resolved", "pr resolving", "pr resolves"],
+        some_text!("CONCERN_NAME"),
+        RfcBotCommand::ResolveConcern("CONCERN_NAME"));
 
     #[test]
     fn success_resolve_mid_body() {
@@ -1126,23 +1141,6 @@ somemoretext";
         assert_eq!(with_colon, RfcBotCommand::ResolveConcern("CONCERN_NAME"));
     }
 
-    #[test]
-    fn success_feedback() {
-        let body = "@rfcbot: f? @bob
-someothertext
-somemoretext
-
-somemoretext";
-        let body_no_colon = "@rfcbot f? @bob
-someothertext
-somemoretext
-
-somemoretext";
-
-        let with_colon = RfcBotCommand::from_str(body).unwrap();
-        let without_colon = RfcBotCommand::from_str(body_no_colon).unwrap();
-
-        assert_eq!(with_colon, without_colon);
-        assert_eq!(with_colon, RfcBotCommand::FeedbackRequest("bob"));
-    }
+    test_from_str!(success_feedback, ["f?"], some_text!("@bob"),
+        RfcBotCommand::FeedbackRequest("bob"));
 }
