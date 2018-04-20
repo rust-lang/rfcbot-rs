@@ -156,6 +156,25 @@ impl Client {
         None
     }
 
+    pub fn close_pr(&self, repo: &str, issue_num: i32) -> DashResult<()> {
+        let url = format!("{}/repos/{}/pulls/{}", BASE_URL, repo, issue_num);
+
+        let mut obj = BTreeMap::new();
+        obj.insert("status", "closed");
+        let payload = serde_json::to_string(&obj)?;
+
+        let mut res = self.patch(&url, &payload)?;
+
+        match res.status {
+            StatusCode::Ok => Ok(()),
+            _ => {
+                let mut body = String::new();
+                res.read_to_string(&mut body)?;
+                Err(DashError::Misc(Some(body)))
+            }
+        }
+    }
+
     pub fn add_label(&self, repo: &str, issue_num: i32, label: &str) -> DashResult<()> {
         let url = format!("{}/repos/{}/issues/{}/labels", BASE_URL, repo, issue_num);
         let payload = serde_json::to_string(&[label])?;
