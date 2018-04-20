@@ -16,6 +16,21 @@ use github::models::CommentFromJson;
 use teams::TEAMS;
 use super::GH;
 
+const LABEL_FFCP: &'static str = "finished-final-comment-period";
+const LABEL_PFCP: &'static str = "proposed-final-comment-period";
+const LABEL_FCP: &'static str = "final-comment-period";
+
+const LABEL_POSTPONED: &'static str = "postponed";
+const LABEL_CLOSED: &'static str = "closed";
+
+const LABEL_DISPOSITION_MERGE: &'static str = "disposition-merge";
+const LABEL_DISPOSITION_CLOSE: &'static str = "disposition-close";
+const LABEL_DISPOSITION_POSTPONE: &'static str = "disposition-postpone";
+
+const FCP_REPR_MERGE: &'static str = "merge";
+const FCP_REPR_CLOSE: &'static str = "close";
+const FCP_REPR_POSTPONE: &'static str = "postpone";
+
 lazy_static! {
     static ref NAG_LOCK: Mutex<()> = Mutex::new(());
 }
@@ -141,6 +156,26 @@ fn update_proposal_review_status(proposal_id: i32) -> DashResult<()> {
     }
 
     Ok(())
+}
+
+fn remove_issue_label(issue: &Issue, label: &str) {
+    let _ = GH.remove_label(&issue.repository, issue.number, label);
+}
+
+fn remove_issue_labels(issue: &Issue, labels: &[&str]) {
+    for label in labels {
+        remove_issue_label(issue, label);
+    }
+}
+
+fn add_issue_label(issue: &Issue, label: &str) -> DashResult<()> {
+    GH.add_label(&issue.repository, issue.number, label)
+}
+
+fn close_pull_request(issue: &Issue) {
+    if let Err(why) = GH.close_pr(&issue.repository, issue.number) {
+        error!("Unable to close PR {:?}: {:?}", issue, why);
+    }
 }
 
 fn evaluate_nags() -> DashResult<()> {
@@ -285,13 +320,8 @@ fn evaluate_nags() -> DashResult<()> {
             // TODO only add label if FCP > 1 day
             use config::CONFIG;
             if CONFIG.post_comments {
-                let label_res =
-                    GH.add_label(&issue.repository, issue.number, "final-comment-period");
-
-                let _ = GH.remove_label(&issue.repository,
-                                        issue.number,
-                                        "proposed-final-comment-period");
-
+                let label_res = add_issue_label(&issue, LABEL_FCP);
+                remove_issue_label(&issue, LABEL_PFCP);
                 let added_label = match label_res {
                     Ok(()) => true,
                     Err(why) => {
@@ -339,6 +369,17 @@ fn evaluate_nags() -> DashResult<()> {
     };
 
     for mut proposal in finished_fcps {
+        let initiator = match githubuser::table
+                  .find(proposal.fk_initiator)
+                  .first::<GitHubUser>(conn) {
+            Ok(i) => i,
+            Err(why) => {
+                error!("Unable to retrieve proposal initiator for proposal id {}: {:?}",
+                       proposal.id,
+                       why);
+                continue;
+            }
+        };
 
         let issue = match issue::table.find(proposal.fk_issue).first::<Issue>(conn) {
             Ok(i) => i,
@@ -364,7 +405,33 @@ fn evaluate_nags() -> DashResult<()> {
             }
         }
 
-        let fcp_close_comment = RfcBotComment::new(&issue, CommentType::FcpWeekPassed);
+        // parse the disposition:
+        let disp = FcpDisposition::from_str(&proposal.disposition)?;
+
+        // Add FFCP label and remove FCP label.
+        let label_res = add_issue_label(&issue, LABEL_FFCP);
+        remove_issue_label(&issue, LABEL_FCP);
+        let added_label = match label_res {
+            Ok(()) => true,
+            Err(why) => {
+                warn!("Unable to add Finished-FCP label to {}#{}: {:?}",
+                        &issue.repository,
+                        issue.number,
+                        why);
+                false
+            }
+        };
+
+        // Build the comment:
+        let comment_type = CommentType::FcpWeekPassed {
+            added_label,
+            author: &initiator,
+            status_comment_id: proposal.fk_bot_tracking_comment,
+            disposition: disp
+        };
+        let fcp_close_comment = RfcBotComment::new(&issue, comment_type);
+
+        // Post it!
         match fcp_close_comment.post(None) {
             Ok(_) => (),
             Err(why) => {
@@ -374,6 +441,26 @@ fn evaluate_nags() -> DashResult<()> {
                 continue;
             }
         };
+
+        // Execute FFCP actions:
+        if is_rfc_repo(&issue) {
+            match disp {
+                FcpDisposition::Merge => {
+                    // TODO: This one will require a lot of work to
+                    // auto-merge RFCs and create the tracking issue.
+                },
+                FcpDisposition::Close => {
+                    let _ = add_issue_label(&issue, LABEL_CLOSED);
+                    remove_issue_label(&issue, LABEL_DISPOSITION_CLOSE);
+                    close_pull_request(&issue);
+                },
+                FcpDisposition::Postpone => {
+                    let _ = add_issue_label(&issue, LABEL_POSTPONED);
+                    remove_issue_label(&issue, LABEL_DISPOSITION_POSTPONE);
+                    close_pull_request(&issue);
+                },
+            }
+        }
     }
 
     Ok(())
@@ -489,12 +576,13 @@ fn cancel_fcp(author: &GitHubUser, issue: &Issue, existing: &FcpProposal) -> Das
     // leave github comment stating that FCP proposal cancelled
     let comment = RfcBotComment::new(issue, CommentType::FcpProposalCancelled(author));
     let _ = comment.post(None);
-    let _ = GH.remove_label(&issue.repository,
-                            issue.number,
-                            "proposed-final-comment-period");
-    let _ = GH.remove_label(&issue.repository,
-                            issue.number,
-                            "final-comment-period");
+    remove_issue_labels(&issue, &[
+        LABEL_FCP,
+        LABEL_PFCP,
+        LABEL_DISPOSITION_MERGE,
+        LABEL_DISPOSITION_CLOSE,
+        LABEL_DISPOSITION_POSTPONE
+    ]);
 
     Ok(())
 }
@@ -519,18 +607,26 @@ pub enum FcpDisposition {
 impl FcpDisposition {
     pub fn repr(self) -> &'static str {
         match self {
-            FcpDisposition::Merge => "merge",
-            FcpDisposition::Close => "close",
-            FcpDisposition::Postpone => "postpone",
+            FcpDisposition::Merge => FCP_REPR_MERGE,
+            FcpDisposition::Close => FCP_REPR_CLOSE,
+            FcpDisposition::Postpone => FCP_REPR_POSTPONE,
         }
     }
 
     pub fn from_str(string: &str) -> DashResult<Self> {
         match string {
-            "merge" => Ok(FcpDisposition::Merge),
-            "close" => Ok(FcpDisposition::Close),
-            "postpone" => Ok(FcpDisposition::Postpone),
+            FCP_REPR_MERGE => Ok(FcpDisposition::Merge),
+            FCP_REPR_CLOSE => Ok(FcpDisposition::Close),
+            FCP_REPR_POSTPONE => Ok(FcpDisposition::Postpone),
             _ => Err(DashError::Misc(None)),
+        }
+    }
+
+    pub fn label(self) -> &'static str {
+        match self {
+            FcpDisposition::Merge => LABEL_DISPOSITION_MERGE,
+            FcpDisposition::Close => LABEL_DISPOSITION_CLOSE,
+            FcpDisposition::Postpone => LABEL_DISPOSITION_POSTPONE,
         }
     }
 }
@@ -883,7 +979,16 @@ enum CommentType<'a> {
         status_comment_id: i32,
         added_label: bool,
     },
-    FcpWeekPassed,
+    FcpWeekPassed {
+        author: &'a GitHubUser,
+        status_comment_id: i32,
+        added_label: bool,
+        disposition: FcpDisposition
+    },
+}
+
+fn is_rfc_repo(issue: &Issue) -> bool {
+    issue.repository == "rust-lang/rfcs"
 }
 
 impl<'a> RfcBotComment<'a> {
@@ -896,6 +1001,14 @@ impl<'a> RfcBotComment<'a> {
             body: body,
             comment_type: comment_type,
         }
+    }
+
+    fn couldnt_add_label<'b>(msg: &mut String, author: &'b GitHubUser, label: &str) {
+        msg.push_str("\n\n*psst @");
+        msg.push_str(&author.login);
+        msg.push_str(", I wasn't able to add the `");
+        msg.push_str(label);
+        msg.push_str("` label, please do so.*");
     }
 
     fn format(issue: &Issue, comment_type: &CommentType) -> String {
@@ -973,16 +1086,43 @@ impl<'a> RfcBotComment<'a> {
                 msg.push_str("). :bell:");
 
                 if !added_label {
-                    msg.push_str("\n\n*psst @");
-                    msg.push_str(&author.login);
-                    msg.push_str(", I wasn't able to add the `final-comment-period` label,");
-                    msg.push_str(" please do so.*");
+                    Self::couldnt_add_label(&mut msg, author, LABEL_FCP);
                 }
 
                 msg
             }
 
-            CommentType::FcpWeekPassed => "The final comment period is now complete.".to_string(),
+            CommentType::FcpWeekPassed {
+                author,
+                added_label,
+                status_comment_id,
+                disposition
+            } => {
+                let mut msg = String::new();
+                msg.push_str("The final comment period, with a disposition to **");
+                msg.push_str(disposition.repr());
+                msg.push_str("**, as per the [review above](");
+                Self::add_comment_url(issue, &mut msg, status_comment_id);
+                msg.push_str("), is now **complete**.");
+
+                if is_rfc_repo(issue) {
+                    match disposition {
+                        FcpDisposition::Merge => {}
+                        FcpDisposition::Close => {
+                            msg.push_str("\n\nBy the power vested in me by Rust, I hereby close this RFC.");
+                        },
+                        FcpDisposition::Postpone => {
+                            msg.push_str("\n\nBy the power vested in me by Rust, I hereby postpone this RFC.");
+                        },
+                    }
+                }
+
+                if !added_label {
+                    Self::couldnt_add_label(&mut msg, author, LABEL_FFCP);
+                }
+
+                msg
+            },
         }
     }
 
@@ -994,6 +1134,13 @@ impl<'a> RfcBotComment<'a> {
         msg.push_str(&to_add);
     }
 
+    fn maybe_add_pfcp_label(&self) {
+        if let CommentType::FcpProposed(_, disposition, ..) = self.comment_type {
+            let _ = add_issue_label(&self.issue, LABEL_PFCP);
+            let _ = add_issue_label(&self.issue, disposition.label());
+        }
+    }
+
     fn post(&self, existing_comment: Option<i32>) -> DashResult<CommentFromJson> {
         use config::CONFIG;
 
@@ -1002,14 +1149,10 @@ impl<'a> RfcBotComment<'a> {
             if self.issue.open {
                 match existing_comment {
                     Some(comment_id) => {
+                        self.maybe_add_pfcp_label();
                         GH.edit_comment(&self.issue.repository, comment_id, &self.body)
                     }
                     None => {
-                        if let CommentType::FcpProposed(..) = self.comment_type {
-                            let _ = GH.add_label(&self.issue.repository,
-                                                 self.issue.number,
-                                                 "proposed-final-comment-period");
-                        }
                         GH.new_comment(&self.issue.repository, self.issue.number, &self.body)
                     }
                 }
