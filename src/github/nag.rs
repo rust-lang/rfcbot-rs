@@ -59,6 +59,12 @@ impl Issue {
     fn add_label(&self, label: Label) -> DashResult<()> {
         GH.add_label(&self.repository, self.number, label.as_str())
     }
+
+    fn close(&self) {
+        if let Err(why) = GH.close_issue(&self.repository, self.number) {
+            error!("Unable to close issue {:?}: {:?}", self, why);
+        }
+    }
 }
 
 lazy_static! {
@@ -186,12 +192,6 @@ fn update_proposal_review_status(proposal_id: i32) -> DashResult<()> {
     }
 
     Ok(())
-}
-
-fn close_pull_request(issue: &Issue) {
-    if let Err(why) = GH.close_pr(&issue.repository, issue.number) {
-        error!("Unable to close PR {:?}: {:?}", issue, why);
-    }
 }
 
 fn evaluate_nags() -> DashResult<()> {
@@ -468,12 +468,12 @@ fn evaluate_nags() -> DashResult<()> {
                 FcpDisposition::Close => {
                     let _ = issue.add_label(Label::Closed);
                     issue.remove_label(Label::DispositionClose);
-                    close_pull_request(&issue);
+                    issue.close();
                 },
                 FcpDisposition::Postpone => {
                     let _ = issue.add_label(Label::Postponed);
                     issue.remove_label(Label::DispositionPostpone);
-                    close_pull_request(&issue);
+                    issue.close();
                 },
             }
         }
