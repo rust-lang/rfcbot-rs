@@ -156,11 +156,11 @@ impl Client {
         None
     }
 
-    pub fn close_pr(&self, repo: &str, issue_num: i32) -> DashResult<()> {
-        let url = format!("{}/repos/{}/pulls/{}", BASE_URL, repo, issue_num);
+    pub fn close_issue(&self, repo: &str, issue_num: i32) -> DashResult<()> {
+        let url = format!("{}/repos/{}/issues/{}", BASE_URL, repo, issue_num);
 
         let mut obj = BTreeMap::new();
-        obj.insert("status", "closed");
+        obj.insert("state", "closed");
         let payload = serde_json::to_string(&obj)?;
 
         let mut res = self.patch(&url, &payload)?;
