@@ -51,6 +51,16 @@ impl fmt::Display for Label {
     }
 }
 
+impl Issue {
+    fn remove_label(&self, label: Label) {
+        let _ = GH.remove_label(&self.repository, self.number, label.as_str());
+    }
+
+    fn add_label(&self, label: Label) -> DashResult<()> {
+        GH.add_label(&self.repository, self.number, label.as_str())
+    }
+}
+
 lazy_static! {
     static ref NAG_LOCK: Mutex<()> = Mutex::new(());
 }
@@ -176,20 +186,6 @@ fn update_proposal_review_status(proposal_id: i32) -> DashResult<()> {
     }
 
     Ok(())
-}
-
-fn remove_issue_label(issue: &Issue, label: Label) {
-    let _ = GH.remove_label(&issue.repository, issue.number, label.as_str());
-}
-
-fn remove_issue_labels(issue: &Issue, labels: &[Label]) {
-    for &label in labels {
-        remove_issue_label(issue, label);
-    }
-}
-
-fn add_issue_label(issue: &Issue, label: Label) -> DashResult<()> {
-    GH.add_label(&issue.repository, issue.number, label.as_str())
 }
 
 fn close_pull_request(issue: &Issue) {
@@ -340,8 +336,8 @@ fn evaluate_nags() -> DashResult<()> {
             // TODO only add label if FCP > 1 day
             use config::CONFIG;
             if CONFIG.post_comments {
-                let label_res = add_issue_label(&issue, Label::FCP);
-                remove_issue_label(&issue, Label::PFCP);
+                let label_res = issue.add_label(Label::FCP);
+                issue.remove_label(Label::PFCP);
                 let added_label = match label_res {
                     Ok(()) => true,
                     Err(why) => {
@@ -429,8 +425,8 @@ fn evaluate_nags() -> DashResult<()> {
         let disp = FcpDisposition::from_str(&proposal.disposition)?;
 
         // Add FFCP label and remove FCP label.
-        let label_res = add_issue_label(&issue, Label::FFCP);
-        remove_issue_label(&issue, Label::FCP);
+        let label_res = issue.add_label(Label::FFCP);
+        issue.remove_label(Label::FCP);
         let added_label = match label_res {
             Ok(()) => true,
             Err(why) => {
@@ -470,13 +466,13 @@ fn evaluate_nags() -> DashResult<()> {
                     // auto-merge RFCs and create the tracking issue.
                 },
                 FcpDisposition::Close => {
-                    let _ = add_issue_label(&issue, Label::Closed);
-                    remove_issue_label(&issue, Label::DispositionClose);
+                    let _ = issue.add_label(Label::Closed);
+                    issue.remove_label(Label::DispositionClose);
                     close_pull_request(&issue);
                 },
                 FcpDisposition::Postpone => {
-                    let _ = add_issue_label(&issue, Label::Postponed);
-                    remove_issue_label(&issue, Label::DispositionPostpone);
+                    let _ = issue.add_label(Label::Postponed);
+                    issue.remove_label(Label::DispositionPostpone);
                     close_pull_request(&issue);
                 },
             }
@@ -596,13 +592,12 @@ fn cancel_fcp(author: &GitHubUser, issue: &Issue, existing: &FcpProposal) -> Das
     // leave github comment stating that FCP proposal cancelled
     let comment = RfcBotComment::new(issue, CommentType::FcpProposalCancelled(author));
     let _ = comment.post(None);
-    remove_issue_labels(&issue, &[
-        Label::FCP,
-        Label::PFCP,
-        Label::DispositionMerge,
-        Label::DispositionClose,
-        Label::DispositionPostpone,
-    ]);
+    &[Label::FCP,
+      Label::PFCP,
+      Label::DispositionMerge,
+      Label::DispositionClose,
+      Label::DispositionPostpone,
+    ].iter().for_each(|&lab| issue.remove_label(lab));
 
     Ok(())
 }
@@ -1160,8 +1155,8 @@ impl<'a> RfcBotComment<'a> {
 
     fn maybe_add_pfcp_label(&self) {
         if let CommentType::FcpProposed(_, disposition, ..) = self.comment_type {
-            let _ = add_issue_label(&self.issue, Label::PFCP);
-            let _ = add_issue_label(&self.issue, disposition.label());
+            let _ = self.issue.add_label(Label::PFCP);
+            let _ = self.issue.add_label(disposition.label());
         }
     }
 
