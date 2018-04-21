@@ -458,28 +458,31 @@ fn evaluate_nags() -> DashResult<()> {
             }
         };
 
-        // Execute FFCP actions:
-        if is_rfc_repo(&issue) {
-            match disp {
-                FcpDisposition::Merge => {
-                    // TODO: This one will require a lot of work to
-                    // auto-merge RFCs and create the tracking issue.
-                },
-                FcpDisposition::Close => {
-                    let _ = issue.add_label(Label::Closed);
-                    issue.remove_label(Label::DispositionClose);
-                    issue.close();
-                },
-                FcpDisposition::Postpone => {
-                    let _ = issue.add_label(Label::Postponed);
-                    issue.remove_label(Label::DispositionPostpone);
-                    issue.close();
-                },
-            }
-        }
+        execute_ffcp_actions(&issue, disp);
     }
 
     Ok(())
+}
+
+fn execute_ffcp_actions(issue: &Issue, disposition: FcpDisposition) {
+    if !is_rfc_repo(&issue) { return; }
+
+    match disposition {
+        FcpDisposition::Merge => {
+            // TODO: This one will require a lot of work to
+            // auto-merge RFCs and create the tracking issue.
+        },
+        FcpDisposition::Close => {
+            let _ = issue.add_label(Label::Closed);
+            issue.remove_label(Label::DispositionClose);
+            issue.close();
+        },
+        FcpDisposition::Postpone => {
+            let _ = issue.add_label(Label::Postponed);
+            issue.remove_label(Label::DispositionPostpone);
+            issue.close();
+        },
+    }
 }
 
 fn list_review_requests(proposal_id: i32) -> DashResult<Vec<(GitHubUser, FcpReviewRequest)>> {
@@ -846,9 +849,10 @@ impl<'a> RfcBotCommand<'a> {
             }
             RfcBotCommand::NewConcern(concern_name) => {
 
-                if let Some(proposal) = existing_proposal {
+                if let Some(mut proposal) = existing_proposal {
                     // check for existing concern
                     use domain::schema::fcp_concern::dsl::*;
+                    use domain::schema::fcp_proposal::dsl::*;
 
                     let existing_concern = fcp_concern
                         .filter(fk_proposal.eq(proposal.id))
@@ -870,8 +874,26 @@ impl<'a> RfcBotCommand<'a> {
                         diesel::insert(&new_concern)
                             .into(fcp_concern)
                             .execute(conn)?;
-                    }
+            
+                        // Take us out of FCP and back into PFCP if need be:
+                        if proposal.fcp_start.is_some() {
+                            // Update DB: FCP is not started anymore.
+                            proposal.fcp_start = None;
+                            match diesel::update(fcp_proposal.find(proposal.id))
+                                    .set(&proposal)
+                                    .execute(conn) {
+                                Ok(_) => (),
+                                Err(why) => {
+                                    error!("Unable to mark FCP {} as unstarted: {:?}", proposal.id, why);
+                                    return Ok(());
+                                }
+                            }
 
+                            // Update labels:
+                            let _ = issue.add_label(Label::PFCP);
+                            issue.remove_label(Label::FCP);
+                        }
+                    }
                 }
             }
             RfcBotCommand::ResolveConcern(concern_name) => {
