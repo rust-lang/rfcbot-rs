@@ -16,19 +16,24 @@ addons:
     - libpq-dev
     - pkg-config
 install:
+- export RUST_LOG=debug,hyper=info,rustc=error,cargo=error,jobserver=error
+- export GITHUB_WEBHOOK_SECRETS=none
+- export GITHUB_ACCESS_TOKEN=none
+- export GITHUB_SCRAPE_INTERVAL=6000
+- export GITHUB_USER_AGENT=none-agent-with-left-beef
+- export POST_COMMENTS=false
+- export RUST_BACKTRACE=1
+- export PATH=$PATH:$HOME/.cargo/bin
+- export DATABASE_URL=postgres://localhost/dashboard
+- export DATABASE_POOL_SIZE=5
 - rustup default $(cat rust-toolchain)
 - cargo install cargo-update || true
 - cargo install-update-config diesel_cli --default-features false --feature postgres
 - cargo install-update -i diesel_cli
 before_script:
-- export RUST_LOG=debug,hyper=info,rustc=error,cargo=error
-- export GITHUB_WEBHOOK_SECRETS="none"
-- export POST_COMMENTS=false
-- export RUST_BACKTRACE=1
-- export PATH=$PATH:$HOME/.cargo/bin
-- export DATABASE_URL='postgres://localhost/dashboard'
 - diesel setup
 - diesel migration run
+- psql -d $DATABASE_URL < githubuser-backup.pg
 script:
 - cargo build --verbose
 - cargo test --verbose
@@ -39,4 +44,4 @@ deploy:
   api_key:
     secure: TJiRIbC1cb+mPRR2kB1K/WWmF7XPgqRiZ1PLxdwC8Nfdo/MB+2S+TklNL+951l9R4PZy/+Ul2qkJED89S7AUnO3FxnKUz69DSgB61Ux0iLuaCRPYVgrn7jGFuyChSaFVh+WehTiU84qawhQyC1mbGmEbjXbjaYL0SmQJMOLy+FeYtBGZvdapScTjhtmWRzlmUCl1mZI11qUgcJHZdoiUPgnE/MdwtOVI7qO2adhERYHViEjaia1uIl/ALNmtSOvB3Jr5yjB/N2fga8Sw6uwJIVts8sBpY75ipr2UyiPj/ftSYoOZoTJAtBtRxnkiA0mo6T+YdsniSvef+muztcDHTUZbHegbAK98dVKfH3ailhZME8/26LxyWis6cL42DYtpNjiUTo1IZlu1J91+1mTmWLcnTZE3iRCBcOGvP4DwUXMshegADCcDO6WAC9jqnt0a025FeMMv4EmULgt1J+weA9moctPHQfow1aWSjoYq/FcIX/8feL97+oHRSxBNAopBr2eDIksjiOmmQuxMH9dFKlXUVRfGV+W8afU+QwHXUnKr5pGJqRd21UDUDJMzjgb1Yke5YDAho+SjbLOKYt/ITnBnFvV4N9UjiVdOkNoCXJtqjJU3fYlqAIAyReuYZ1YS06cZ3ojfnGqce0OEwQ1bdktnPWEdKKpzretYn3IRCVs=
 env:
-  secure: ePgLq4QZ1nDnCEOLtAgMGTatuLiJSuR6NZS5O23RuLEHPwwNjdAyjWcW+qlXvgUCfuhHhEgD5loeyv3uKF3kdBhb+ZJkOoaXgkqsLlGSOX0LN/rgdN8FT0K6gzlH3MSWoKzNZP8FDiI2cf8jOfjhWnPP8T34Dh7Ee0Af5+wAluZR15HskTF0BoK9zrqvvZrMFL6i2ez+q5U0kyVPR1SNB0fsjASBoQonQUtWp/Zbd6DCzi0XhgxH0nNvfrv2VsqaA263omZjeIp2v641NomJCgwodcK/tvenuXo3FdJjYF9bzDKmcVNK1BbAN2ditgoL2dNWfIkmNV7w2TxzDgBh06CXWG8ESHJlIs10ElEExQoZz3x0AmamgXxm/0aYRfziFDFyYVdhEJ5r9N/1+VZyipnqWQnQYY9YIdZu3cyae9RezqSiD4MUXLSRwl2TMXJ3J0cdFYjzaCppN7GfxHcd8w2/tBBCXepXJyeoc7VQacDmaqEU03tFOHYpD8+yK/er1ObT0Ad4a5ZhleNYe6XNC4GvIIeuzy2qjqrzu+STqoq6tjlCkzZpvS9QcgXwAsZHAwyVbjoLMzZOlbAGtCPQvlGJ0tWaEBWdLDjHjzhD9UlqJfb1GjAl+iE2ZdJun1bZsLLKCryX8tvPPUXyZoSn6Irp4/yFy9iJ17MWwIfCPmQ=
+- secure: ePgLq4QZ1nDnCEOLtAgMGTatuLiJSuR6NZS5O23RuLEHPwwNjdAyjWcW+qlXvgUCfuhHhEgD5loeyv3uKF3kdBhb+ZJkOoaXgkqsLlGSOX0LN/rgdN8FT0K6gzlH3MSWoKzNZP8FDiI2cf8jOfjhWnPP8T34Dh7Ee0Af5+wAluZR15HskTF0BoK9zrqvvZrMFL6i2ez+q5U0kyVPR1SNB0fsjASBoQonQUtWp/Zbd6DCzi0XhgxH0nNvfrv2VsqaA263omZjeIp2v641NomJCgwodcK/tvenuXo3FdJjYF9bzDKmcVNK1BbAN2ditgoL2dNWfIkmNV7w2TxzDgBh06CXWG8ESHJlIs10ElEExQoZz3x0AmamgXxm/0aYRfziFDFyYVdhEJ5r9N/1+VZyipnqWQnQYY9YIdZu3cyae9RezqSiD4MUXLSRwl2TMXJ3J0cdFYjzaCppN7GfxHcd8w2/tBBCXepXJyeoc7VQacDmaqEU03tFOHYpD8+yK/er1ObT0Ad4a5ZhleNYe6XNC4GvIIeuzy2qjqrzu+STqoq6tjlCkzZpvS9QcgXwAsZHAwyVbjoLMzZOlbAGtCPQvlGJ0tWaEBWdLDjHjzhD9UlqJfb1GjAl+iE2ZdJun1bZsLLKCryX8tvPPUXyZoSn6Irp4/yFy9iJ17MWwIfCPmQ=
