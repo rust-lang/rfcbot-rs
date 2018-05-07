@@ -9,7 +9,6 @@ use super::DB_POOL;
 use domain::github::GitHubUser;
 use error::*;
 
-// MUST BE ACCESSED AFTER DB_POOL IS INITIALIZED
 lazy_static! {
     pub static ref TEAMS: Teams = {
         let teams_file =
@@ -22,7 +21,8 @@ lazy_static! {
         for (label, team_from_file) in teams_from_file {
             let label = TeamLabel(label);
             let team = team_from_file.validate()
-                .expect("unable to verify team member from database");
+                .expect("unable to verify team member from database.
+if you're running this for tests, make sure you've pulled github users from prod");
             teams.insert(label, team);
         }
 
@@ -50,9 +50,15 @@ impl TeamFromFile {
 
     // bail if they don't exist, but we don't want to actually keep the id in ram
     for member_login in &self.members {
-      githubuser
+      match githubuser
         .filter(login.eq(member_login))
-        .first::<GitHubUser>(conn)?;
+        .first::<GitHubUser>(conn) {
+            Ok(_) => (),
+            Err(why) => {
+                error!("unable to find {} in database: {:?}", member_login, why);
+                return Err(why.into());
+            }
+        }
     }
 
     Ok(Team {
@@ -67,4 +73,16 @@ pub struct Team {
   pub name: String,
   pub ping: String,
   pub member_logins: Vec<String>,
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn team_members_exist() {
+        for (label, team) in TEAMS.iter() {
+            println!("found team {:?}", label);
+        }
+    }
 }

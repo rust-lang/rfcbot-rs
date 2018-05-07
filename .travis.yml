@@ -29,6 +29,8 @@ before_script:
 - export DATABASE_URL='postgres://localhost/dashboard'
 - diesel setup
 - diesel migration run
+- ./update-users-backup.sh
+- psql -d $DATABASE_URL < githubuser-backup.pg
 script:
 - cargo build --verbose
 - cargo test --verbose
