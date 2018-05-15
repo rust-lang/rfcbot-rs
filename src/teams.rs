@@ -56,10 +56,13 @@ pub struct FcpBehavior {
 
 #[derive(Debug, Deserialize)]
 pub struct Team {
-    // FIXME: The two following first fields don't seem to be used anywhere...
-    // If this is intended, document why.
-    name: String,
-    ping: String,
+    // FIXME(2018-05-16):
+    // The two following first fields are not used anymore.
+    // But they could still be useful. Consider what usage they could have.
+
+    //name: String,
+    //ping: String,
+
     members: Vec<String>,
 }
 
@@ -195,15 +198,15 @@ members = [
             cfg.teams().map(|(k, v)| (k.0.clone(), v.clone())).collect();
 
         let avengers = map.get("avengers").unwrap();
-        assert_eq!(avengers.name, "The Avengers");
-        assert_eq!(avengers.ping, "marvel/avengers");
+        //assert_eq!(avengers.name, "The Avengers");
+        //assert_eq!(avengers.ping, "marvel/avengers");
         assert_eq!(avengers.member_logins().collect::<Vec<_>>(),
             vec!["hulk", "thor", "thevision", "blackwidow",
                  "spiderman", "captainamerica"]);
 
         let jsa = map.get("justice-league").unwrap();
-        assert_eq!(jsa.name, "Justice League of America");
-        assert_eq!(jsa.ping, "dc-comics/justice-league");
+        //assert_eq!(jsa.name, "Justice League of America");
+        //assert_eq!(jsa.ping, "dc-comics/justice-league");
         assert_eq!(jsa.member_logins().collect::<Vec<_>>(),
             vec!["superman", "wonderwoman", "aquaman", "batman", "theflash"]);
 
