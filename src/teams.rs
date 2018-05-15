@@ -49,9 +49,9 @@ impl RfcbotConfig {
 #[derive(Debug, Deserialize)]
 pub struct FcpBehavior {
     #[serde(default)]
-    pub close: bool,
+    close: bool,
     #[serde(default)]
-    pub postpone: bool,
+    postpone: bool,
 }
 
 #[derive(Debug, Deserialize)]
