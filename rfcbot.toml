@@ -1,14 +1,12 @@
-[fcp_behavior]
+[fcp_behaviors]
 
-[fcp_behavior."rust-lang/rfcs"]
+[fcp_behaviors."rust-lang/rfcs"]
 close = true
 postpone = true
-merge = false # Does nothing right now!
 
-[fcp_behavior."rust-lang/rust"]
+[fcp_behaviors."rust-lang/rust"]
 #close = false
 #postpone = false
-merge = false # Does nothing right now!
 
 [teams]
 
