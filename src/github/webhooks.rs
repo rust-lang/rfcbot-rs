@@ -46,13 +46,10 @@ impl FromData for Event {
         };
 
         let mut body = String::new();
-        match data.open().read_to_string(&mut body) {
-            Ok(_) => (),
-            Err(why) => {
-                error!("unable to read request body: {:?}", why);
-                return Failure((Status::InternalServerError, "unable to read request body"));
-            }
-        };
+        if let Err(why) = data.open().read_to_string(&mut body) {
+            error!("unable to read request body: {:?}", why);
+            return Failure((Status::InternalServerError, "unable to read request body"));
+        }
 
         for secret in &CONFIG.github_webhook_secrets {
             if authenticate(secret, &body, signature) {
@@ -96,14 +93,13 @@ impl FromData for Event {
 fn authenticate(secret: &str, payload: &str, signature: &str) -> bool {
     // https://developer.github.com/webhooks/securing/#validating-payloads-from-github
     let sans_prefix = signature[5..].as_bytes();
-    match Vec::from_hex(sans_prefix) {
-        Ok(sigbytes) => {
-            let mut mac = Hmac::new(Sha1::new(), secret.as_bytes());
-            mac.input(payload.as_bytes());
-            // constant time comparison
-            mac.result() == MacResult::new(&sigbytes)
-        }
-        Err(_) => false,
+    if let Ok(sigbytes) = Vec::from_hex(sans_prefix) {
+        let mut mac = Hmac::new(Sha1::new(), secret.as_bytes());
+        mac.input(payload.as_bytes());
+        // constant time comparison
+        mac.result() == MacResult::new(&sigbytes)
+    } else {
+        false
     }
 }
 

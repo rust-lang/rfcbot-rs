@@ -40,7 +40,7 @@ pub fn scrape_github(since: DateTime<Utc>) {
     let start_time = Utc::now().naive_utc();
     for repo in repos {
         match github::ingest_since(&repo, since) {
-            Ok(()) => info!("Scraped {} github successfully", repo),
+            Ok(_) => info!("Scraped {} github successfully", repo),
             Err(why) => error!("Unable to scrape github {}: {:?}", repo, why),
         }
     }
