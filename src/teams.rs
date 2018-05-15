@@ -36,12 +36,12 @@ impl RfcbotConfig {
     }
 
     /// Are we allowed to auto-close issues after F-FCP in this repo?
-    pub fn ffcp_auto_close(&self, repo: &str) -> bool {
+    pub fn should_ffcp_auto_close(&self, repo: &str) -> bool {
         self.fcp_behaviors.get(repo).map(|fcp| fcp.close).unwrap_or_default()
     }
 
     /// Are we allowed to auto-postpone issues after F-FCP in this repo?
-    pub fn ffcp_auto_postpone(&self, repo: &str) -> bool {
+    pub fn should_ffcp_auto_postpone(&self, repo: &str) -> bool {
         self.fcp_behaviors.get(repo).map(|fcp| fcp.postpone).unwrap_or_default()
     }
 }
@@ -211,16 +211,16 @@ members = [
         assert!(map.get("random").is_none());
 
         // FFCP behavior correct:
-        assert!(cfg.ffcp_auto_close("rust-lang/alpha"));
-        assert!(cfg.ffcp_auto_postpone("rust-lang/alpha"));
-        assert!(!cfg.ffcp_auto_close("foobar/beta"));
-        assert!(!cfg.ffcp_auto_postpone("foobar/beta"));
-        assert!(!cfg.ffcp_auto_close("bazquux/gamma"));
-        assert!(!cfg.ffcp_auto_postpone("bazquux/gamma"));
-        assert!(!cfg.ffcp_auto_close("wibble/epsilon"));
-        assert!(!cfg.ffcp_auto_postpone("wibble/epsilon"));
-        assert!(!cfg.ffcp_auto_close("random"));
-        assert!(!cfg.ffcp_auto_postpone("random"));
+        assert!(cfg.should_ffcp_auto_close("rust-lang/alpha"));
+        assert!(cfg.should_ffcp_auto_postpone("rust-lang/alpha"));
+        assert!(!cfg.should_ffcp_auto_close("foobar/beta"));
+        assert!(!cfg.should_ffcp_auto_postpone("foobar/beta"));
+        assert!(!cfg.should_ffcp_auto_close("bazquux/gamma"));
+        assert!(!cfg.should_ffcp_auto_postpone("bazquux/gamma"));
+        assert!(!cfg.should_ffcp_auto_close("wibble/epsilon"));
+        assert!(!cfg.should_ffcp_auto_postpone("wibble/epsilon"));
+        assert!(!cfg.should_ffcp_auto_close("random"));
+        assert!(!cfg.should_ffcp_auto_postpone("random"));
     }
 
     #[test]

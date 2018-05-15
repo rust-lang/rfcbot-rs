@@ -465,11 +465,11 @@ fn evaluate_nags() -> DashResult<()> {
 }
 
 fn can_ffcp_close(issue: &Issue) -> bool {
-    SETUP.ffcp_auto_close(&issue.repository)
+    SETUP.should_ffcp_auto_close(&issue.repository)
 }
 
 fn can_ffcp_postpone(issue: &Issue) -> bool {
-    SETUP.ffcp_auto_postpone(&issue.repository)
+    SETUP.should_ffcp_auto_postpone(&issue.repository)
 }
 
 fn execute_ffcp_actions(issue: &Issue, disposition: FcpDisposition) {
