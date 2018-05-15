@@ -1,4 +1,18 @@
-[T-core]
+[fcp_behavior]
+
+[fcp_behavior."rust-lang/rfcs"]
+close = true
+postpone = true
+merge = false # Does nothing right now!
+
+[fcp_behavior."rust-lang/rust"]
+#close = false
+#postpone = false
+merge = false # Does nothing right now!
+
+[teams]
+
+[teams.T-core]
 name = "Core"
 ping = "rust-lang/core"
 members = [
@@ -14,7 +28,7 @@ members = [
   "Mark-Simulacrum",
 ]
 
-[T-lang]
+[teams.T-lang]
 name = "Language"
 ping = "rust-lang/lang"
 members = [
@@ -29,7 +43,7 @@ members = [
   "scottmcm",
 ]
 
-[T-libs]
+[teams.T-libs]
 name = "Libraries"
 ping = "rust-lang/libs"
 members = [
@@ -42,7 +56,7 @@ members = [
   "SimonSapin",
 ]
 
-[T-compiler]
+[teams.T-compiler]
 name = "Compiler"
 ping = "rust-lang/compiler"
 members = [
@@ -59,7 +73,7 @@ members = [
   "oli-obk",
 ]
 
-[T-doc]
+[teams.T-doc]
 name = "Documentation"
 ping = "rust-lang/docs"
 members = [
@@ -69,7 +83,7 @@ members = [
   "steveklabnik",
 ]
 
-[T-infra]
+[teams.T-infra]
 name = "Infrastructure"
 ping = "rust-lang/infra"
 members = [
@@ -84,7 +98,7 @@ members = [
   "TimNN",
 ]
 
-[T-cargo]
+[teams.T-cargo]
 name = "Cargo"
 ping = "rust-lang/cargo"
 members = [
@@ -97,7 +111,7 @@ members = [
   "wycats",
 ]
 
-[T-dev-tools]
+[teams.T-dev-tools]
 name = "Dev tools"
 ping = "rust-lang/dev-tools"
 members = [
@@ -110,7 +124,7 @@ members = [
   "steveklabnik",
 ]
 
-[T-dev-tools-rustdoc]
+[teams.T-dev-tools-rustdoc]
 name = "Rustdoc"
 ping = "rust-lang/rustdoc"
 members = [
@@ -121,7 +135,7 @@ members = [
   "steveklabnik",
 ]
 
-[T-IDEs]
+[teams.T-IDEs]
 name = "IDEs and editors"
 ping = "rust-lang/IDEs"
 members = [
