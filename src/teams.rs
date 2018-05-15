@@ -121,15 +121,13 @@ impl Team {
 
         // bail if they don't exist, but we don't want to actually keep the id in ram
         for member_login in self.member_logins() {
-            match githubuser
+            if let Err(why) =
+                githubuser
                     .filter(login.eq(member_login))
                     .first::<GitHubUser>(conn)
             {
-                Ok(_) => (),
-                Err(why) => {
-                    error!("unable to find {} in database: {:?}", member_login, why);
-                    return Err(why.into());
-                }
+                error!("unable to find {} in database: {:?}", member_login, why);
+                return Err(why.into());
             }
         }
 

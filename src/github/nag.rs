@@ -97,35 +97,26 @@ pub fn update_nags(comment: &IssueComment) -> DashResult<()> {
         }
 
         debug!("processing rfcbot command: {:?}", &command);
-        match command.process(&author, &issue, comment, &subteam_members) {
-            Ok(_) => (),
-            Err(why) => {
-                error!("Unable to process command for comment id {}: {:?}",
-                       comment.id,
-                       why);
-                return Ok(());
-            }
-        };
+        if let Err(why) =
+            command.process(&author, &issue, comment, &subteam_members) {
+            error!("Unable to process command for comment id {}: {:?}",
+                    comment.id,
+                    why);
+            return Ok(());
+        }
 
         debug!("rfcbot command is processed");
 
-    } else {
-        match resolve_applicable_feedback_requests(&author, &issue, comment) {
-            Ok(_) => (),
-            Err(why) => {
-                error!("Unable to resolve feedback requests for comment id {}: {:?}",
-                       comment.id,
-                       why);
-            }
-        };
+    } else if let Err(why) = 
+        resolve_applicable_feedback_requests(&author, &issue, comment) {
+        error!("Unable to resolve feedback requests for comment id {}: {:?}",
+                comment.id,
+                why);
     }
 
-    match evaluate_nags() {
-        Ok(_) => (),
-        Err(why) => {
-            error!("Unable to evaluate outstanding proposals: {:?}", why);
-        }
-    };
+    if let Err(why) = evaluate_nags() {
+        error!("Unable to evaluate outstanding proposals: {:?}", why);
+    }
 
     Ok(())
 }
@@ -710,12 +701,12 @@ fn parse_fcp_subcommand<'a>(
         },
 
         _ => {
-            Err(if fcp_context {
+            Err(DashError::Misc(if fcp_context {
                 error!("unrecognized subcommand for fcp: {}", subcommand);
-                DashError::Misc(Some(format!("found bad subcommand: {}", subcommand)))
+                Some(format!("found bad subcommand: {}", subcommand))
             } else {
-                DashError::Misc(None)
-            })
+                None
+            }))
         }
     }
 }
@@ -760,14 +751,13 @@ impl<'a> RfcBotCommand<'a> {
                     // at this point our new comment doesn't yet exist in the database, so
                     // we need to insert it
                     let gh_comment = gh_comment.with_repo(&issue.repository)?;
-                    match diesel::insert(&gh_comment)
+                    if let Err(why) =
+                        diesel::insert(&gh_comment)
                               .into(issuecomment::table)
-                              .execute(conn) {
-                        Ok(_) => {}
-                        Err(why) => {
-                            warn!("issue inserting new record, maybe received webhook for it: {:?}",
-                                  why);
-                        }
+                              .execute(conn) 
+                    {
+                        warn!("issue inserting new record, maybe received webhook for it: {:?}",
+                                why);
                     }
 
                     let proposal = NewFcpProposal {
@@ -814,10 +804,8 @@ impl<'a> RfcBotCommand<'a> {
 
                     let new_gh_comment =
                         RfcBotComment::new(issue,
-                                           CommentType::FcpProposed(author,
-                                                                    disp,
-                                                                    &review_requests,
-                                                                    &[]));
+                            CommentType::FcpProposed(
+                                author, disp, &review_requests, &[]));
 
                     new_gh_comment.post(Some(gh_comment.id))?;
 
@@ -886,14 +874,13 @@ impl<'a> RfcBotCommand<'a> {
                         if proposal.fcp_start.is_some() {
                             // Update DB: FCP is not started anymore.
                             proposal.fcp_start = None;
-                            match diesel::update(fcp_proposal.find(proposal.id))
-                                    .set(&proposal)
-                                    .execute(conn) {
-                                Ok(_) => (),
-                                Err(why) => {
-                                    error!("Unable to mark FCP {} as unstarted: {:?}", proposal.id, why);
-                                    return Ok(());
-                                }
+                            if let Err(why) =
+                                diesel::update(fcp_proposal.find(proposal.id))
+                                      .set(&proposal)
+                                      .execute(conn)
+                            {
+                                error!("Unable to mark FCP {} as unstarted: {:?}", proposal.id, why);
+                                return Ok(());
                             }
 
                             // Update labels:

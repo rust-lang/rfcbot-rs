@@ -96,36 +96,25 @@ pub fn ingest_since(repo: &str, start: DateTime<Utc>) -> DashResult<()> {
     // make sure we have all of the users to ensure referential integrity
     for issue in issues {
         let issue_number = issue.number;
-        match handle_issue(conn, issue, repo) {
-            Ok(()) => (),
-            Err(why) => {
-                error!("Error processing issue {}#{}: {:?}",
-                       repo,
-                       issue_number,
-                       why)
-            }
+        if let Err(why) = handle_issue(conn, issue, repo) {
+            error!("Error processing issue {}#{}: {:?}",
+                repo, issue_number, why);
         }
     }
 
     // insert the comments
     for comment in comments {
         let comment_id = comment.id;
-        match handle_comment(conn, comment, repo) {
-            Ok(()) => (),
-            Err(why) => {
-                error!("Error processing comment {}#{}: {:?}",
-                       repo,
-                       comment_id,
-                       why)
-            }
+        if let Err(why) = handle_comment(conn, comment, repo) {
+            error!("Error processing comment {}#{}: {:?}",
+                repo, comment_id, why);
         }
     }
 
     for pr in prs {
         let pr_number = pr.number;
-        match handle_pr(conn, pr, repo) {
-            Ok(()) => (),
-            Err(why) => error!("Error processing PR {}#{}: {:?}", repo, pr_number, why),
+        if let Err(why) = handle_pr(conn, pr, repo) {
+            error!("Error processing PR {}#{}: {:?}", repo, pr_number, why);
         }
     }
 
@@ -159,19 +148,18 @@ pub fn handle_comment(conn: &PgConnection, comment: CommentFromJson, repo: &str)
         diesel::update(issuecomment::table.find(comment.id))
             .set(&comment)
             .execute(conn)?;
-        Ok(())
     } else {
         diesel::insert(&comment)
             .into(issuecomment::table)
             .execute(conn)?;
-        match nag::update_nags(&comment) {
-            Ok(()) => Ok(()),
-            Err(why) => {
-                error!("Problem updating FCPs: {:?}", &why);
-                Err(why)
-            }
+
+        if let Err(why) = nag::update_nags(&comment) {
+            error!("Problem updating FCPs: {:?}", &why);
+            return Err(why);
         }
     }
+
+    Ok(())
 }
 
 pub fn handle_issue(conn: &PgConnection, issue: IssueFromJson, repo: &str) -> DashResult<()> {

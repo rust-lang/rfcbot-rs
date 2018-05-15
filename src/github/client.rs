@@ -165,13 +165,12 @@ impl Client {
 
         let mut res = self.patch(&url, &payload)?;
 
-        match res.status {
-            StatusCode::Ok => Ok(()),
-            _ => {
-                let mut body = String::new();
-                res.read_to_string(&mut body)?;
-                Err(DashError::Misc(Some(body)))
-            }
+        if let StatusCode::Ok = res.status {
+            Ok(())
+        } else {
+            let mut body = String::new();
+            res.read_to_string(&mut body)?;
+            Err(DashError::Misc(Some(body)))
         }
     }
 
@@ -181,13 +180,12 @@ impl Client {
 
         let mut res = self.post(&url, &payload)?;
 
-        match res.status {
-            StatusCode::Ok => Ok(()),
-            _ => {
-                let mut body = String::new();
-                res.read_to_string(&mut body)?;
-                Err(DashError::Misc(Some(body)))
-            }
+        if let StatusCode::Ok = res.status {
+            Ok(())
+        } else {
+            let mut body = String::new();
+            res.read_to_string(&mut body)?;
+            Err(DashError::Misc(Some(body)))
         }
     }
 
@@ -199,13 +197,12 @@ impl Client {
                           label);
         let mut res = self.delete(&url)?;
 
-        match res.status {
-            StatusCode::NoContent => Ok(()),
-            _ => {
-                let mut body = String::new();
-                res.read_to_string(&mut body)?;
-                Err(DashError::Misc(Some(body)))
-            }
+        if let StatusCode::NoContent = res.status {
+            Ok(())
+        } else {
+            let mut body = String::new();
+            res.read_to_string(&mut body)?;
+            Err(DashError::Misc(Some(body)))
         }
     }
 

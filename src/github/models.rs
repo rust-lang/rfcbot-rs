@@ -129,13 +129,12 @@ impl CommentFromJson {
             }
         };
 
-        let conn = try!(DB_POOL.get());
+        let conn = DB_POOL.get()?;
 
-        let issue_id = try!(issue
-                                .select(id)
-                                .filter(number.eq(issue_number))
-                                .filter(repository.eq(repo))
-                                .first::<i32>(&*conn));
+        let issue_id = issue.select(id)
+                            .filter(number.eq(issue_number))
+                            .filter(repository.eq(repo))
+                            .first::<i32>(&*conn)?;
 
         Ok(IssueComment {
                id: self.id,
