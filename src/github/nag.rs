@@ -14,7 +14,7 @@ use domain::rfcbot::{FcpConcern, FcpProposal, FcpReviewRequest, FeedbackRequest,
 use domain::schema::*;
 use error::*;
 use github::models::CommentFromJson;
-use teams::TEAMS;
+use teams::SETUP;
 use super::GH;
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]
@@ -464,24 +464,31 @@ fn evaluate_nags() -> DashResult<()> {
     Ok(())
 }
 
-fn execute_ffcp_actions(issue: &Issue, disposition: FcpDisposition) {
-    if !is_rfc_repo(&issue) { return; }
+fn can_ffcp_close(issue: &Issue) -> bool {
+    SETUP.ffcp_auto_close(&issue.repository)
+}
 
+fn can_ffcp_postpone(issue: &Issue) -> bool {
+    SETUP.ffcp_auto_postpone(&issue.repository)
+}
+
+fn execute_ffcp_actions(issue: &Issue, disposition: FcpDisposition) {
     match disposition {
         FcpDisposition::Merge => {
             // TODO: This one will require a lot of work to
             // auto-merge RFCs and create the tracking issue.
         },
-        FcpDisposition::Close => {
+        FcpDisposition::Close if can_ffcp_close(issue) => {
             let _ = issue.add_label(Label::Closed);
             issue.remove_label(Label::DispositionClose);
             issue.close();
         },
-        FcpDisposition::Postpone => {
+        FcpDisposition::Postpone if can_ffcp_postpone(issue) => {
             let _ = issue.add_label(Label::Postponed);
             issue.remove_label(Label::DispositionPostpone);
             issue.close();
         },
+        _ => {},
     }
 }
 
@@ -566,9 +573,9 @@ fn subteam_members(issue: &Issue) -> DashResult<Vec<GitHubUser>> {
 
     // retrieve all of the teams tagged on this issue
     // cannot WAIT for by-ref/by-val inference
-    let member_logins = TEAMS.iter()
+    let member_logins = SETUP.teams()
         .filter(|&(ref label, _)| issue.labels.contains(&label.0))
-        .flat_map(|(_, team)| &team.member_logins)
+        .flat_map(|(_, team)| team.member_logins())
         .collect::<BTreeSet<_>>()
         .into_iter() // diesel won't work with btreeset, and dedup has weird lifetime errors
         .collect::<Vec<_>>();
@@ -1028,10 +1035,6 @@ enum CommentType<'a> {
     },
 }
 
-fn is_rfc_repo(issue: &Issue) -> bool {
-    issue.repository == "rust-lang/rfcs"
-}
-
 impl<'a> RfcBotComment<'a> {
     fn new(issue: &'a Issue, comment_type: CommentType<'a>) -> RfcBotComment<'a> {
 
@@ -1146,16 +1149,15 @@ impl<'a> RfcBotComment<'a> {
                 Self::add_comment_url(issue, &mut msg, status_comment_id);
                 msg.push_str("), is now **complete**.");
 
-                if is_rfc_repo(issue) {
-                    match disposition {
-                        FcpDisposition::Merge => {}
-                        FcpDisposition::Close => {
-                            msg.push_str("\n\nBy the power vested in me by Rust, I hereby close this RFC.");
-                        },
-                        FcpDisposition::Postpone => {
-                            msg.push_str("\n\nBy the power vested in me by Rust, I hereby postpone this RFC.");
-                        },
-                    }
+                match disposition {
+                    FcpDisposition::Merge => {}
+                    FcpDisposition::Close if can_ffcp_close(issue) => {
+                        msg.push_str("\n\nBy the power vested in me by Rust, I hereby close this RFC.");
+                    },
+                    FcpDisposition::Postpone if can_ffcp_postpone(issue) => {
+                        msg.push_str("\n\nBy the power vested in me by Rust, I hereby postpone this RFC.");
+                    },
+                    _ => {},
                 }
 
                 if !added_label {
