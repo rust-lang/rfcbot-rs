@@ -5,8 +5,8 @@ close = true
 postpone = true
 
 [fcp_behaviors."rust-lang/rust"]
-#close = false
-#postpone = false
+close = false
+postpone = false
 
 [teams]
 
