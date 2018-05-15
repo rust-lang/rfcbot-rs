@@ -207,6 +207,9 @@ members = [
         assert_eq!(jsa.member_logins().collect::<Vec<_>>(),
             vec!["superman", "wonderwoman", "aquaman", "batman", "theflash"]);
 
+        // Random non-existent team does not exist:
+        assert!(map.get("random").is_none());
+
         // FFCP behavior correct:
         assert!(cfg.ffcp_auto_close("rust-lang/alpha"));
         assert!(cfg.ffcp_auto_postpone("rust-lang/alpha"));
