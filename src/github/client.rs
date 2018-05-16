@@ -132,7 +132,7 @@ impl Client {
         let url = pr_info.get("url");
 
         if let Some(url) = url {
-            let mut res = try!(self.get(url, None));
+            let mut res = self.get(url, None)?;
             self.deserialize(&mut res)
         } else {
             throw!(DashError::Misc(None))

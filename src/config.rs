@@ -71,26 +71,17 @@ pub fn init() -> Result<Config, Vec<&'static str>> {
             .collect::<BTreeMap<_, _>>();
 
         let db_url = vars.remove(DB_URL).unwrap();
-        let db_pool_size = vars.remove(DB_POOL_SIZE).unwrap();
-        let db_pool_size = match db_pool_size.parse::<u32>() {
-            Ok(size) => size,
-            Err(_) => throw!(vec![DB_POOL_SIZE]),
-        };
+        let db_pool_size = vars.remove(DB_POOL_SIZE).unwrap().parse::<u32>();
+        let db_pool_size = ok_or!(db_pool_size, throw!(vec![DB_POOL_SIZE]));
 
         let gh_token = vars.remove(GITHUB_TOKEN).unwrap();
         let gh_ua = vars.remove(GITHUB_UA).unwrap();
 
-        let gh_interval = vars.remove(GITHUB_INTERVAL).unwrap();
-        let gh_interval = match gh_interval.parse::<u64>() {
-            Ok(interval) => interval,
-            Err(_) => throw!(vec![GITHUB_INTERVAL]),
-        };
+        let gh_interval = vars.remove(GITHUB_INTERVAL).unwrap().parse::<u64>();
+        let gh_interval = ok_or!(gh_interval, throw!(vec![GITHUB_INTERVAL]));
 
-        let post_comments = vars.remove(POST_COMMENTS).unwrap();
-        let post_comments = match post_comments.parse::<bool>() {
-            Ok(pc) => pc,
-            Err(_) => throw!(vec![POST_COMMENTS]),
-        };
+        let post_comments = vars.remove(POST_COMMENTS).unwrap().parse::<bool>();
+        let post_comments = ok_or!(post_comments, throw!(vec![POST_COMMENTS]));
 
         let webhook_secrets = vars.remove(GITHUB_WEBHOOK_SECRETS).unwrap();
         let webhook_secrets = webhook_secrets.split(',').map(String::from).collect();
