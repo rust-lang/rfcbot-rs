@@ -70,13 +70,10 @@ pub fn ingest_since(repo: &str, start: DateTime<Utc>) -> DashResult<()> {
     for issue in &issues {
         // sleep(Duration::from_millis(github::client::DELAY));
         if let Some(ref pr_info) = issue.pull_request {
-            match GH.fetch_pull_request(pr_info) {
-                Ok(pr) => prs.push(pr),
-                Err(why) => {
-                    error!("ERROR fetching PR info: {:?}", why);
-                    break;
-                }
-            }
+            prs.push(ok_or!(GH.fetch_pull_request(pr_info), why => {
+                error!("ERROR fetching PR info: {:?}", why);
+                break;
+            }));
         }
     }
 
@@ -96,26 +93,23 @@ pub fn ingest_since(repo: &str, start: DateTime<Utc>) -> DashResult<()> {
     // make sure we have all of the users to ensure referential integrity
     for issue in issues {
         let issue_number = issue.number;
-        if let Err(why) = handle_issue(conn, issue, repo) {
+        ok_or!(handle_issue(conn, issue, repo), why =>
             error!("Error processing issue {}#{}: {:?}",
-                repo, issue_number, why);
-        }
+                   repo, issue_number, why));
     }
 
     // insert the comments
     for comment in comments {
         let comment_id = comment.id;
-        if let Err(why) = handle_comment(conn, comment, repo) {
+        ok_or!(handle_comment(conn, comment, repo), why =>
             error!("Error processing comment {}#{}: {:?}",
-                repo, comment_id, why);
-        }
+                   repo, comment_id, why));
     }
 
     for pr in prs {
         let pr_number = pr.number;
-        if let Err(why) = handle_pr(conn, pr, repo) {
-            error!("Error processing PR {}#{}: {:?}", repo, pr_number, why);
-        }
+        ok_or!(handle_pr(conn, pr, repo), why =>
+            error!("Error processing PR {}#{}: {:?}", repo, pr_number, why));
     }
 
     Ok(())
@@ -153,10 +147,10 @@ pub fn handle_comment(conn: &PgConnection, comment: CommentFromJson, repo: &str)
             .into(issuecomment::table)
             .execute(conn)?;
 
-        if let Err(why) = nag::update_nags(&comment) {
+        ok_or!(nag::update_nags(&comment), why => {
             error!("Problem updating FCPs: {:?}", &why);
             throw!(why);
-        }
+        });
     }
 
     Ok(())

@@ -19,9 +19,7 @@ pub fn serve() {
                 .launch();
         });
 
-        if let Err(why) = result {
-            error!("Rocket failed to ignite: {:?}", why);
-        }
+        ok_or!(result, why => error!("Rocket failed to ignite: {:?}", why));
     }
 }
 

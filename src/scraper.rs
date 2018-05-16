@@ -27,13 +27,10 @@ pub fn start_scraping() -> JoinHandle<()> {
 pub fn scrape_github(since: DateTime<Utc>) {
     let mut repos = Vec::new();
     for org in &GH_ORGS {
-        match github::GH.org_repos(org) {
-            Ok(r) => repos.extend(r),
-            Err(why) => {
-                error!("Unable to retrieve repos for {}: {:?}", org, why);
-                return;
-            }
-        }
+        repos.extend(ok_or!(github::GH.org_repos(org), why => {
+            error!("Unable to retrieve repos for {}: {:?}", org, why);
+            return;
+        }));
     }
 
     info!("Scraping github activity since {:?}", since);
@@ -45,8 +42,6 @@ pub fn scrape_github(since: DateTime<Utc>) {
         }
     }
 
-    match github::record_successful_update(start_time) {
-        Ok(_) => {}
-        Err(why) => error!("Problem recording successful update: {:?}", why),
-    }
+    ok_or!(github::record_successful_update(start_time), why =>
+        error!("Problem recording successful update: {:?}", why));
 }
