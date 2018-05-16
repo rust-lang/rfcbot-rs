@@ -127,7 +127,7 @@ impl Team {
                     .first::<GitHubUser>(conn)
             {
                 error!("unable to find {} in database: {:?}", member_login, why);
-                return Err(why.into());
+                throw!(why);
             }
         }
 

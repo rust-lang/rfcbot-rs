@@ -31,6 +31,9 @@ extern crate toml;
 extern crate url;
 extern crate urlencoded;
 
+#[macro_use]
+mod macros;
+
 mod config;
 mod domain;
 mod error;

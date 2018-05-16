@@ -155,7 +155,7 @@ pub fn handle_comment(conn: &PgConnection, comment: CommentFromJson, repo: &str)
 
         if let Err(why) = nag::update_nags(&comment) {
             error!("Problem updating FCPs: {:?}", &why);
-            return Err(why);
+            throw!(why);
         }
     }
 

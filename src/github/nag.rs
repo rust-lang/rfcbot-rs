@@ -199,7 +199,7 @@ fn evaluate_nags() -> DashResult<()> {
         Ok(p) => p,
         Err(why) => {
             error!("Unable to retrieve list of pending proposals: {:?}", why);
-            return Err(why.into());
+            throw!(why);
         }
     };
 
@@ -371,7 +371,7 @@ fn evaluate_nags() -> DashResult<()> {
         Err(why) => {
             error!("Unable to retrieve FCPs that need to be marked as finished: {:?}",
                    why);
-            return Err(why.into());
+            throw!(why);
         }
     };
 
@@ -634,12 +634,12 @@ impl FcpDisposition {
     }
 
     pub fn from_str(string: &str) -> DashResult<Self> {
-        match string {
-            FCP_REPR_MERGE => Ok(FcpDisposition::Merge),
-            FCP_REPR_CLOSE => Ok(FcpDisposition::Close),
-            FCP_REPR_POSTPONE => Ok(FcpDisposition::Postpone),
-            _ => Err(DashError::Misc(None)),
-        }
+        Ok(match string {
+            FCP_REPR_MERGE => FcpDisposition::Merge,
+            FCP_REPR_CLOSE => FcpDisposition::Close,
+            FCP_REPR_POSTPONE => FcpDisposition::Postpone,
+            _ => throw!(DashError::Misc(None)),
+        })
     }
 
     pub fn label(self) -> Label {
@@ -701,7 +701,7 @@ fn parse_fcp_subcommand<'a>(
         },
 
         _ => {
-            Err(DashError::Misc(if fcp_context {
+            throw!(DashError::Misc(if fcp_context {
                 error!("unrecognized subcommand for fcp: {}", subcommand);
                 Some(format!("found bad subcommand: {}", subcommand))
             } else {
@@ -987,7 +987,7 @@ impl<'a> RfcBotCommand<'a> {
                         .ok_or_else(|| DashError::Misc(Some("no user specified".to_string())))?;
 
                 if user.is_empty() {
-                    return Err(DashError::Misc(Some("no user specified".to_string())));
+                    throw!(DashError::Misc(Some("no user specified".to_string())));
                 }
 
                 Ok(RfcBotCommand::FeedbackRequest(&user[1..]))
@@ -1191,14 +1191,14 @@ impl<'a> RfcBotComment<'a> {
                       self.issue.repository,
                       self.issue.number);
 
-                Err(DashError::Misc(None))
+                throw!(DashError::Misc(None))
             }
 
         } else {
             info!("Skipping comment to {}#{}, comment posts are disabled.",
                   self.issue.repository,
                   self.issue.number);
-            Err(DashError::Misc(None))
+            throw!(DashError::Misc(None))
         }
     }
 }
