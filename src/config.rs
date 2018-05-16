@@ -74,7 +74,7 @@ pub fn init() -> Result<Config, Vec<&'static str>> {
         let db_pool_size = vars.remove(DB_POOL_SIZE).unwrap();
         let db_pool_size = match db_pool_size.parse::<u32>() {
             Ok(size) => size,
-            Err(_) => return Err(vec![DB_POOL_SIZE]),
+            Err(_) => throw!(vec![DB_POOL_SIZE]),
         };
 
         let gh_token = vars.remove(GITHUB_TOKEN).unwrap();
@@ -83,13 +83,13 @@ pub fn init() -> Result<Config, Vec<&'static str>> {
         let gh_interval = vars.remove(GITHUB_INTERVAL).unwrap();
         let gh_interval = match gh_interval.parse::<u64>() {
             Ok(interval) => interval,
-            Err(_) => return Err(vec![GITHUB_INTERVAL]),
+            Err(_) => throw!(vec![GITHUB_INTERVAL]),
         };
 
         let post_comments = vars.remove(POST_COMMENTS).unwrap();
         let post_comments = match post_comments.parse::<bool>() {
             Ok(pc) => pc,
-            Err(_) => return Err(vec![POST_COMMENTS]),
+            Err(_) => throw!(vec![POST_COMMENTS]),
         };
 
         let webhook_secrets = vars.remove(GITHUB_WEBHOOK_SECRETS).unwrap();
@@ -106,11 +106,9 @@ pub fn init() -> Result<Config, Vec<&'static str>> {
            })
 
     } else {
-
         Err(vars.iter()
                 .filter(|&(_, v)| v.is_err())
                 .map(|(&k, _)| k)
                 .collect())
-
     }
 }

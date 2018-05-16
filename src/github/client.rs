@@ -43,6 +43,12 @@ pub struct Client {
     rate_limit_timeout: DateTime<Utc>,
 }
 
+fn read_to_string<R: Read>(reader: &mut R) -> DashResult<String> {    
+    let mut string = String::new();
+    reader.read_to_string(&mut string)?;
+    Ok(string)
+}
+
 impl Client {
     pub fn new() -> Self {
         let tls_connector = HttpsConnector::new(NativeTlsClient::new().unwrap());
@@ -72,7 +78,7 @@ impl Client {
                     }
                 }
             }
-            return Err(DashError::Misc(None));
+            throw!(DashError::Misc(None))
 
         }
         Ok(repos)
@@ -129,7 +135,7 @@ impl Client {
             let mut res = try!(self.get(url, None));
             self.deserialize(&mut res)
         } else {
-            Err(DashError::Misc(None))
+            throw!(DashError::Misc(None))
         }
     }
 
@@ -165,13 +171,11 @@ impl Client {
 
         let mut res = self.patch(&url, &payload)?;
 
-        if let StatusCode::Ok = res.status {
-            Ok(())
-        } else {
-            let mut body = String::new();
-            res.read_to_string(&mut body)?;
-            Err(DashError::Misc(Some(body)))
+        if StatusCode::Ok != res.status {
+            throw!(DashError::Misc(Some(read_to_string(&mut res)?)))
         }
+
+        Ok(())
     }
 
     pub fn add_label(&self, repo: &str, issue_num: i32, label: &str) -> DashResult<()> {
@@ -180,13 +184,11 @@ impl Client {
 
         let mut res = self.post(&url, &payload)?;
 
-        if let StatusCode::Ok = res.status {
-            Ok(())
-        } else {
-            let mut body = String::new();
-            res.read_to_string(&mut body)?;
-            Err(DashError::Misc(Some(body)))
+        if StatusCode::Ok != res.status {
+            throw!(DashError::Misc(Some(read_to_string(&mut res)?)))
         }
+
+        Ok(())
     }
 
     pub fn remove_label(&self, repo: &str, issue_num: i32, label: &str) -> DashResult<()> {
@@ -197,13 +199,11 @@ impl Client {
                           label);
         let mut res = self.delete(&url)?;
 
-        if let StatusCode::NoContent = res.status {
-            Ok(())
-        } else {
-            let mut body = String::new();
-            res.read_to_string(&mut body)?;
-            Err(DashError::Misc(Some(body)))
+        if StatusCode::NoContent != res.status {
+            throw!(DashError::Misc(Some(read_to_string(&mut res)?)))
         }
+
+        Ok(())
     }
 
     pub fn new_comment(&self,
@@ -287,7 +287,7 @@ impl Client {
             Ok(m) => Ok(m),
             Err(why) => {
                 error!("Unable to parse from JSON ({:?}): {}", why, buf);
-                Err(why.into())
+                throw!(why)
             }
         }
     }
