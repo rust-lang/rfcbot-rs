@@ -61,8 +61,8 @@ pub fn record_successful_update(ingest_start: NaiveDateTime) -> DashResult<()> {
 
 pub fn ingest_since(repo: &str, start: DateTime<Utc>) -> DashResult<()> {
     info!("fetching all {} issues and comments since {}", repo, start);
-    let issues = try!(GH.issues_since(repo, start));
-    let mut comments = try!(GH.comments_since(repo, start));
+    let issues = GH.issues_since(repo, start)?;
+    let mut comments = GH.comments_since(repo, start)?;
     // make sure we process the new comments in creation order
     comments.sort_by_key(|c| c.created_at);
 
