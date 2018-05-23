@@ -1,3 +1,21 @@
+[prohibited_reactions]
+
+[prohibited_reactions."rust-lang/rfcs".issue]
+down_vote = true
+confused = true
+
+[prohibited_reactions."rust-lang/rfcs".comment]
+down_vote = true
+confused = true
+
+[prohibited_reactions."rust-lang/rust".issue]
+down_vote = true
+confused = true
+
+[prohibited_reactions."rust-lang/rust".comment]
+down_vote = true
+confused = true
+
 [fcp_behaviors]
 
 [fcp_behaviors."rust-lang/rfcs"]

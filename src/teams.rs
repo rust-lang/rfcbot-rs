@@ -4,10 +4,11 @@ use std::collections::BTreeMap;
 
 use diesel::prelude::*;
 use toml;
-use serde::de;
+use arrayvec::ArrayVec;
 
 use super::DB_POOL;
-use domain::github::GitHubUser;
+use domain::github::{GitHubUser};
+use github::models::Reaction;
 use error::*;
 
 //==============================================================================
@@ -20,6 +21,7 @@ lazy_static! {
 
 #[derive(Debug, Deserialize)]
 pub struct RfcbotConfig {
+    prohibited_reactions: BTreeMap<String, ReactionBehaviorConfig>,
     fcp_behaviors: BTreeMap<String, FcpBehavior>,
     teams: BTreeMap<TeamLabel, Team>,
 }
@@ -44,10 +46,66 @@ impl RfcbotConfig {
     pub fn should_ffcp_auto_postpone(&self, repo: &str) -> bool {
         self.fcp_behaviors.get(repo).map(|fcp| fcp.postpone).unwrap_or_default()
     }
+
+    /// Returns all the prohibited reactions on issues for this repo.
+    pub fn prohibited_issue_reactions(&self, repo: &str) -> ReactionVec {
+        self.prohibited_reactions.get(repo)
+            .map(|rb| rb.issue.prohibited_reactions())
+            .unwrap_or_default()
+    }
+
+    /// Returns all the prohibited reactions on comments for this repo.
+    pub fn prohibited_comment_reactions(&self, repo: &str) -> ReactionVec {
+        self.prohibited_reactions.get(repo)
+            .map(|rb| rb.comment.prohibited_reactions())
+            .unwrap_or_default()
+    }
+}
+
+#[derive(Copy, Clone, Debug, Default, Deserialize)]
+#[serde(default)]
+struct ReactionBehaviorConfig {
+    issue: ProhibitedReactions,
+    comment: ProhibitedReactions,
+}
+
+#[derive(Copy, Clone, Debug, Default, Deserialize)]
+#[serde(default)]
+struct ProhibitedReactions {
+    up_vote: bool,
+    down_vote: bool,
+    laugh: bool,
+    hooray: bool,
+    confused: bool,
+    heart: bool,
+}
+
+type ReactionVec = ArrayVec<[Reaction; 6]>;
+
+impl ProhibitedReactions {
+    fn prohibited_reactions(&self) -> ReactionVec {
+        use self::Reaction::*;
+        [Upvote, Downvote, Laugh, Hooray, Confused, Heart].iter()
+            .filter(move |&&reaction| self.is_reaction_prohibited(reaction))
+            .cloned()
+            .collect()
+    }
+
+    fn is_reaction_prohibited(&self, reaction: Reaction) -> bool {
+        use self::Reaction::*;
+        match reaction {
+            Upvote => self.up_vote,
+            Downvote => self.down_vote,
+            Laugh => self.laugh,
+            Hooray => self.hooray,
+            Confused => self.confused,
+            Heart => self.heart,
+        }
+    }
 }
 
 #[derive(Debug, Deserialize)]
-pub struct FcpBehavior {
+struct FcpBehavior {
     #[serde(default)]
     close: bool,
     #[serde(default)]
@@ -72,20 +130,9 @@ impl Team {
     }
 }
 
-#[derive(Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+#[derive(Debug, Eq, Hash, Ord, PartialEq, PartialOrd, Deserialize)]
+#[serde(transparent)]
 pub struct TeamLabel(pub String);
-
-impl<'de> de::Deserialize<'de> for TeamLabel {
-    fn deserialize<D: de::Deserializer<'de>>(de: D) -> Result<Self, D::Error> {
-        String::deserialize(de).map(TeamLabel)
-    }
-
-    fn deserialize_in_place<D: de::Deserializer<'de>>(de: D, place: &mut Self)
-        -> Result<(), D::Error>
-    {
-        String::deserialize_in_place(de, &mut place.0)
-    }
-}
 
 //==============================================================================
 // Implementation details
@@ -121,16 +168,12 @@ impl Team {
 
         // bail if they don't exist, but we don't want to actually keep the id in ram
         for member_login in self.member_logins() {
-            match githubuser
-                    .filter(login.eq(member_login))
-                    .first::<GitHubUser>(conn)
-            {
-                Ok(_) => (),
-                Err(why) => {
-                    error!("unable to find {} in database: {:?}", member_login, why);
-                    return Err(why.into());
-                }
-            }
+            let check_login = githubuser.filter(login.eq(member_login))
+                                        .first::<GitHubUser>(conn);
+            ok_or!(check_login, why => {
+                error!("unable to find {} in database: {:?}", member_login, why);
+                throw!(why);
+            });
         }
 
         Ok(())
@@ -148,6 +191,16 @@ mod test {
     #[test]
     fn setup_parser_correct() {
 let test = r#"
+[prohibited_reactions]
+
+[prohibited_reactions."foo-org/bar".issue]
+down_vote = true
+confused = true
+
+[prohibited_reactions."foo-org/bar".comment]
+down_vote = true
+confused = false
+
 [fcp_behaviors]
 
 [fcp_behaviors."rust-lang/alpha"]
@@ -224,6 +277,16 @@ members = [
         assert!(!cfg.should_ffcp_auto_postpone("wibble/epsilon"));
         assert!(!cfg.should_ffcp_auto_close("random"));
         assert!(!cfg.should_ffcp_auto_postpone("random"));
+
+        // Reaction behavior correct:
+        let foo_issue_nono = cfg.prohibited_issue_reactions("foo-org/bar")
+                                .into_iter().collect::<Vec<_>>();
+        assert_eq!(foo_issue_nono, &[Reaction::Downvote, Reaction::Confused]);
+        let foo_comment_nono = cfg.prohibited_comment_reactions("foo-org/bar")
+                                  .into_iter().collect::<Vec<_>>();
+        assert_eq!(foo_comment_nono, &[Reaction::Downvote]);
+        assert!(cfg.prohibited_issue_reactions("random").is_empty());
+        assert!(cfg.prohibited_comment_reactions("random").is_empty());
     }
 
     #[test]

@@ -129,13 +129,12 @@ impl CommentFromJson {
             }
         };
 
-        let conn = try!(DB_POOL.get());
+        let conn = DB_POOL.get()?;
 
-        let issue_id = try!(issue
-                                .select(id)
-                                .filter(number.eq(issue_number))
-                                .filter(repository.eq(repo))
-                                .first::<i32>(&*conn));
+        let issue_id = issue.select(id)
+                            .filter(number.eq(issue_number))
+                            .filter(repository.eq(repo))
+                            .first::<i32>(&*conn)?;
 
         Ok(IssueComment {
                id: self.id,
@@ -188,6 +187,78 @@ impl PullRequestFromJson {
             deletions: self.deletions,
             changed_files: self.changed_files,
             repository: repo.to_string(),
+        }
+    }
+}
+
+#[derive(Debug, Deserialize)]
+pub struct ReactionsIssueFromJson {
+    pub number: i32,
+    pub comments: i32,
+    pub reactions: ReactionSummary,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct ReactionsCommentFromJson {
+    pub id: i32,
+    pub reactions: ReactionSummary,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct ReactionSummary {
+    #[serde(rename = "+1")]
+    pub up_vote: u32,
+    #[serde(rename = "-1")]
+    pub down_vote: u32,
+    pub laugh: u32,
+    pub hooray: u32,
+    pub confused: u32,
+    pub heart: u32,
+}
+
+impl ReactionSummary {
+    pub fn has_reaction(&self, reaction: Reaction) -> bool {
+        self.reaction_count(reaction) > 0
+    }
+
+    pub fn reaction_count(&self, reaction: Reaction) -> u32 {
+        use self::Reaction::*;
+        match reaction {
+            Upvote => self.up_vote,
+            Downvote => self.down_vote,
+            Laugh => self.laugh,
+            Hooray => self.hooray,
+            Confused => self.confused,
+            Heart => self.heart,
+        }
+    }
+}
+
+#[derive(Debug, Deserialize)]
+pub struct ReactionFromJson {
+    pub id: usize,
+}
+
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
+pub enum Reaction {
+    Upvote,
+    Downvote,
+    Laugh,
+    Hooray,
+    Confused,
+    Heart,
+}
+
+impl Reaction {
+    pub fn to_param(&self) -> &str {
+        use self::Reaction::*;
+        match *self {
+            Upvote => "+1",
+            Downvote => "-1",
+            Laugh => "laugh",
+            Hooray => "hooray",
+            Confused => "confused",
+            Heart => "heart",
         }
     }
 }

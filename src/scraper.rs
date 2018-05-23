@@ -27,26 +27,29 @@ pub fn start_scraping() -> JoinHandle<()> {
 pub fn scrape_github(since: DateTime<Utc>) {
     let mut repos = Vec::new();
     for org in &GH_ORGS {
-        match github::GH.org_repos(org) {
-            Ok(r) => repos.extend(r),
-            Err(why) => {
-                error!("Unable to retrieve repos for {}: {:?}", org, why);
-                return;
-            }
-        }
+        repos.extend(ok_or!(github::GH.org_repos(org), why => {
+            error!("Unable to retrieve repos for {}: {:?}", org, why);
+            return;
+        }));
     }
 
     info!("Scraping github activity since {:?}", since);
     let start_time = Utc::now().naive_utc();
-    for repo in repos {
+    for repo in repos.iter() {
         match github::ingest_since(&repo, since) {
-            Ok(()) => info!("Scraped {} github successfully", repo),
+            Ok(_) => info!("Scraped {} github successfully", repo),
             Err(why) => error!("Unable to scrape github {}: {:?}", repo, why),
         }
     }
 
-    match github::record_successful_update(start_time) {
-        Ok(_) => {}
-        Err(why) => error!("Problem recording successful update: {:?}", why),
+    info!("Nuking reactions at github since {:?}", since);
+    for repo in repos.iter() {
+        match github::nuke_reactions(&repo) {
+            Ok(_) => info!("Nuked reactions at {} successfully", repo),
+            Err(why) => error!("Unable to nuke reactions {}: {:?}", repo, why),
+        }
     }
+
+    ok_or!(github::record_successful_update(start_time), why =>
+        error!("Problem recording successful update: {:?}", why));
 }

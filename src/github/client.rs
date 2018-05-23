@@ -18,13 +18,27 @@ use serde_json;
 
 use config::CONFIG;
 use error::{DashError, DashResult};
-use github::models::{CommentFromJson, IssueFromJson, PullRequestFromJson, PullRequestUrls};
+use github::models::{
+    CommentFromJson, IssueFromJson,
+    PullRequestFromJson, PullRequestUrls,
+    ReactionsIssueFromJson, ReactionsCommentFromJson, ReactionFromJson, Reaction
+};
 
 pub const BASE_URL: &'static str = "https://api.github.com";
 
 pub const DELAY: u64 = 300;
 
 type ParameterMap = BTreeMap<&'static str, String>;
+
+macro_rules! params {
+    ($($key: expr => $val: expr),*) => {{
+        let mut map = BTreeMap::<_, _>::new();
+        $(
+            map.insert($key, $val);
+        )*
+        map
+    }};
+}
 
 header! { (TZ, "Time-Zone") => [String] }
 header! { (Accept, "Accept") => [String] }
@@ -41,6 +55,12 @@ pub struct Client {
     client: hyper::Client,
     rate_limit: u32,
     rate_limit_timeout: DateTime<Utc>,
+}
+
+fn read_to_string<R: Read>(reader: &mut R) -> DashResult<String> {    
+    let mut string = String::new();
+    reader.read_to_string(&mut string)?;
+    Ok(string)
 }
 
 impl Client {
@@ -60,7 +80,7 @@ impl Client {
 
     pub fn org_repos(&self, org: &str) -> DashResult<Vec<String>> {
         let url = format!("{}/orgs/{}/repos", BASE_URL, org);
-        let vals: Vec<serde_json::Value> = try!(self.get_models(&url, None));
+        let vals: Vec<serde_json::Value> = self.get_models(&url, None)?;
 
         let mut repos = Vec::new();
         for v in vals {
@@ -72,39 +92,36 @@ impl Client {
                     }
                 }
             }
-            return Err(DashError::Misc(None));
+            throw!(DashError::Misc(None))
 
         }
         Ok(repos)
     }
 
-    pub fn issues_since(&self, repo: &str, start: DateTime<Utc>) -> DashResult<Vec<IssueFromJson>> {
-
-        let url = format!("{}/repos/{}/issues", BASE_URL, repo);
-        let mut params = ParameterMap::new();
-
-        params.insert("state", "all".to_string());
-        params.insert("since", format!("{:?}", start));
-        params.insert("state", "all".to_string());
-        params.insert("per_page", format!("{}", PER_PAGE));
-        params.insert("direction", "asc".to_string());
-
-        self.get_models(&url, Some(&params))
+    pub fn issues_since(&self, repo: &str, start: DateTime<Utc>)
+        -> DashResult<Vec<IssueFromJson>>
+    {
+        self.get_models(&format!("{}/repos/{}/issues", BASE_URL, repo),
+            Some(&params! {
+                "state" => "all".to_string(),
+                "since" => format!("{:?}", start),
+                "state" => "all".to_string(),
+                "per_page" => format!("{}", PER_PAGE),
+                "direction" => "asc".to_string()
+            }))
     }
 
     pub fn comments_since(&self,
                           repo: &str,
                           start: DateTime<Utc>)
                           -> DashResult<Vec<CommentFromJson>> {
-        let url = format!("{}/repos/{}/issues/comments", BASE_URL, repo);
-        let mut params = ParameterMap::new();
-
-        params.insert("sort", "created".to_string());
-        params.insert("direction", "asc".to_string());
-        params.insert("since", format!("{:?}", start));
-        params.insert("per_page", format!("{}", PER_PAGE));
-
-        self.get_models(&url, Some(&params))
+        self.get_models(&format!("{}/repos/{}/issues/comments", BASE_URL, repo),
+            Some(&params! {
+                "sort" => "created".to_string(),
+                "direction" => "asc".to_string(),
+                "since" => format!("{:?}", start),
+                "per_page" => format!("{}", PER_PAGE)
+            }))
     }
 
     fn get_models<M: DeserializeOwned>(&self,
@@ -112,7 +129,21 @@ impl Client {
                                        params: Option<&ParameterMap>)
                                        -> DashResult<Vec<M>> {
 
-        let mut res = try!(self.get(start_url, params));
+        let mut res = self.get(start_url, params)?;
+        let mut models = self.deserialize::<Vec<M>>(&mut res)?;
+        while let Some(url) = Self::next_page(&res.headers) {
+            sleep(Duration::from_millis(DELAY));
+            res = self.get(&url, None)?;
+            models.extend(self.deserialize::<Vec<M>>(&mut res)?);
+        }
+        Ok(models)
+    }
+
+    fn get_models_preview<M: DeserializeOwned>
+        (&self, start_url: &str, params: Option<&ParameterMap>)
+        -> DashResult<Vec<M>> {
+
+        let mut res = self.get_preview(start_url, params)?;
         let mut models = self.deserialize::<Vec<M>>(&mut res)?;
         while let Some(url) = Self::next_page(&res.headers) {
             sleep(Duration::from_millis(DELAY));
@@ -123,13 +154,11 @@ impl Client {
     }
 
     pub fn fetch_pull_request(&self, pr_info: &PullRequestUrls) -> DashResult<PullRequestFromJson> {
-        let url = pr_info.get("url");
-
-        if let Some(url) = url {
-            let mut res = try!(self.get(url, None));
+        if let Some(url) = pr_info.get("url") {
+            let mut res = self.get(url, None)?;
             self.deserialize(&mut res)
         } else {
-            Err(DashError::Misc(None))
+            throw!(DashError::Misc(None))
         }
     }
 
@@ -158,21 +187,14 @@ impl Client {
 
     pub fn close_issue(&self, repo: &str, issue_num: i32) -> DashResult<()> {
         let url = format!("{}/repos/{}/issues/{}", BASE_URL, repo, issue_num);
-
-        let mut obj = BTreeMap::new();
-        obj.insert("state", "closed");
-        let payload = serde_json::to_string(&obj)?;
-
+        let payload = serde_json::to_string(&params!("state" => "closed"))?;
         let mut res = self.patch(&url, &payload)?;
 
-        match res.status {
-            StatusCode::Ok => Ok(()),
-            _ => {
-                let mut body = String::new();
-                res.read_to_string(&mut body)?;
-                Err(DashError::Misc(Some(body)))
-            }
+        if StatusCode::Ok != res.status {
+            throw!(DashError::Misc(Some(read_to_string(&mut res)?)))
         }
+
+        Ok(())
     }
 
     pub fn add_label(&self, repo: &str, issue_num: i32, label: &str) -> DashResult<()> {
@@ -181,14 +203,11 @@ impl Client {
 
         let mut res = self.post(&url, &payload)?;
 
-        match res.status {
-            StatusCode::Ok => Ok(()),
-            _ => {
-                let mut body = String::new();
-                res.read_to_string(&mut body)?;
-                Err(DashError::Misc(Some(body)))
-            }
+        if StatusCode::Ok != res.status {
+            throw!(DashError::Misc(Some(read_to_string(&mut res)?)))
         }
+
+        Ok(())
     }
 
     pub fn remove_label(&self, repo: &str, issue_num: i32, label: &str) -> DashResult<()> {
@@ -199,14 +218,11 @@ impl Client {
                           label);
         let mut res = self.delete(&url)?;
 
-        match res.status {
-            StatusCode::NoContent => Ok(()),
-            _ => {
-                let mut body = String::new();
-                res.read_to_string(&mut body)?;
-                Err(DashError::Misc(Some(body)))
-            }
+        if StatusCode::NoContent != res.status {
+            throw!(DashError::Misc(Some(read_to_string(&mut res)?)))
         }
+
+        Ok(())
     }
 
     pub fn new_comment(&self,
@@ -215,11 +231,7 @@ impl Client {
                        text: &str)
                        -> DashResult<CommentFromJson> {
         let url = format!("{}/repos/{}/issues/{}/comments", BASE_URL, repo, issue_num);
-
-        let mut obj = BTreeMap::new();
-        obj.insert("body", text);
-
-        let payload = serde_json::to_string(&obj)?;
+        let payload = serde_json::to_string(&params!("body" => text))?;
 
         // FIXME propagate an error if it's a 404 or other error
         self.deserialize(&mut self.post(&url, &payload)?)
@@ -234,14 +246,70 @@ impl Client {
                           BASE_URL,
                           repo,
                           comment_num);
-
-        let mut obj = BTreeMap::new();
-        obj.insert("body", text);
-
-        let payload = serde_json::to_string(&obj)?;
+        let payload = serde_json::to_string(&params!("body" => text))?;
 
         // FIXME propagate an error if it's a 404 or other error
         self.deserialize(&mut self.patch(&url, &payload)?)
+    }
+
+    pub fn comments_of_issue(&self, repo: &str, issue_num: i32)
+        -> DashResult<impl Iterator<Item = ReactionsCommentFromJson>>
+    {
+        let url = format!("{}/repos/{}/issues/{}/comments", BASE_URL, repo, issue_num);
+        let params = params! {
+            "per_page" => format!("{}", PER_PAGE),
+            "direction" => "asc".to_string()
+        };
+        Ok(self.get_models_preview(&url, Some(&params))?.into_iter())
+    }
+
+    pub fn open_issues_with_reactions(&self, repo: &str)
+        -> DashResult<impl Iterator<Item = ReactionsIssueFromJson>>
+    {
+        let url = format!("{}/repos/{}/issues", BASE_URL, repo);
+        let params = params! {
+            "state" => "open".to_string(),
+            "per_page" => format!("{}", PER_PAGE),
+            "direction" => "asc".to_string()
+        };
+        Ok(self.get_models_preview(&url, Some(&params))?.into_iter())
+    }
+
+    pub fn issue_reactions(&self, repo: &str, issue_num: i32, reaction: Reaction)
+        -> DashResult<impl Iterator<Item = usize>>
+    {
+        self.reactions(reaction, format!(
+            "{}/repos/{}/issues/{}/reactions",
+            BASE_URL, repo, issue_num))
+    }
+
+    pub fn comment_reactions(&self, repo: &str, comment_id: i32, reaction: Reaction)
+        -> DashResult<impl Iterator<Item = usize>>
+    {
+        self.reactions(reaction, format!(
+            "{}/repos/{}/issues/comments/{}/reactions",
+            BASE_URL, repo, comment_id))
+    }
+
+    fn reactions(&self, reaction: Reaction, url: String)
+        -> DashResult<impl Iterator<Item = usize>>
+    {
+        let params = params! {
+            "content" => reaction.to_param().into(),
+            "per_page" => format!("{}", PER_PAGE)
+        };
+        Ok(self.get_models_preview(&url, Some(&params))?
+               .into_iter()
+               .map(|rfj: ReactionFromJson| rfj.id))
+    }
+
+    pub fn delete_reaction(&self, reaction_id: usize) -> DashResult<()> {
+        let url = format!("{}/reactions/{}", BASE_URL, reaction_id);
+        let mut res = self.delete_preview(&url)?;
+        if StatusCode::NoContent != res.status {
+            throw!(DashError::Misc(Some(read_to_string(&mut res)?)))
+        }
+        Ok(())
     }
 
     fn patch(&self, url: &str, payload: &str) -> Result<Response, hyper::error::Error> {
@@ -257,11 +325,32 @@ impl Client {
         self.set_headers(self.client.delete(url)).send()
     }
 
+    fn delete_preview(&self, url: &str) -> Result<Response, hyper::error::Error> {
+        self.set_headers_preview(self.client.delete(url)).send()
+    }
+
     fn get(&self,
            url: &str,
            params: Option<&ParameterMap>)
            -> Result<Response, hyper::error::Error> {
-        let qp_string = match params {
+        let qp_string = Self::serialize_qp(params);
+        let url = format!("{}{}", url, qp_string);
+        debug!("GETing: {}", &url);
+        self.set_headers(self.client.get(&url)).send()
+    }
+
+    fn get_preview(&self,
+           url: &str,
+           params: Option<&ParameterMap>)
+           -> Result<Response, hyper::error::Error> {
+        let qp_string = Self::serialize_qp(params);
+        let url = format!("{}{}", url, qp_string);
+        debug!("GETing: {}", &url);
+        self.set_headers_preview(self.client.get(&url)).send()
+    }
+
+    fn serialize_qp(params: Option<&ParameterMap>) -> String {
+        match params {
             Some(p) => {
                 let mut qp = String::from("?");
                 for (k, v) in p {
@@ -273,26 +362,22 @@ impl Client {
                 qp
             }
             None => "".to_string(),
-        };
-
-        let url = format!("{}{}", url, qp_string);
-
-        debug!("GETing: {}", &url);
-
-        self.set_headers(self.client.get(&url)).send()
+        }
     }
 
     fn deserialize<M: DeserializeOwned>(&self, res: &mut Response) -> DashResult<M> {
-        let mut buf = String::new();
-        res.read_to_string(&mut buf)?;
-
+        let buf = read_to_string(res)?;
         match serde_json::from_str(&buf) {
             Ok(m) => Ok(m),
             Err(why) => {
                 error!("Unable to parse from JSON ({:?}): {}", why, buf);
-                Err(why.into())
+                throw!(why)
             }
         }
+    }
+
+    fn set_headers_preview<'a>(&self, req: RequestBuilder<'a>) -> RequestBuilder<'a> {
+        req.header(Accept("application/vnd.github.squirrel-girl-preview+json".to_string()))
     }
 
     fn set_headers<'a>(&self, req: RequestBuilder<'a>) -> RequestBuilder<'a> {

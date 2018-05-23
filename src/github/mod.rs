@@ -16,6 +16,7 @@ use DB_POOL;
 use domain::github::*;
 use domain::schema::*;
 use error::DashResult;
+use teams::SETUP;
 
 use self::client::Client;
 use self::models::{CommentFromJson, IssueFromJson, PullRequestFromJson};
@@ -61,8 +62,8 @@ pub fn record_successful_update(ingest_start: NaiveDateTime) -> DashResult<()> {
 
 pub fn ingest_since(repo: &str, start: DateTime<Utc>) -> DashResult<()> {
     info!("fetching all {} issues and comments since {}", repo, start);
-    let issues = try!(GH.issues_since(repo, start));
-    let mut comments = try!(GH.comments_since(repo, start));
+    let issues = GH.issues_since(repo, start)?;
+    let mut comments = GH.comments_since(repo, start)?;
     // make sure we process the new comments in creation order
     comments.sort_by_key(|c| c.created_at);
 
@@ -70,13 +71,10 @@ pub fn ingest_since(repo: &str, start: DateTime<Utc>) -> DashResult<()> {
     for issue in &issues {
         // sleep(Duration::from_millis(github::client::DELAY));
         if let Some(ref pr_info) = issue.pull_request {
-            match GH.fetch_pull_request(pr_info) {
-                Ok(pr) => prs.push(pr),
-                Err(why) => {
-                    error!("ERROR fetching PR info: {:?}", why);
-                    break;
-                }
-            }
+            prs.push(ok_or!(GH.fetch_pull_request(pr_info), why => {
+                error!("ERROR fetching PR info: {:?}", why);
+                break;
+            }));
         }
     }
 
@@ -96,37 +94,23 @@ pub fn ingest_since(repo: &str, start: DateTime<Utc>) -> DashResult<()> {
     // make sure we have all of the users to ensure referential integrity
     for issue in issues {
         let issue_number = issue.number;
-        match handle_issue(conn, issue, repo) {
-            Ok(()) => (),
-            Err(why) => {
-                error!("Error processing issue {}#{}: {:?}",
-                       repo,
-                       issue_number,
-                       why)
-            }
-        }
+        ok_or!(handle_issue(conn, issue, repo), why =>
+            error!("Error processing issue {}#{}: {:?}",
+                   repo, issue_number, why));
     }
 
     // insert the comments
     for comment in comments {
         let comment_id = comment.id;
-        match handle_comment(conn, comment, repo) {
-            Ok(()) => (),
-            Err(why) => {
-                error!("Error processing comment {}#{}: {:?}",
-                       repo,
-                       comment_id,
-                       why)
-            }
-        }
+        ok_or!(handle_comment(conn, comment, repo), why =>
+            error!("Error processing comment {}#{}: {:?}",
+                   repo, comment_id, why));
     }
 
     for pr in prs {
         let pr_number = pr.number;
-        match handle_pr(conn, pr, repo) {
-            Ok(()) => (),
-            Err(why) => error!("Error processing PR {}#{}: {:?}", repo, pr_number, why),
-        }
+        ok_or!(handle_pr(conn, pr, repo), why =>
+            error!("Error processing PR {}#{}: {:?}", repo, pr_number, why));
     }
 
     Ok(())
@@ -159,19 +143,18 @@ pub fn handle_comment(conn: &PgConnection, comment: CommentFromJson, repo: &str)
         diesel::update(issuecomment::table.find(comment.id))
             .set(&comment)
             .execute(conn)?;
-        Ok(())
     } else {
         diesel::insert(&comment)
             .into(issuecomment::table)
             .execute(conn)?;
-        match nag::update_nags(&comment) {
-            Ok(()) => Ok(()),
-            Err(why) => {
-                error!("Problem updating FCPs: {:?}", &why);
-                Err(why)
-            }
-        }
+
+        ok_or!(nag::update_nags(&comment), why => {
+            error!("Problem updating FCPs: {:?}", &why);
+            throw!(why);
+        });
     }
+
+    Ok(())
 }
 
 pub fn handle_issue(conn: &PgConnection, issue: IssueFromJson, repo: &str) -> DashResult<()> {
@@ -207,6 +190,52 @@ pub fn handle_user(conn: &PgConnection, user: &GitHubUser) -> DashResult<()> {
     diesel::insert(&user.on_conflict(githubuser::id, do_update().set(user)))
         .into(githubuser::table)
         .execute(conn)?;
+    Ok(())
+}
+
+pub fn nuke_reactions(repo: &str) -> DashResult<()> {
+    let issue_reactions = SETUP.prohibited_issue_reactions(repo);
+    let comment_reactions = SETUP.prohibited_comment_reactions(repo);
+
+    if issue_reactions.is_empty() && comment_reactions.is_empty() {
+        // All reactions are permitted, bail early to avoid work.
+        return Ok(());
+    }
+
+    // Fetch all issues with some forbidden reaction:
+    let issues = GH.open_issues_with_reactions(repo)?.filter(|rifj|
+        issue_reactions.iter().any(|&react| rifj.reactions.has_reaction(react))
+    );
+
+    for issue in issues {
+        // Remove all forbidden reactions for this issue:
+        for &reaction in issue_reactions.iter() {
+            for to_delete in GH.issue_reactions(repo, issue.number, reaction)? {
+                GH.delete_reaction(to_delete)?;
+            }
+        }
+
+        // Ensure we forbid some reactions and that there are comments:
+        if comment_reactions.is_empty() || issue.comments == 0 {
+            continue;
+        }
+
+        // Fetch all comments with some forbidden reaction:
+        let comments = GH.comments_of_issue(repo, issue.number)?.filter(|rifj|
+            comment_reactions.iter()
+                .any(|&react| rifj.reactions.has_reaction(react))
+        );
+
+        for comment in comments {
+            // Remove all forbidden reactions for this comment:
+            for &reaction in comment_reactions.iter() {
+                for to_delete in GH.comment_reactions(repo, comment.id, reaction)? {
+                    GH.delete_reaction(to_delete)?;
+                }
+            }
+        }
+    }
+
     Ok(())
 }
 
