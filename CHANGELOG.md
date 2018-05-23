@@ -8,3 +8,7 @@ rfcbot behaves so that the people who develop rfcbot or interact with it can
 understand the bot better.
 
 ## Changes
+
++ The bot will now optionally (per configuration in `rfcbot.toml`) remove
+  unwanted reactions from RFC (and PR..) readers.
+  These include 👎, 😕 on the `rust-lang/rfcs` and `rust-lang/rust` repositories.
