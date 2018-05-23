@@ -4,7 +4,6 @@ use std::collections::BTreeMap;
 
 use diesel::prelude::*;
 use toml;
-use serde::de;
 
 use super::DB_POOL;
 use domain::github::GitHubUser;
@@ -72,20 +71,9 @@ impl Team {
     }
 }
 
-#[derive(Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+#[derive(Debug, Eq, Hash, Ord, PartialEq, PartialOrd, Deserialize)]
+#[serde(transparent)]
 pub struct TeamLabel(pub String);
-
-impl<'de> de::Deserialize<'de> for TeamLabel {
-    fn deserialize<D: de::Deserializer<'de>>(de: D) -> Result<Self, D::Error> {
-        String::deserialize(de).map(TeamLabel)
-    }
-
-    fn deserialize_in_place<D: de::Deserializer<'de>>(de: D, place: &mut Self)
-        -> Result<(), D::Error>
-    {
-        String::deserialize_in_place(de, &mut place.0)
-    }
-}
 
 //==============================================================================
 // Implementation details
