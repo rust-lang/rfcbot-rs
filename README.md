@@ -80,3 +80,7 @@ Note that only one concern per comment is allowed.
 To request feedback from a user not on the tagged team(s), use `@rfcbot f? @username`. This will create an entry in the database which will be marked as resolved once that user has commented on the issue/PR. Note that these feedback requests will not block start/end of an FCP. If you need to block FCP on that user's feedback, you may want to create a new concern that you can resolve.
 
 In a future update, the UI for the dashboard will be updated to display these feedback requests, but they don't show up anywhere right now.
+
+## Contributing, Code of Conduct, License
+
+Please see CONTRIBUTING.md.
