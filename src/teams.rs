@@ -4,9 +4,11 @@ use std::collections::BTreeMap;
 
 use diesel::prelude::*;
 use toml;
+use arrayvec::ArrayVec;
 
 use super::DB_POOL;
-use domain::github::{Reaction, GitHubUser};
+use domain::github::{GitHubUser};
+use github::models::Reaction;
 use error::*;
 
 //==============================================================================
@@ -45,23 +47,17 @@ impl RfcbotConfig {
         self.fcp_behaviors.get(repo).map(|fcp| fcp.postpone).unwrap_or_default()
     }
 
-    /// Is the reaction permitted on issues / PRs of this repository?
-    pub fn is_issue_reaction_probihited(&self, repo: &str, reaction: Reaction)
-        -> bool
-    {
-        self.prohibited_reactions
-            .get(repo)
-            .map(|rb| rb.issue.is_reaction_prohibited(reaction))
+    /// Returns all the prohibited reactions on issues for this repo.
+    pub fn prohibited_issue_reactions(&self, repo: &str) -> ReactionVec {
+        self.prohibited_reactions.get(repo)
+            .map(|rb| rb.issue.prohibited_reactions())
             .unwrap_or_default()
     }
 
-    /// Is the reaction permitted on comments of issues / PRs of this repository?
-    pub fn is_comment_reaction_probihited(&self, repo: &str, reaction: Reaction)
-        -> bool
-    {
-        self.prohibited_reactions
-            .get(repo)
-            .map(|rb| rb.comment.is_reaction_prohibited(reaction))
+    /// Returns all the prohibited reactions on comments for this repo.
+    pub fn prohibited_comment_reactions(&self, repo: &str) -> ReactionVec {
+        self.prohibited_reactions.get(repo)
+            .map(|rb| rb.comment.prohibited_reactions())
             .unwrap_or_default()
     }
 }
@@ -84,11 +80,20 @@ struct ProhibitedReactions {
     heart: bool,
 }
 
+type ReactionVec = ArrayVec<[Reaction; 6]>;
+
 impl ProhibitedReactions {
+    fn prohibited_reactions(&self) -> ReactionVec {
+        use self::Reaction::*;
+        [Upvote, Downvote, Laugh, Hooray, Confused, Heart].iter()
+            .filter(move |&&reaction| self.is_reaction_prohibited(reaction))
+            .cloned()
+            .collect()
+    }
+
     fn is_reaction_prohibited(&self, reaction: Reaction) -> bool {
         use self::Reaction::*;
         match reaction {
-            Unknown => false,
             Upvote => self.up_vote,
             Downvote => self.down_vote,
             Laugh => self.laugh,
@@ -274,13 +279,14 @@ members = [
         assert!(!cfg.should_ffcp_auto_postpone("random"));
 
         // Reaction behavior correct:
-        assert!(cfg.is_issue_reaction_probihited("foo-org/bar", Reaction::Downvote));
-        assert!(cfg.is_issue_reaction_probihited("foo-org/bar", Reaction::Confused));
-        assert!(!cfg.is_issue_reaction_probihited("foo-org/bar", Reaction::Heart));
-        assert!(cfg.is_comment_reaction_probihited("foo-org/bar", Reaction::Downvote));
-        assert!(!cfg.is_comment_reaction_probihited("foo-org/bar", Reaction::Confused));
-        assert!(!cfg.is_comment_reaction_probihited("foo-org/bar", Reaction::Laugh));
-        assert!(!cfg.is_issue_reaction_probihited("random", Reaction::Upvote));
+        let foo_issue_nono = cfg.prohibited_issue_reactions("foo-org/bar")
+                                .into_iter().collect::<Vec<_>>();
+        assert_eq!(foo_issue_nono, &[Reaction::Downvote, Reaction::Confused]);
+        let foo_comment_nono = cfg.prohibited_comment_reactions("foo-org/bar")
+                                  .into_iter().collect::<Vec<_>>();
+        assert_eq!(foo_comment_nono, &[Reaction::Downvote]);
+        assert!(cfg.prohibited_issue_reactions("random").is_empty());
+        assert!(cfg.prohibited_comment_reactions("random").is_empty());
     }
 
     #[test]

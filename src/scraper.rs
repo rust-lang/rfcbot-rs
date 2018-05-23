@@ -35,10 +35,18 @@ pub fn scrape_github(since: DateTime<Utc>) {
 
     info!("Scraping github activity since {:?}", since);
     let start_time = Utc::now().naive_utc();
-    for repo in repos {
+    for repo in repos.iter() {
         match github::ingest_since(&repo, since) {
             Ok(_) => info!("Scraped {} github successfully", repo),
             Err(why) => error!("Unable to scrape github {}: {:?}", repo, why),
+        }
+    }
+
+    info!("Nuking reactions at github since {:?}", since);
+    for repo in repos.iter() {
+        match github::nuke_reactions(&repo) {
+            Ok(_) => info!("Nuked reactions at {} successfully", repo),
+            Err(why) => error!("Unable to nuke reactions {}: {:?}", repo, why),
         }
     }
 
