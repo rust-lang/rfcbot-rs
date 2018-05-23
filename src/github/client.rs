@@ -273,11 +273,6 @@ impl Client {
             "direction" => "asc".to_string()
         };
         Ok(self.get_models_preview(&url, Some(&params))?.into_iter())
-        /*
-        Ok(issues.into_iter().filter(move |rifj: &ReactionsIssueFromJson|
-            reactions.iter().any(|&react| rifj.reactions.has_reaction(react))
-        ))
-        */
     }
 
     pub fn issue_reactions(&self, repo: &str, issue_num: i32, reaction: Reaction)
