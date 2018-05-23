@@ -17,6 +17,7 @@ Deployed to https://rfcbot.rs right now.
 * [Bootstrapping](#bootstrapping)
 * [Scraping](#scraping)
 * [Deployment](#deployment)
+* [Conduct](#conduct)
 * [License](#license)
 
 ## Development
@@ -96,7 +97,11 @@ psql -d $DB_NAME_HERE -f bootstrap.sql
 
 ## Deployment
 
-Deployed to Heroku (hopefully soon!) via TravisCI.
+Deployed to Heroku via TravisCI from the master branch.
+
+## Conduct
+
+This project has a [Code of Conduct and moderation policy](https://github.com/anp/rfcbot-rs/blob/master/CONDUCT.md) very similar to the Rust CoC.
 
 ## License
 
