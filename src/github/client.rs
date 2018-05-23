@@ -26,6 +26,14 @@ pub const DELAY: u64 = 300;
 
 type ParameterMap = BTreeMap<&'static str, String>;
 
+macro_rules! params {
+    ($($key: expr => $val: expr),*) => {{
+        let mut map = BTreeMap::<_, _>::new();
+        $(map.insert($key, $val);)*
+        map
+    }};
+}
+
 header! { (TZ, "Time-Zone") => [String] }
 header! { (Accept, "Accept") => [String] }
 header! { (RateLimitRemaining, "X-RateLimit-Remaining") => [u32] }
@@ -66,7 +74,7 @@ impl Client {
 
     pub fn org_repos(&self, org: &str) -> DashResult<Vec<String>> {
         let url = format!("{}/orgs/{}/repos", BASE_URL, org);
-        let vals: Vec<serde_json::Value> = try!(self.get_models(&url, None));
+        let vals: Vec<serde_json::Value> = self.get_models(&url, None)?;
 
         let mut repos = Vec::new();
         for v in vals {
@@ -85,32 +93,26 @@ impl Client {
     }
 
     pub fn issues_since(&self, repo: &str, start: DateTime<Utc>) -> DashResult<Vec<IssueFromJson>> {
-
-        let url = format!("{}/repos/{}/issues", BASE_URL, repo);
-        let mut params = ParameterMap::new();
-
-        params.insert("state", "all".to_string());
-        params.insert("since", format!("{:?}", start));
-        params.insert("state", "all".to_string());
-        params.insert("per_page", format!("{}", PER_PAGE));
-        params.insert("direction", "asc".to_string());
-
-        self.get_models(&url, Some(&params))
+        self.get_models(&format!("{}/repos/{}/issues", BASE_URL, repo),
+            Some(&params! {
+                "state" => "all".to_string(),
+                "since" => format!("{:?}", start),
+                "per_page" => format!("{}", PER_PAGE),
+                "direction" => "asc".to_string()    
+            }))
     }
 
     pub fn comments_since(&self,
                           repo: &str,
                           start: DateTime<Utc>)
                           -> DashResult<Vec<CommentFromJson>> {
-        let url = format!("{}/repos/{}/issues/comments", BASE_URL, repo);
-        let mut params = ParameterMap::new();
-
-        params.insert("sort", "created".to_string());
-        params.insert("direction", "asc".to_string());
-        params.insert("since", format!("{:?}", start));
-        params.insert("per_page", format!("{}", PER_PAGE));
-
-        self.get_models(&url, Some(&params))
+        self.get_models(&format!("{}/repos/{}/issues/comments", BASE_URL, repo),
+            Some(&params! {
+                "sort" => "created".to_string(),
+                "direction" => "asc".to_string(),
+                "since" => format!("{:?}", start),
+                "per_page" => format!("{}", PER_PAGE)
+            }))
     }
 
     fn get_models<M: DeserializeOwned>(&self,
@@ -118,7 +120,7 @@ impl Client {
                                        params: Option<&ParameterMap>)
                                        -> DashResult<Vec<M>> {
 
-        let mut res = try!(self.get(start_url, params));
+        let mut res = self.get(start_url, params)?;
         let mut models = self.deserialize::<Vec<M>>(&mut res)?;
         while let Some(url) = Self::next_page(&res.headers) {
             sleep(Duration::from_millis(DELAY));
@@ -129,9 +131,7 @@ impl Client {
     }
 
     pub fn fetch_pull_request(&self, pr_info: &PullRequestUrls) -> DashResult<PullRequestFromJson> {
-        let url = pr_info.get("url");
-
-        if let Some(url) = url {
+        if let Some(url) = pr_info.get("url") {
             let mut res = self.get(url, None)?;
             self.deserialize(&mut res)
         } else {
@@ -164,11 +164,7 @@ impl Client {
 
     pub fn close_issue(&self, repo: &str, issue_num: i32) -> DashResult<()> {
         let url = format!("{}/repos/{}/issues/{}", BASE_URL, repo, issue_num);
-
-        let mut obj = BTreeMap::new();
-        obj.insert("state", "closed");
-        let payload = serde_json::to_string(&obj)?;
-
+        let payload = serde_json::to_string(&params!("state" => "closed"))?;
         let mut res = self.patch(&url, &payload)?;
 
         if StatusCode::Ok != res.status {
@@ -213,10 +209,7 @@ impl Client {
                        -> DashResult<CommentFromJson> {
         let url = format!("{}/repos/{}/issues/{}/comments", BASE_URL, repo, issue_num);
 
-        let mut obj = BTreeMap::new();
-        obj.insert("body", text);
-
-        let payload = serde_json::to_string(&obj)?;
+        let payload = serde_json::to_string(&params!("body" => text))?;
 
         // FIXME propagate an error if it's a 404 or other error
         self.deserialize(&mut self.post(&url, &payload)?)
@@ -232,10 +225,7 @@ impl Client {
                           repo,
                           comment_num);
 
-        let mut obj = BTreeMap::new();
-        obj.insert("body", text);
-
-        let payload = serde_json::to_string(&obj)?;
+        let payload = serde_json::to_string(&params!("body" => text))?;
 
         // FIXME propagate an error if it's a 404 or other error
         self.deserialize(&mut self.patch(&url, &payload)?)
