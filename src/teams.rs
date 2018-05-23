@@ -19,7 +19,7 @@ lazy_static! {
     pub static ref SETUP: RfcbotConfig = read_rfcbot_cfg_validated();
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize)]
 pub struct RfcbotConfig {
     prohibited_reactions: BTreeMap<String, ReactionBehaviorConfig>,
     fcp_behaviors: BTreeMap<String, FcpBehavior>,
@@ -62,14 +62,14 @@ impl RfcbotConfig {
     }
 }
 
-#[derive(Copy, Clone, Debug, Default, Deserialize, Serialize)]
+#[derive(Copy, Clone, Debug, Default, Deserialize)]
 #[serde(default)]
 struct ReactionBehaviorConfig {
     issue: ProhibitedReactions,
     comment: ProhibitedReactions,
 }
 
-#[derive(Copy, Clone, Debug, Default, Deserialize, Serialize)]
+#[derive(Copy, Clone, Debug, Default, Deserialize)]
 #[serde(default)]
 struct ProhibitedReactions {
     up_vote: bool,
@@ -104,7 +104,7 @@ impl ProhibitedReactions {
     }
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize)]
 struct FcpBehavior {
     #[serde(default)]
     close: bool,
@@ -112,7 +112,7 @@ struct FcpBehavior {
     postpone: bool,
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize)]
 pub struct Team {
     // FIXME(2018-05-16):
     // The two following first fields are not used anymore.
@@ -130,7 +130,7 @@ impl Team {
     }
 }
 
-#[derive(Debug, Eq, Hash, Ord, PartialEq, PartialOrd, Deserialize, Serialize)]
+#[derive(Debug, Eq, Hash, Ord, PartialEq, PartialOrd, Deserialize)]
 #[serde(transparent)]
 pub struct TeamLabel(pub String);
 
