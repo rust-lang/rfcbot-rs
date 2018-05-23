@@ -149,3 +149,14 @@ pub struct PullRequest {
     pub changed_files: i32,
     pub repository: String,
 }
+
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
+pub enum Reaction {
+    Unknown,
+    Upvote,
+    Downvote,
+    Laugh,
+    Hooray,
+    Confused,
+    Heart,
+}
