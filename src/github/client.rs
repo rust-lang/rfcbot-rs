@@ -26,14 +26,6 @@ pub const DELAY: u64 = 300;
 
 type ParameterMap = BTreeMap<&'static str, String>;
 
-macro_rules! params {
-    ($($key: expr => $val: expr),*) => {{
-        let mut map = BTreeMap::<_, _>::new();
-        $(map.insert($key, $val);)*
-        map
-    }};
-}
-
 header! { (TZ, "Time-Zone") => [String] }
 header! { (Accept, "Accept") => [String] }
 header! { (RateLimitRemaining, "X-RateLimit-Remaining") => [u32] }
