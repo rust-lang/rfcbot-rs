@@ -40,6 +40,49 @@ Only the first of these commands will be registered:
 
 Examples are in each section.
 
+### Command grammar
+
+rfcbot accepts roughly the following grammar:
+
+```ebnf
+merge ::= "merge" | "merged" | "merging" | "merges" ;
+close ::= "close" | "closed" | "closing" | "closes" ;
+postpone ::= "postpone" | "postponed" | "postponing" | "postpones" ;
+cancel ::= "cancel | "canceled" | "canceling" | "cancels" ;
+review ::= "reviewed" | "review" | "reviewing" | "reviews" ;
+concern ::= "concern" | "concerned" | "concerning" | "concerns" ;
+resolve ::= "resolve" | "resolved" | "resolving" | "resolves" ;
+
+line_remainder ::= .+$ ;
+ws_separated ::= ... ;
+
+subcommand ::= merge | close | postpone | cancel | review
+             | concern line_remainder
+             | resolve line_remainder
+             ;
+
+invocation ::= "fcp" subcommand
+             | "pr" subcommand
+             | "f?" ws_separated
+             | subcommand
+             ;
+
+grammar ::= "@rfcbot" ":"? invocation ;
+```
+
+Multiple occurrences of `grammar` are allowed in each comment you make on GitHub.
+This means that the following is OK:
+
+```
+@rfcbot merge
+
+Some stuff you want to say...
+
+@rfcbot concern foobar
+
+Explain the concern...
+```
+
 ### Final Comment Period
 
 Before proposing a final comment period on an issue/PR/RFC, please double check to make sure that the correct team label(s) has been applied to the issue. As of 9/17/16, rfcbot recognizes these labels:

@@ -85,10 +85,13 @@ pub fn update_nags(comment: &IssueComment) -> DashResult<()> {
 
     let subteam_members = subteam_members(&issue)?;
 
-    // attempt to parse a command out of the comment
-    if let Ok(command) = RfcBotCommand::from_str(&comment.body) {
+    // Attempt to parse all commands out of the comment
+    let mut any = false;
+    for command in RfcBotCommand::from_str_all(&comment.body) {
+        any = true;
 
-        // don't accept bot commands from non-subteam members
+        // Don't accept bot commands from non-subteam members.
+        // Early return because we'll just get here again...
         if subteam_members.iter().find(|&u| u == &author).is_none() {
             info!("command author ({}) doesn't appear in any relevant subteams",
                   author.login);
@@ -104,8 +107,9 @@ pub fn update_nags(comment: &IssueComment) -> DashResult<()> {
         });
 
         debug!("rfcbot command is processed");
+    }
 
-    } else {
+    if !any {
         ok_or!(resolve_applicable_feedback_requests(&author, &issue, comment),
             why => error!("Unable to resolve feedback requests for comment id {}: {:?}",
                         comment.id, why));
@@ -578,6 +582,32 @@ fn parse_command_text<'a>(command: &'a str, subcommand: &'a str) -> &'a str {
 /// Parses all subcommands under the fcp command.
 /// If `fcp_context` is set to false, `@rfcbot <subcommand>`
 /// was passed and not `@rfcbot fcp <subcommand>`.
+/// 
+/// @rfcbot accepts roughly the following grammar:
+///
+/// merge ::= "merge" | "merged" | "merging" | "merges" ;
+/// close ::= "close" | "closed" | "closing" | "closes" ;
+/// postpone ::= "postpone" | "postponed" | "postponing" | "postpones" ;
+/// cancel ::= "cancel | "canceled" | "canceling" | "cancels" ;
+/// review ::= "reviewed" | "review" | "reviewing" | "reviews" ;
+/// concern ::= "concern" | "concerned" | "concerning" | "concerns" ;
+/// resolve ::= "resolve" | "resolved" | "resolving" | "resolves" ;
+///
+/// line_remainder ::= .+$ ;
+/// ws_separated ::= ... ;
+///
+/// subcommand ::= merge | close | postpone | cancel | review
+///              | concern line_remainder
+///              | resolve line_remainder
+///              ;
+///
+/// invocation ::= "fcp" subcommand
+///              | "pr" subcommand
+///              | "f?" ws_separated
+///              | subcommand
+///              ;
+///
+/// grammar ::= "@rfcbot" ":"? invocation ;
 fn parse_fcp_subcommand<'a>(
     command: &'a str,
     subcommand: &'a str,
@@ -876,20 +906,20 @@ impl<'a> RfcBotCommand<'a> {
         Ok(())
     }
 
-    pub fn from_str(command: &'a str) -> DashResult<RfcBotCommand<'a>> {
-        // get the tokens for the command line (starts with a bot mention)
-        let command = command
-            .lines()
-            .find(|&l| l.starts_with(RFC_BOT_MENTION))
-            .ok_or(DashError::Misc(None))?
-            .trim_left_matches(RFC_BOT_MENTION)
-            .trim_left_matches(':')
-            .trim();
+    pub fn from_str_all(command: &'a str) -> impl Iterator<Item = RfcBotCommand<'a>> {
+        // Get the tokens for each command line (starts with a bot mention)
+        command.lines()
+               .filter(|&l| l.starts_with(RFC_BOT_MENTION))
+               .map(Self::from_invocation_line)
+               .filter_map(Result::ok)
+    }
 
-        let mut tokens = command.split_whitespace();
-
+    fn from_invocation_line(command: &'a str) -> DashResult<RfcBotCommand<'a>> {
+        let mut tokens = command.trim_left_matches(RFC_BOT_MENTION)
+                                .trim_left_matches(':')
+                                .trim()
+                                .split_whitespace();
         let invocation = tokens.next().ok_or(DashError::Misc(None))?;
-
         match invocation {
             "fcp" | "pr" => {
                 let subcommand = tokens.next().ok_or(DashError::Misc(None))?;
@@ -913,6 +943,7 @@ impl<'a> RfcBotCommand<'a> {
             _ => parse_fcp_subcommand(command, invocation, false),
         }
     }
+
 }
 
 struct RfcBotComment<'a> {
@@ -1120,6 +1151,34 @@ impl<'a> RfcBotComment<'a> {
 mod test {
     use super::*;
 
+    #[test]
+    fn multiple_commands() {
+let text = r#"
+someothertext
+@rfcbot: resolved CONCERN_NAME
+somemoretext
+
+somemoretext
+
+@rfcbot: fcp cancel
+foobar
+@rfcbot concern foobar
+"#;
+
+        let cmd = RfcBotCommand::from_str_all(text).collect::<Vec<_>>();
+        assert_eq!(cmd, vec![
+            RfcBotCommand::ResolveConcern("CONCERN_NAME"),
+            RfcBotCommand::FcpCancel,
+            RfcBotCommand::NewConcern("foobar"),
+        ]);
+    }
+
+    fn ensure_take_singleton<I: Iterator>(mut iter: I) -> I::Item {
+        let singleton = iter.next().unwrap();
+        assert!(iter.next().is_none());
+        singleton
+    }
+
     macro_rules! justification {
         () => { "\n\nSome justification here." };
     }
@@ -1148,8 +1207,11 @@ somemoretext")
                     let body = concat!("@rfcbot: ", $cmd);
                     let body_no_colon = concat!("@rfcbot ", $cmd);
 
-                    let with_colon = RfcBotCommand::from_str(body).unwrap();
-                    let without_colon = RfcBotCommand::from_str(body_no_colon).unwrap();
+                    let with_colon =
+                        ensure_take_singleton(RfcBotCommand::from_str_all(body));
+
+                    let without_colon =
+                        ensure_take_singleton(RfcBotCommand::from_str_all(body_no_colon));
 
                     assert_eq!(with_colon, without_colon);
                     assert_eq!(with_colon, expected);
@@ -1220,8 +1282,9 @@ somemoretext
 
 somemoretext";
 
-        let with_colon = RfcBotCommand::from_str(body).unwrap();
-        let without_colon = RfcBotCommand::from_str(body_no_colon).unwrap();
+        let with_colon = ensure_take_singleton(RfcBotCommand::from_str_all(body));
+        let without_colon =
+            ensure_take_singleton(RfcBotCommand::from_str_all(body_no_colon));
 
         assert_eq!(with_colon, without_colon);
         assert_eq!(with_colon, RfcBotCommand::ResolveConcern("CONCERN_NAME"));

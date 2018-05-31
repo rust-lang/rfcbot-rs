@@ -30,6 +30,8 @@ extern crate serde_json;
 extern crate toml;
 extern crate url;
 extern crate urlencoded;
+#[macro_use]
+extern crate maplit;
 
 #[macro_use]
 mod macros;

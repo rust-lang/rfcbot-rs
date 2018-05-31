@@ -26,14 +26,6 @@ pub const DELAY: u64 = 300;
 
 type ParameterMap = BTreeMap<&'static str, String>;
 
-macro_rules! params {
-    ($($key: expr => $val: expr),*) => {{
-        let mut map = BTreeMap::<_, _>::new();
-        $(map.insert($key, $val);)*
-        map
-    }};
-}
-
 header! { (TZ, "Time-Zone") => [String] }
 header! { (Accept, "Accept") => [String] }
 header! { (RateLimitRemaining, "X-RateLimit-Remaining") => [u32] }
@@ -94,7 +86,7 @@ impl Client {
 
     pub fn issues_since(&self, repo: &str, start: DateTime<Utc>) -> DashResult<Vec<IssueFromJson>> {
         self.get_models(&format!("{}/repos/{}/issues", BASE_URL, repo),
-            Some(&params! {
+            Some(&btreemap! {
                 "state" => "all".to_string(),
                 "since" => format!("{:?}", start),
                 "per_page" => format!("{}", PER_PAGE),
@@ -107,7 +99,7 @@ impl Client {
                           start: DateTime<Utc>)
                           -> DashResult<Vec<CommentFromJson>> {
         self.get_models(&format!("{}/repos/{}/issues/comments", BASE_URL, repo),
-            Some(&params! {
+            Some(&btreemap! {
                 "sort" => "created".to_string(),
                 "direction" => "asc".to_string(),
                 "since" => format!("{:?}", start),
@@ -164,7 +156,7 @@ impl Client {
 
     pub fn close_issue(&self, repo: &str, issue_num: i32) -> DashResult<()> {
         let url = format!("{}/repos/{}/issues/{}", BASE_URL, repo, issue_num);
-        let payload = serde_json::to_string(&params!("state" => "closed"))?;
+        let payload = serde_json::to_string(&btreemap!("state" => "closed"))?;
         let mut res = self.patch(&url, &payload)?;
 
         if StatusCode::Ok != res.status {
@@ -208,9 +200,7 @@ impl Client {
                        text: &str)
                        -> DashResult<CommentFromJson> {
         let url = format!("{}/repos/{}/issues/{}/comments", BASE_URL, repo, issue_num);
-
-        let payload = serde_json::to_string(&params!("body" => text))?;
-
+        let payload = serde_json::to_string(&btreemap!("body" => text))?;
         // FIXME propagate an error if it's a 404 or other error
         self.deserialize(&mut self.post(&url, &payload)?)
     }
@@ -225,7 +215,7 @@ impl Client {
                           repo,
                           comment_num);
 
-        let payload = serde_json::to_string(&params!("body" => text))?;
+        let payload = serde_json::to_string(&btreemap!("body" => text))?;
 
         // FIXME propagate an error if it's a 404 or other error
         self.deserialize(&mut self.patch(&url, &payload)?)

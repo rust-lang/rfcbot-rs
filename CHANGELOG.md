@@ -8,3 +8,5 @@ rfcbot behaves so that the people who develop rfcbot or interact with it can
 understand the bot better.
 
 ## Changes
+
++ rfcbot now accepts multiple invocations / commands per comment you post.
