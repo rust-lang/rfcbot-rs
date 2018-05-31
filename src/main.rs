@@ -36,6 +36,9 @@ extern crate maplit;
 #[macro_use]
 mod macros;
 
+#[macro_use]
+mod macros;
+
 mod config;
 mod domain;
 mod error;

@@ -26,6 +26,14 @@ pub const DELAY: u64 = 300;
 
 type ParameterMap = BTreeMap<&'static str, String>;
 
+macro_rules! params {
+    ($($key: expr => $val: expr),*) => {{
+        let mut map = BTreeMap::<_, _>::new();
+        $(map.insert($key, $val);)*
+        map
+    }};
+}
+
 header! { (TZ, "Time-Zone") => [String] }
 header! { (Accept, "Accept") => [String] }
 header! { (RateLimitRemaining, "X-RateLimit-Remaining") => [u32] }
@@ -200,9 +208,7 @@ impl Client {
                        text: &str)
                        -> DashResult<CommentFromJson> {
         let url = format!("{}/repos/{}/issues/{}/comments", BASE_URL, repo, issue_num);
-
         let payload = serde_json::to_string(&btreemap!("body" => text))?;
-
         // FIXME propagate an error if it's a 404 or other error
         self.deserialize(&mut self.post(&url, &payload)?)
     }
