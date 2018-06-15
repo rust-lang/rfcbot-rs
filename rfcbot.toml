@@ -61,13 +61,14 @@ members = [
   "eddyb",
   "estebank",
   "michaelwoerister",
+  "nagisa",
   "nikomatsakis",
   "nrc",
+  "oli-obk",
   "petrochenkov",
   "pnkfelix",
+  "varkor",
   "Zoxc",
-  "nagisa",
-  "oli-obk",
 ]
 
 [teams.T-doc]
