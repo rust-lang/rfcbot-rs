@@ -25,6 +25,7 @@ toml = "0.4"
 url = "1.4"
 urlencoded = "0.5"
 maplit = "1.0.1"
+itertools = "0.7.8"
 
 [dependencies.chrono]
 features = ["serde"]
