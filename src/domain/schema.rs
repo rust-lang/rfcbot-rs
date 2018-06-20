@@ -129,6 +129,29 @@ table! {
     }
 }
 
+table! {
+    poll (id) {
+        id -> Int4,
+        fk_issue -> Int4,
+        fk_initiator -> Int4,
+        fk_initiating_comment -> Int4,
+        fk_bot_tracking_comment -> Int4,
+        poll_question -> Varchar,
+        poll_created_at -> Timestamp,
+        poll_closed -> Bool,
+        poll_teams -> Varchar,
+    }
+}
+
+table! {
+    poll_review_request (id) {
+        id -> Int4,
+        fk_poll -> Int4,
+        fk_reviewer -> Int4,
+        reviewed -> Bool,
+    }
+}
+
 joinable!(fcp_concern -> githubuser (fk_initiator));
 joinable!(fcp_concern -> fcp_proposal (fk_proposal));
 joinable!(fcp_proposal -> githubuser (fk_initiator));
@@ -143,3 +166,7 @@ joinable!(pullrequest -> githubuser (fk_assignee));
 joinable!(pullrequest -> milestone (fk_milestone));
 joinable!(rfc_feedback_request -> issuecomment (fk_feedback_comment));
 joinable!(rfc_feedback_request -> issue (fk_issue));
+joinable!(poll -> githubuser (fk_initiator));
+joinable!(poll -> issue (fk_issue));
+joinable!(poll_review_request -> poll (fk_poll));
+joinable!(poll_review_request -> githubuser (fk_reviewer));
