@@ -55,17 +55,16 @@ pub struct FcpBehavior {
 
 #[derive(Debug, Deserialize)]
 pub struct Team {
-    // FIXME(2018-05-16):
-    // The two following first fields are not used anymore.
-    // But they could still be useful. Consider what usage they could have.
-
-    //name: String,
-    //ping: String,
-
+    name: String,
+    ping: String,
     members: Vec<String>,
 }
 
 impl Team {
+    pub fn ping(&self) -> &str {
+        &self.ping
+    }
+
     pub fn member_logins(&self) -> impl Iterator<Item = &str> {
         self.members.iter().map(|s| s.as_str())
     }
@@ -126,12 +125,12 @@ impl Team {
 //==============================================================================
 
 #[cfg(test)]
-mod test {
+pub mod test {
     use super::*;
 
-    #[test]
-    fn setup_parser_correct() {
-let test = r#"
+    lazy_static! {
+        pub static ref TEST_SETUP: RfcbotConfig =
+            read_rfcbot_cfg_from(r#"
 [fcp_behaviors]
 
 [fcp_behaviors."rust-lang/alpha"]
@@ -148,7 +147,7 @@ postpone = false
 
 [teams]
 
-[teams.avengers]
+[teams.T-avengers]
 name = "The Avengers"
 ping = "marvel/avengers"
 members = [
@@ -170,18 +169,22 @@ members = [
   "batman",
   "theflash"
 ]
-"#;
-        let cfg = read_rfcbot_cfg_from(test);
+"#);
+    }
+
+    #[test]
+    fn setup_parser_correct() {
+        let cfg = &*TEST_SETUP;
 
         // Labels are correct:
         assert_eq!(cfg.team_labels().map(|tl| tl.0.clone()).collect::<Vec<_>>(),
-                   vec!["avengers", "justice-league"]);
+                   vec!["T-avengers", "justice-league"]);
 
         // Teams are correct:
         let map: BTreeMap<_, _> =
             cfg.teams().map(|(k, v)| (k.0.clone(), v.clone())).collect();
 
-        let avengers = map.get("avengers").unwrap();
+        let avengers = map.get("T-avengers").unwrap();
         //assert_eq!(avengers.name, "The Avengers");
         //assert_eq!(avengers.ping, "marvel/avengers");
         assert_eq!(avengers.member_logins().collect::<Vec<_>>(),
