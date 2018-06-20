@@ -17,6 +17,7 @@ pub struct NewFcpProposal<'a> {
 #[derive(AsChangeset, Clone, Debug, Deserialize, Eq, Ord,
          PartialEq, PartialOrd, Queryable, Serialize)]
 #[table_name="fcp_proposal"]
+#[changeset_options(treat_none_as_null="true")]
 pub struct FcpProposal {
     pub id: i32,
     pub fk_issue: i32,
