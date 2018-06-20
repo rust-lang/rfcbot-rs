@@ -32,6 +32,7 @@ extern crate url;
 extern crate urlencoded;
 #[macro_use]
 extern crate maplit;
+extern crate itertools;
 
 #[macro_use]
 mod macros;
