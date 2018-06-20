@@ -5,7 +5,7 @@ CREATE TABLE poll (
     fk_initiating_comment INTEGER NOT NULL REFERENCES issuecomment (id),
     fk_bot_tracking_comment INTEGER NOT NULL REFERENCES issuecomment (id),
     poll_question VARCHAR NOT NULL,
-    poll_created_at TIMESTAMP, NOT NULL,
+    poll_created_at TIMESTAMP NOT NULL,
     poll_closed BOOLEAN NOT NULL,
     poll_teams VARCHAR NOT NULL
 );
