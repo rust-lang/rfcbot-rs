@@ -52,6 +52,17 @@ cancel ::= "cancel | "canceled" | "canceling" | "cancels" ;
 review ::= "reviewed" | "review" | "reviewing" | "reviews" ;
 concern ::= "concern" | "concerned" | "concerning" | "concerns" ;
 resolve ::= "resolve" | "resolved" | "resolving" | "resolves" ;
+poll ::= "ask" | "asked" | "asking" | "asks" |
+         "poll" | "polled" | "polling" | "polls" |
+         "query" | "queried" | "querying" | "queries" |
+         "inquire" | "inquired" | "inquiring" | "inquires" |
+         "quiz" | "quized" | "quizing" | "quizzes" |
+         "survey" | "surveyed" | "surveying" | "surveys" ;
+
+team_label ::= "T-lang" | .. ;
+team_label_simple ::= "lang" | .. ;
+team_ping ::= "@"? "rust-lang/lang" | ..;
+team_target ::= team_label | team_label_simple | team_ping ;
 
 line_remainder ::= .+$ ;
 ws_separated ::= ... ;
@@ -59,6 +70,7 @@ ws_separated ::= ... ;
 subcommand ::= merge | close | postpone | cancel | review
              | concern line_remainder
              | resolve line_remainder
+             | poll [team_target]* line_remainder
              ;
 
 invocation ::= "fcp" subcommand
