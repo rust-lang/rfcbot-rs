@@ -12,8 +12,8 @@ CREATE TABLE poll (
 
 CREATE TABLE poll_review_request (
     id SERIAL PRIMARY KEY,
-    fk_poll INTEGER NOT NULL REFERENCES fcp_proposal (id) ON DELETE CASCADE,
+    fk_poll INTEGER NOT NULL REFERENCES poll (id) ON DELETE CASCADE,
     fk_reviewer INTEGER NOT NULL REFERENCES githubuser (id),
     reviewed BOOLEAN NOT NULL,
-    UNIQUE (fk_proposal, fk_reviewer)
+    UNIQUE (fcp_poll, fk_reviewer)
 );
