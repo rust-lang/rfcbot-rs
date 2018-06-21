@@ -75,28 +75,23 @@ pub fn individual_nags(username: &str) -> DashResult<(GitHubUser, Vec<Individual
         .first::<GitHubUser>(conn)?;
 
     let review_requests = fcp_review_request::table
+        .inner_join(fcp_proposal::table)
+            .filter(fcp_proposal::fcp_start.is_null())
         .filter(fcp_review_request::fk_reviewer.eq(user.id))
         .filter(fcp_review_request::reviewed.eq(false))
-        .load::<FcpReviewRequest>(conn)?;
+        .load::<(FcpReviewRequest, FcpProposal)>(conn)?;
 
     let mut fcps = Vec::new();
-
-    for rr in review_requests {
-        let proposal = fcp_proposal::table
-            .filter(fcp_proposal::id.eq(rr.fk_proposal))
-            .first::<FcpProposal>(conn)?;
-
+    for (rr, proposal) in review_requests {
         let issue = issue::table
             .filter(issue::id.eq(proposal.fk_issue))
             .first::<Issue>(conn)?;
 
-        let fcp = IndividualFcp {
+        fcps.push(IndividualFcp {
             issue: issue,
             proposal: proposal,
             review_request: rr,
-        };
-
-        fcps.push(fcp);
+        });
     }
 
     Ok((user, fcps))
