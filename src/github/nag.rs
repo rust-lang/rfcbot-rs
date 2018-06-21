@@ -213,7 +213,7 @@ fn evaluate_polls() -> DashResult<()> {
         throw!(why)
     });
 
-    for survey in pending {
+    for mut survey in pending {
         let initiator = githubuser::table.find(survey.fk_initiator)
                              .first::<GitHubUser>(conn);
         let initiator = ok_or_continue!(initiator, why =>
@@ -224,7 +224,7 @@ fn evaluate_polls() -> DashResult<()> {
         let issue = ok_or_continue!(issue, why =>
             error!("Unable to retrieve issue for poll {}: {:?}",
                     survey.id, why));
-    
+
         // check to see if any checkboxes were modified before we end up replacing the comment
         ok_or_continue!(update_poll_review_status(survey.id), why =>
             error!("Unable to update review status for poll {}: {:?}",
@@ -234,6 +234,15 @@ fn evaluate_polls() -> DashResult<()> {
         let reviews = ok_or_continue!(list_poll_review_requests(survey.id), why =>
             error!("Unable to retrieve review requests for survey {}: {:?}",
                     survey.id, why));
+
+        // If everyone has answered the poll, close it:
+        if reviews.iter().all(|(_, review)| review.reviewed) {
+            survey.poll_closed = true;
+            let update = diesel::update(poll.find(survey.id))
+                                .set(&survey).execute(conn);
+            ok_or_continue!(update, why =>
+                error!("Unable to close poll {}: {:?}", survey.id, why));
+        }
 
         // update existing status comment with reviews & concerns
         let status_comment = RfcBotComment::new(&issue, CommentType::QuestionAsked {
@@ -722,7 +731,7 @@ fn process_poll
     };
     let members = specific_subteam_members(|l| teams.contains(&**l))?;
 
-    info!("adding a new question to issue.");
+    info!("adding a new poll to issue.");
 
     // leave github comment stating that question is asked, ping reviewers
     let gh_comment = post_insert_comment(issue, CommentType::QuestionAsked {
