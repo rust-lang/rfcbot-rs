@@ -143,3 +143,19 @@ joinable!(pullrequest -> githubuser (fk_assignee));
 joinable!(pullrequest -> milestone (fk_milestone));
 joinable!(rfc_feedback_request -> issuecomment (fk_feedback_comment));
 joinable!(rfc_feedback_request -> issue (fk_issue));
+
+
+allow_tables_to_appear_in_same_query!(fcp_concern, githubuser);
+allow_tables_to_appear_in_same_query!(fcp_concern, fcp_proposal);
+allow_tables_to_appear_in_same_query!(fcp_proposal, githubuser);
+allow_tables_to_appear_in_same_query!(fcp_proposal, issue);
+allow_tables_to_appear_in_same_query!(fcp_review_request, fcp_proposal);
+allow_tables_to_appear_in_same_query!(fcp_review_request, githubuser);
+allow_tables_to_appear_in_same_query!(issue, milestone);
+allow_tables_to_appear_in_same_query!(issuecomment, issue);
+allow_tables_to_appear_in_same_query!(issuecomment, githubuser);
+allow_tables_to_appear_in_same_query!(milestone, githubuser);
+allow_tables_to_appear_in_same_query!(pullrequest, githubuser);
+allow_tables_to_appear_in_same_query!(pullrequest, milestone);
+allow_tables_to_appear_in_same_query!(rfc_feedback_request, issuecomment);
+allow_tables_to_appear_in_same_query!(rfc_feedback_request, issue);

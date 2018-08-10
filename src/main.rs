@@ -1,14 +1,13 @@
 #![feature(never_type)]
 
 #![feature(plugin)]
+#![feature(never_type)]
 #![plugin(rocket_codegen)]
 
 extern crate chrono;
 extern crate crypto;
 #[macro_use]
 extern crate diesel;
-#[macro_use]
-extern crate diesel_codegen;
 extern crate dotenv;
 extern crate env_logger;
 extern crate handlebars;
@@ -95,12 +94,12 @@ lazy_static! {
     pub static ref DB_POOL: Pool<ConnectionManager<PgConnection>> = {
         info!("Initializing database connection pool.");
 
-        let config = r2d2::Config::builder()
-                         .pool_size(CONFIG.db_pool_size)
-                         .build();
-
         let manager = ConnectionManager::<PgConnection>::new(CONFIG.db_url.clone());
-        match Pool::new(config, manager) {
+
+        match r2d2::Pool::builder()
+            .max_size(CONFIG.db_pool_size)
+            .build(manager)
+        {
             Ok(p) => {
                 info!("DB connection pool established.");
                 p

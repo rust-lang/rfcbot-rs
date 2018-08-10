@@ -582,7 +582,7 @@ fn parse_command_text<'a>(command: &'a str, subcommand: &'a str) -> &'a str {
 /// Parses all subcommands under the fcp command.
 /// If `fcp_context` is set to false, `@rfcbot <subcommand>`
 /// was passed and not `@rfcbot fcp <subcommand>`.
-/// 
+///
 /// @rfcbot accepts roughly the following grammar:
 ///
 /// merge ::= "merge" | "merged" | "merging" | "merges" ;
@@ -700,9 +700,9 @@ impl<'a> RfcBotCommand<'a> {
                     // we need to insert it
                     let gh_comment = gh_comment.with_repo(&issue.repository)?;
                     if let Err(why) =
-                        diesel::insert(&gh_comment)
-                              .into(issuecomment::table)
-                              .execute(conn) 
+                        diesel::insert_into(issuecomment::table)
+                            .values(&gh_comment)
+                            .execute(conn)
                     {
                         warn!("issue inserting new record, maybe received webhook for it: {:?}",
                                 why);
@@ -718,8 +718,8 @@ impl<'a> RfcBotCommand<'a> {
                         fcp_closed: false,
                     };
 
-                    let proposal = diesel::insert(&proposal)
-                        .into(fcp_proposal)
+                    let proposal = diesel::insert_into(fcp_proposal)
+                        .values(&proposal)
                         .get_result::<FcpProposal>(conn)?;
 
                     debug!("proposal inserted into the database");
@@ -738,8 +738,8 @@ impl<'a> RfcBotCommand<'a> {
                              })
                         .collect::<Vec<_>>();
 
-                    diesel::insert(&review_requests)
-                        .into(fcp_review_request::table)
+                    diesel::insert_into(fcp_review_request::table)
+                        .values(&review_requests)
                         .execute(conn)?;
 
                     // they're in the database, but now we need them paired with githubuser
@@ -814,10 +814,10 @@ impl<'a> RfcBotCommand<'a> {
                             fk_initiating_comment: comment.id,
                         };
 
-                        diesel::insert(&new_concern)
-                            .into(fcp_concern)
+                        diesel::insert_into(fcp_concern)
+                            .values(&new_concern)
                             .execute(conn)?;
-            
+
                         // Take us out of FCP and back into PFCP if need be:
                         if proposal.fcp_start.is_some() {
                             // Update DB: FCP is not started anymore.
@@ -896,8 +896,8 @@ impl<'a> RfcBotCommand<'a> {
                         fk_feedback_comment: None,
                     };
 
-                    diesel::insert(&new_request)
-                        .into(rfc_feedback_request)
+                    diesel::insert_into(rfc_feedback_request)
+                        .values(&new_request)
                         .execute(conn)?;
                 }
             }
@@ -1128,7 +1128,7 @@ impl<'a> RfcBotComment<'a> {
                 if let Some(comment_id) = existing_comment {
                     self.maybe_add_pfcp_label();
                     GH.edit_comment(&self.issue.repository, comment_id, &self.body)
-                } else { 
+                } else {
                     GH.new_comment(&self.issue.repository, self.issue.number, &self.body)
                 }
             } else {
