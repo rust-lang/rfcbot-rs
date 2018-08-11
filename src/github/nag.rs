@@ -756,19 +756,19 @@ fn process_poll
 
     debug!("poll inserted into the database");
 
-    // generate review requests for all relevant subteam members
+    // generate response requests for all relevant subteam members
 
-    let review_requests = members
+    let response_requests = members
         .iter()
         .map(|member| NewPollResponseRequest {
             fk_poll: new_poll.id,
             fk_respondent: member.id,
-            // let's assume the initiator has reviewed it
+            // let's assume the initiator has answered it
             responded: member.id == author.id,
         })
         .collect::<Vec<_>>();
 
-    diesel::insert(&review_requests)
+    diesel::insert(&response_requests)
         .into(poll_response_request::table)
         .execute(conn)?;
 
