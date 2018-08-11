@@ -56,7 +56,7 @@ poll ::= "ask" | "asked" | "asking" | "asks" |
          "poll" | "polled" | "polling" | "polls" |
          "query" | "queried" | "querying" | "queries" |
          "inquire" | "inquired" | "inquiring" | "inquires" |
-         "quiz" | "quized" | "quizing" | "quizzes" |
+         "quiz" | "quizzed" | "quizzing" | "quizzes" |
          "survey" | "surveyed" | "surveying" | "surveys" ;
 
 team_label ::= "T-lang" | .. ;

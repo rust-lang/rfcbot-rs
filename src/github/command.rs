@@ -144,7 +144,7 @@ fn match_team_candidate(team_candidate: &str) -> Option<&'static TeamLabel> {
 ///          "poll" | "polled" | "polling" | "polls" |
 ///          "query" | "queried" | "querying" | "queries" |
 ///          "inquire" | "inquired" | "inquiring" | "inquires" |
-///          "quiz" | "quized" | "quizing" | "quizzes" |
+///          "quiz" | "quizzed" | "quizzing" | "quizzes" |
 ///          "survey" | "surveyed" | "surveying" | "surveys" ;
 ///
 /// team_label ::= "T-lang" | .. ;
@@ -211,7 +211,7 @@ fn parse_fcp_subcommand<'a>(
         "poll" | "polled" | "polling" | "polls" |
         "query" | "queried" | "querying" | "queries" |
         "inquire" | "inquired" | "inquiring" | "inquires" |
-        "quiz" | "quized" | "quizing" | "quizzes" |
+        "quiz" | "quizzed" | "quizzing" | "quizzes" |
         "survey" | "surveyed" | "surveying" | "surveys" => {
             debug!("Parsed command as AskQuestion");
 
@@ -395,19 +395,19 @@ somemoretext")
          "poll", "polled", "polling", "polls",
          "query", "queried", "querying", "queries",
          "inquire", "inquired", "inquiring", "inquires",
-         "quiz", "quized", "quizing", "quizzes",
+         "quiz", "quizzed", "quizzing", "quizzes",
          "survey", "surveyed", "surveying", "surveys",
          "fcp ask", "fcp asked", "fcp asking", "fcp asks",
          "fcp poll", "fcp polled", "fcp polling", "fcp polls",
          "fcp query", "fcp queried", "fcp querying", "fcp queries",
          "fcp inquire", "fcp inquired", "fcp inquiring", "fcp inquires",
-         "fcp quiz", "fcp quized", "fcp quizing", "fcp quizzes",
+         "fcp quiz", "fcp quizzed", "fcp quizzing", "fcp quizzes",
          "fcp survey", "fcp surveyed", "fcp surveying", "fcp surveys",
          "pr ask", "pr asked", "pr asking", "pr asks",
          "pr poll", "pr polled", "pr polling", "pr polls",
          "pr query", "pr queried", "pr querying", "pr queries",
          "pr inquire", "pr inquired", "pr inquiring", "pr inquires",
-         "pr quiz", "pr quized", "pr quizing", "pr quizzes",
+         "pr quiz", "pr quizzed", "pr quizzing", "pr quizzes",
          "pr survey", "pr surveyed", "pr surveying", "pr surveys"],
         some_text!("avengers T-justice-league TO BE OR NOT TO BE?"),
         RfcBotCommand::AskQuestion {
