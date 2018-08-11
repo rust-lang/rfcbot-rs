@@ -43,21 +43,21 @@ pub struct NewFcpProposal<'a> {
 }
 
 #[derive(Clone, Debug, Eq, Insertable, Ord, PartialEq, PartialOrd, Serialize)]
-#[table_name="poll_review_request"]
-pub struct NewPollReviewRequest {
+#[table_name="poll_response_request"]
+pub struct NewPollResponseRequest {
     pub fk_poll: i32,
-    pub fk_reviewer: i32,
-    pub reviewed: bool,
+    pub fk_respondent: i32,
+    pub responded: bool,
 }
 
 #[derive(AsChangeset, Clone, Debug, Deserialize, Eq, Ord,
          PartialEq, PartialOrd, Queryable, Serialize)]
-#[table_name="poll_review_request"]
-pub struct PollReviewRequest {
+#[table_name="poll_response_request"]
+pub struct PollResponseRequest {
     pub id: i32,
     pub fk_poll: i32,
-    pub fk_reviewer: i32,
-    pub reviewed: bool,
+    pub fk_respondent: i32,
+    pub responded: bool,
 }
 
 #[derive(AsChangeset, Clone, Debug, Deserialize, Eq, Ord,

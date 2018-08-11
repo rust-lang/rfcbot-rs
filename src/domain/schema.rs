@@ -144,11 +144,11 @@ table! {
 }
 
 table! {
-    poll_review_request (id) {
+    poll_response_request (id) {
         id -> Int4,
         fk_poll -> Int4,
-        fk_reviewer -> Int4,
-        reviewed -> Bool,
+        fk_respondent -> Int4,
+        responded -> Bool,
     }
 }
 
@@ -168,5 +168,5 @@ joinable!(rfc_feedback_request -> issuecomment (fk_feedback_comment));
 joinable!(rfc_feedback_request -> issue (fk_issue));
 joinable!(poll -> githubuser (fk_initiator));
 joinable!(poll -> issue (fk_issue));
-joinable!(poll_review_request -> poll (fk_poll));
-joinable!(poll_review_request -> githubuser (fk_reviewer));
+joinable!(poll_response_request -> poll (fk_poll));
+joinable!(poll_response_request -> githubuser (fk_respondent));

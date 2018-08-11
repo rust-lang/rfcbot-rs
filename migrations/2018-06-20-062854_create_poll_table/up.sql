@@ -10,10 +10,10 @@ CREATE TABLE poll (
     poll_teams VARCHAR NOT NULL
 );
 
-CREATE TABLE poll_review_request (
+CREATE TABLE poll_response_request (
     id SERIAL PRIMARY KEY,
     fk_poll INTEGER NOT NULL REFERENCES poll (id) ON DELETE CASCADE,
-    fk_reviewer INTEGER NOT NULL REFERENCES githubuser (id),
-    reviewed BOOLEAN NOT NULL,
-    UNIQUE (fk_poll, fk_reviewer)
+    fk_respondent INTEGER NOT NULL REFERENCES githubuser (id),
+    responded BOOLEAN NOT NULL,
+    UNIQUE (fk_poll, fk_respondent)
 );

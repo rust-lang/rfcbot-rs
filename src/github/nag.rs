@@ -11,7 +11,7 @@ use DB_POOL;
 use domain::github::{GitHubUser, Issue, IssueComment};
 use domain::rfcbot::{FcpConcern, FcpProposal, FcpReviewRequest, FeedbackRequest, NewFcpProposal,
                      NewFcpConcern, NewFcpReviewRequest, NewFeedbackRequest,
-                     NewPoll, Poll, NewPollReviewRequest, PollReviewRequest};
+                     NewPoll, Poll, NewPollResponseRequest, PollResponseRequest};
 use domain::schema::*;
 use error::*;
 use github::models::CommentFromJson;
@@ -130,11 +130,11 @@ fn update_proposal_review_status(proposal_id: i32) -> DashResult<()> {
     Ok(())
 }
 
-fn update_poll_review_status(poll_id: i32) -> DashResult<()> {
+fn update_poll_response_status(poll_id: i32) -> DashResult<()> {
     let conn = &*DB_POOL.get()?;
     // this is an updated comment from the bot itself
 
-    // parse out each "reviewed" status for each user, then update them
+    // parse out each "responded" status for each user, then update them
 
     let survey: Poll = poll::table.find(poll_id).first(conn)?;
 
@@ -147,21 +147,21 @@ fn update_poll_review_status(poll_id: i32) -> DashResult<()> {
         .find(survey.fk_bot_tracking_comment)
         .first(conn)?;
 
-    // parse the status comment and mark any new reviews as reviewed
+    // parse the status comment and mark any new responses as responded
     for username in parse_ticky_boxes("poll", survey.id, &comment) {
         let user: GitHubUser = githubuser::table
             .filter(githubuser::login.eq(username))
             .first(conn)?;
 
         {
-            use domain::schema::poll_review_request::dsl::*;
-            let mut review_request: PollReviewRequest = poll_review_request
+            use domain::schema::poll_response_request::dsl::*;
+            let mut review_request: PollResponseRequest = poll_response_request
                 .filter(fk_poll.eq(survey.id))
-                .filter(fk_reviewer.eq(user.id))
+                .filter(fk_respondent.eq(user.id))
                 .first(conn)?;
 
-            review_request.reviewed = true;
-            diesel::update(poll_review_request.find(review_request.id))
+            review_request.responded = true;
+            diesel::update(poll_response_request.find(review_request.id))
                 .set(&review_request)
                 .execute(conn)?;
         }
@@ -206,7 +206,7 @@ fn evaluate_polls() -> DashResult<()> {
     use domain::schema::issuecomment::dsl::id as issuecomment_id;
     let conn = &*DB_POOL.get()?;
 
-    // first process all "pending" polls (unreviewed)
+    // first process all "pending" polls (unresponded)
     let pending = poll.filter(poll_closed.eq(false)).load::<Poll>(conn);
     let pending = ok_or!(pending, why => {
         error!("Unable to retrieve list of pending polls: {:?}", why);
@@ -226,17 +226,17 @@ fn evaluate_polls() -> DashResult<()> {
                     survey.id, why));
 
         // check to see if any checkboxes were modified before we end up replacing the comment
-        ok_or_continue!(update_poll_review_status(survey.id), why =>
-            error!("Unable to update review status for poll {}: {:?}",
+        ok_or_continue!(update_poll_response_status(survey.id), why =>
+            error!("Unable to update response status for poll {}: {:?}",
                     survey.id, why));
 
-        // get associated reviews
-        let reviews = ok_or_continue!(list_poll_review_requests(survey.id), why =>
-            error!("Unable to retrieve review requests for survey {}: {:?}",
+        // get associated responses
+        let responses = ok_or_continue!(list_poll_response_requests(survey.id), why =>
+            error!("Unable to retrieve response requests for survey {}: {:?}",
                     survey.id, why));
 
         // If everyone has answered the poll, close it:
-        if reviews.iter().all(|(_, review)| review.reviewed) {
+        if responses.iter().all(|(_, response)| response.responded) {
             survey.poll_closed = true;
             let update = diesel::update(poll.find(survey.id))
                                 .set(&survey).execute(conn);
@@ -244,10 +244,10 @@ fn evaluate_polls() -> DashResult<()> {
                 error!("Unable to close poll {}: {:?}", survey.id, why));
         }
 
-        // update existing status comment with reviews & concerns
+        // update existing status comment with responses & concerns
         let status_comment = RfcBotComment::new(&issue, CommentType::QuestionAsked {
             initiator: &initiator,
-            reviewers: &reviews,
+            respondents: &responses,
             question: &survey.poll_question,
             teams: survey.poll_teams.split(",").collect(),
         });
@@ -522,22 +522,22 @@ fn list_review_requests(proposal_id: i32) -> DashResult<Vec<(GitHubUser, FcpRevi
     Ok(w_reviewers)
 }
 
-fn list_poll_review_requests(poll_id: i32)
-    -> DashResult<Vec<(GitHubUser, PollReviewRequest)>>
+fn list_poll_response_requests(poll_id: i32)
+    -> DashResult<Vec<(GitHubUser, PollResponseRequest)>>
 {
-    use domain::schema::{poll_review_request, githubuser};
+    use domain::schema::{poll_response_request, githubuser};
 
     let conn = &*DB_POOL.get()?;
 
-    let reviews = poll_review_request::table
-        .filter(poll_review_request::fk_poll.eq(poll_id))
-        .load::<PollReviewRequest>(conn)?;
+    let reviews = poll_response_request::table
+        .filter(poll_response_request::fk_poll.eq(poll_id))
+        .load::<PollResponseRequest>(conn)?;
 
     let mut w_reviewers = Vec::with_capacity(reviews.len());
 
     for review in reviews {
         let initiator = githubuser::table
-            .filter(githubuser::id.eq(review.fk_reviewer))
+            .filter(githubuser::id.eq(review.fk_respondent))
             .first::<GitHubUser>(conn)?;
 
         w_reviewers.push((initiator, review));
@@ -718,7 +718,7 @@ fn process_poll
     -> DashResult<()>
 {
     use domain::schema::poll::dsl::*;
-    use domain::schema::poll_review_request;
+    use domain::schema::poll_response_request;
     let conn = &*DB_POOL.get()?;
 
     let teams = if teams.is_empty() {
@@ -733,12 +733,12 @@ fn process_poll
 
     info!("adding a new poll to issue.");
 
-    // leave github comment stating that question is asked, ping reviewers
+    // leave github comment stating that question is asked, ping respondents
     let gh_comment = post_insert_comment(issue, CommentType::QuestionAsked {
         initiator: author,
         teams: teams.clone(),
         question,
-        reviewers: &[],
+        respondents: &[],
     })?;
 
     let teams_str = teams.iter().cloned().intersperse(",").collect::<String>();
@@ -760,23 +760,23 @@ fn process_poll
 
     let review_requests = members
         .iter()
-        .map(|member| NewPollReviewRequest {
+        .map(|member| NewPollResponseRequest {
             fk_poll: new_poll.id,
-            fk_reviewer: member.id,
+            fk_respondent: member.id,
             // let's assume the initiator has reviewed it
-            reviewed: member.id == author.id,
+            responded: member.id == author.id,
         })
         .collect::<Vec<_>>();
 
     diesel::insert(&review_requests)
-        .into(poll_review_request::table)
+        .into(poll_response_request::table)
         .execute(conn)?;
 
     // they're in the database, but now we need them paired with githubuser
 
-    let review_requests = list_poll_review_requests(new_poll.id)?;
+    let response_requests = list_poll_response_requests(new_poll.id)?;
 
-    debug!("poll review requests inserted into the database");
+    debug!("poll response requests inserted into the database");
 
     // we have all of the review requests, generate a new comment and post it
 
@@ -784,11 +784,11 @@ fn process_poll
         initiator: author,
         teams,
         question,
-        reviewers: &*review_requests,
+        respondents: &*response_requests,
     });
     new_gh_comment.post(Some(gh_comment.id))?;
 
-    debug!("github comment updated with poll reviewers");
+    debug!("github comment updated with poll respondents");
 
     Ok(())
 }
@@ -1034,7 +1034,7 @@ enum CommentType<'a> {
     },
     QuestionAsked {
         initiator: &'a GitHubUser,
-        reviewers: &'a [(GitHubUser, PollReviewRequest)],
+        respondents: &'a [(GitHubUser, PollResponseRequest)],
         question: &'a str,
         teams: BTreeSet<&'a str>,
     },
@@ -1062,7 +1062,7 @@ impl<'a> RfcBotComment<'a> {
 
     fn format(issue: &Issue, comment_type: &CommentType) -> String {
         match *comment_type {
-            CommentType::QuestionAsked { initiator, reviewers, question, ref teams } => {
+            CommentType::QuestionAsked { initiator, respondents, question, ref teams } => {
                 let mut msg = String::from("Team member @");
                 msg.push_str(&initiator.login);
                 msg.push_str(" has asked teams: ");
@@ -1071,7 +1071,7 @@ impl<'a> RfcBotComment<'a> {
                 msg.push_str(question);
                 msg.push_str("\n\n");
                 format_ticky_boxes(&mut msg,
-                    reviewers.iter().map(|(m, rr)| (m, rr.reviewed)));
+                    respondents.iter().map(|(m, rr)| (m, rr.responded)));
                 msg
             }
 

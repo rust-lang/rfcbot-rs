@@ -1,2 +1,2 @@
 DROP TABLE poll;
-DROP TABLE poll_review_request;
+DROP TABLE poll_response_request;
