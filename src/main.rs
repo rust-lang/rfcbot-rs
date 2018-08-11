@@ -1,3 +1,5 @@
+#![feature(never_type)]
+
 #![feature(plugin)]
 #![plugin(rocket_codegen)]
 
