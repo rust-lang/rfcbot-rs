@@ -3,7 +3,7 @@ use std::fmt;
 
 use error::{DashResult, DashError};
 use config::RFC_BOT_MENTION;
-use teams::{self, TeamLabel};
+use teams::{TeamLabel, RfcbotConfig};
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]
 pub enum Label {
@@ -90,12 +90,10 @@ fn strip_prefix<'h>(haystack: &'h str, prefix: &str) -> &'h str {
             .trim()
 }
 
-fn match_team_candidate(team_candidate: &str) -> Option<&'static TeamLabel> {
-    #[cfg(not(test))]
-    let setup = &*teams::SETUP;
-    #[cfg(test)]
-    let setup = &*teams::test::TEST_SETUP;
-
+fn match_team_candidate<'a>
+    (setup: &'a RfcbotConfig, team_candidate: &str)
+    -> Option<&'a TeamLabel>
+{
     setup.teams().find(|&(label, team)| {
         strip_prefix(&label.0, "T-") == strip_prefix(team_candidate, "T-") ||
         team.ping() == strip_prefix(team_candidate, "@")
@@ -144,6 +142,7 @@ fn match_team_candidate(team_candidate: &str) -> Option<&'static TeamLabel> {
 ///
 /// grammar ::= "@rfcbot" ":"? invocation ;
 fn parse_fcp_subcommand<'a>(
+    setup: &'a RfcbotConfig,
     command: &'a str,
     subcommand: &'a str,
     fcp_context: bool
@@ -193,7 +192,7 @@ fn parse_fcp_subcommand<'a>(
             let mut question = parse_command_text(command, subcommand);
             let mut teams = BTreeSet::new();
             while let Some(team_candidate) = question.split_whitespace().next() {
-                if let Some(team) = match_team_candidate(team_candidate) {
+                if let Some(team) = match_team_candidate(setup, team_candidate) {
                     question = parse_command_text(question, team_candidate);
                     teams.insert(&*team.0);
                 } else {
@@ -214,7 +213,9 @@ fn parse_fcp_subcommand<'a>(
     })
 }
 
-fn from_invocation_line<'a>(command: &'a str) -> DashResult<RfcBotCommand<'a>> {
+fn from_invocation_line<'a>
+    (setup: &'a RfcbotConfig, command: &'a str) -> DashResult<RfcBotCommand<'a>>
+{
     let mut tokens = command.trim_left_matches(RFC_BOT_MENTION).trim()
                             .trim_left_matches(':').trim()
                             .split_whitespace();
@@ -225,7 +226,7 @@ fn from_invocation_line<'a>(command: &'a str) -> DashResult<RfcBotCommand<'a>> {
 
             debug!("Parsed command as new FCP proposal");
 
-            parse_fcp_subcommand(command, subcommand, true)
+            parse_fcp_subcommand(setup, command, subcommand, true)
         }
         "f?" => {
             let user =
@@ -239,7 +240,7 @@ fn from_invocation_line<'a>(command: &'a str) -> DashResult<RfcBotCommand<'a>> {
 
             Ok(RfcBotCommand::FeedbackRequest(&user[1..]))
         }
-        _ => parse_fcp_subcommand(command, invocation, false),
+        _ => parse_fcp_subcommand(setup, command, invocation, false),
     }
 }
 
@@ -258,12 +259,14 @@ pub enum RfcBotCommand<'a> {
 }
 
 impl<'a> RfcBotCommand<'a> {
-    pub fn from_str_all(command: &'a str) -> impl Iterator<Item = RfcBotCommand<'a>> {
+    pub fn from_str_all(setup: &'a RfcbotConfig, command: &'a str)
+        -> impl Iterator<Item = RfcBotCommand<'a>>
+    {
         // Get the tokens for each command line (starts with a bot mention)
         command.lines()
                .map(|l| l.trim())
                .filter(|&l| l.starts_with(RFC_BOT_MENTION))
-               .map(from_invocation_line)
+               .map(move |l| from_invocation_line(setup, l))
                .filter_map(Result::ok)
     }
 }
@@ -271,6 +274,11 @@ impl<'a> RfcBotCommand<'a> {
 #[cfg(test)]
 mod test {
     use super::*;
+    use teams::test::TEST_SETUP;
+
+    fn parse_commands(body: &str) -> impl Iterator<Item = RfcBotCommand<'_>> {
+        RfcBotCommand::from_str_all(&TEST_SETUP, body)
+    }
 
     #[test]
     fn multiple_commands() {
@@ -286,8 +294,7 @@ foobar
 @rfcbot concern foobar
 "#;
 
-        let cmd = RfcBotCommand::from_str_all(text).collect::<Vec<_>>();
-        assert_eq!(cmd, vec![
+        assert_eq!(parse_commands(text).collect::<Vec<_>>(), vec![
             RfcBotCommand::ResolveConcern("CONCERN_NAME"),
             RfcBotCommand::FcpCancel,
             RfcBotCommand::NewConcern("foobar"),
@@ -308,8 +315,7 @@ foobar
  @rfcbot concern foobar
 "#;
 
-        let cmd = RfcBotCommand::from_str_all(text).collect::<Vec<_>>();
-        assert_eq!(cmd, vec![
+        assert_eq!(parse_commands(text).collect::<Vec<_>>(), vec![
             RfcBotCommand::ResolveConcern("CONCERN_NAME"),
             RfcBotCommand::FcpCancel,
             RfcBotCommand::NewConcern("foobar"),
@@ -330,8 +336,7 @@ foobar
 @rfcbot : concern foobar
 "#;
 
-        let cmd = RfcBotCommand::from_str_all(text).collect::<Vec<_>>();
-        assert_eq!(cmd, vec![
+        assert_eq!(parse_commands(text).collect::<Vec<_>>(), vec![
             RfcBotCommand::ResolveConcern("CONCERN_NAME"),
             RfcBotCommand::FcpCancel,
             RfcBotCommand::NewConcern("foobar"),
@@ -372,11 +377,8 @@ somemoretext")
                     let body = concat!("@rfcbot: ", $cmd);
                     let body_no_colon = concat!("@rfcbot ", $cmd);
 
-                    let with_colon =
-                        ensure_take_singleton(RfcBotCommand::from_str_all(body));
-
-                    let without_colon =
-                        ensure_take_singleton(RfcBotCommand::from_str_all(body_no_colon));
+                    let with_colon = ensure_take_singleton(parse_commands(body));
+                    let without_colon = ensure_take_singleton(parse_commands(body_no_colon));
 
                     assert_eq!(with_colon, without_colon);
                     assert_eq!(with_colon, expected);
@@ -475,9 +477,8 @@ somemoretext
 
 somemoretext";
 
-        let with_colon = ensure_take_singleton(RfcBotCommand::from_str_all(body));
-        let without_colon =
-            ensure_take_singleton(RfcBotCommand::from_str_all(body_no_colon));
+        let with_colon = ensure_take_singleton(parse_commands(body));
+        let without_colon = ensure_take_singleton(parse_commands(body_no_colon));
 
         assert_eq!(with_colon, without_colon);
         assert_eq!(with_colon, RfcBotCommand::ResolveConcern("CONCERN_NAME"));

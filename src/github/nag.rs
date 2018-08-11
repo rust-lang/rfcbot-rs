@@ -56,7 +56,7 @@ pub fn update_nags(comment: &IssueComment) -> DashResult<()> {
 
     // Attempt to parse all commands out of the comment
     let mut any = false;
-    for command in RfcBotCommand::from_str_all(&comment.body) {
+    for command in RfcBotCommand::from_str_all(&SETUP, &comment.body) {
         any = true;
 
         // Don't accept bot commands from non-subteam members.
