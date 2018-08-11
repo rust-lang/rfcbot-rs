@@ -39,31 +39,6 @@ impl fmt::Display for Label {
     }
 }
 
-#[derive(Debug, Eq, PartialEq)]
-pub enum RfcBotCommand<'a> {
-    FcpPropose(FcpDisposition),
-    FcpCancel,
-    Reviewed,
-    NewConcern(&'a str),
-    ResolveConcern(&'a str),
-    FeedbackRequest(&'a str),
-    AskQuestion {
-        teams: BTreeSet<&'a str>,
-        question: &'a str,
-    },
-}
-
-impl<'a> RfcBotCommand<'a> {
-    pub fn from_str_all(command: &'a str) -> impl Iterator<Item = RfcBotCommand<'a>> {
-        // Get the tokens for each command line (starts with a bot mention)
-        command.lines()
-               .map(|l| l.trim())
-               .filter(|&l| l.starts_with(RFC_BOT_MENTION))
-               .map(from_invocation_line)
-               .filter_map(Result::ok)
-    }
-}
-
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum FcpDisposition {
     Merge,
@@ -265,6 +240,31 @@ fn from_invocation_line<'a>(command: &'a str) -> DashResult<RfcBotCommand<'a>> {
             Ok(RfcBotCommand::FeedbackRequest(&user[1..]))
         }
         _ => parse_fcp_subcommand(command, invocation, false),
+    }
+}
+
+#[derive(Debug, Eq, PartialEq)]
+pub enum RfcBotCommand<'a> {
+    FcpPropose(FcpDisposition),
+    FcpCancel,
+    Reviewed,
+    NewConcern(&'a str),
+    ResolveConcern(&'a str),
+    FeedbackRequest(&'a str),
+    AskQuestion {
+        teams: BTreeSet<&'a str>,
+        question: &'a str,
+    },
+}
+
+impl<'a> RfcBotCommand<'a> {
+    pub fn from_str_all(command: &'a str) -> impl Iterator<Item = RfcBotCommand<'a>> {
+        // Get the tokens for each command line (starts with a bot mention)
+        command.lines()
+               .map(|l| l.trim())
+               .filter(|&l| l.starts_with(RFC_BOT_MENTION))
+               .map(from_invocation_line)
+               .filter_map(Result::ok)
     }
 }
 
