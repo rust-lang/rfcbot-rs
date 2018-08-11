@@ -57,11 +57,11 @@ impl<'a> RfcBotCommand<'a> {
     pub fn from_str_all(command: &'a str) -> impl Iterator<Item = RfcBotCommand<'a>> {
         // Get the tokens for each command line (starts with a bot mention)
         command.lines()
+               .map(|l| l.trim())
                .filter(|&l| l.starts_with(RFC_BOT_MENTION))
                .map(from_invocation_line)
                .filter_map(Result::ok)
     }
-
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -240,9 +240,8 @@ fn parse_fcp_subcommand<'a>(
 }
 
 fn from_invocation_line<'a>(command: &'a str) -> DashResult<RfcBotCommand<'a>> {
-    let mut tokens = command.trim_left_matches(RFC_BOT_MENTION)
-                            .trim_left_matches(':')
-                            .trim()
+    let mut tokens = command.trim_left_matches(RFC_BOT_MENTION).trim()
+                            .trim_left_matches(':').trim()
                             .split_whitespace();
     let invocation = tokens.next().ok_or(DashError::Misc(None))?;
     match invocation {
@@ -285,6 +284,50 @@ somemoretext
 @rfcbot: fcp cancel
 foobar
 @rfcbot concern foobar
+"#;
+
+        let cmd = RfcBotCommand::from_str_all(text).collect::<Vec<_>>();
+        assert_eq!(cmd, vec![
+            RfcBotCommand::ResolveConcern("CONCERN_NAME"),
+            RfcBotCommand::FcpCancel,
+            RfcBotCommand::NewConcern("foobar"),
+        ]);
+    }
+
+    #[test]
+    fn accept_leading_whitespace() {
+let text = r#"
+someothertext
+       @rfcbot: resolved CONCERN_NAME
+somemoretext
+
+somemoretext
+
+   @rfcbot: fcp cancel
+foobar
+ @rfcbot concern foobar
+"#;
+
+        let cmd = RfcBotCommand::from_str_all(text).collect::<Vec<_>>();
+        assert_eq!(cmd, vec![
+            RfcBotCommand::ResolveConcern("CONCERN_NAME"),
+            RfcBotCommand::FcpCancel,
+            RfcBotCommand::NewConcern("foobar"),
+        ]);
+    }
+
+    #[test]
+    fn fix_issue_225() {
+let text = r#"
+someothertext
+    @rfcbot : resolved CONCERN_NAME
+somemoretext
+
+somemoretext
+
+@rfcbot : fcp cancel
+foobar
+@rfcbot : concern foobar
 "#;
 
         let cmd = RfcBotCommand::from_str_all(text).collect::<Vec<_>>();
