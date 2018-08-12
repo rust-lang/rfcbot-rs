@@ -19,8 +19,6 @@ extern crate hyper_native_tls;
 extern crate lazy_static;
 #[macro_use]
 extern crate log;
-extern crate r2d2;
-extern crate r2d2_diesel;
 extern crate rocket;
 extern crate rocket_contrib;
 extern crate serde;
@@ -48,10 +46,10 @@ mod teams;
 
 use chrono::Local;
 use diesel::pg::PgConnection;
+use diesel::r2d2::Pool;
+use diesel::r2d2::ConnectionManager;
 use env_logger::LogBuilder;
 use log::LogRecord;
-use r2d2::Pool;
-use r2d2_diesel::ConnectionManager;
 
 use config::CONFIG;
 
@@ -96,7 +94,7 @@ lazy_static! {
 
         let manager = ConnectionManager::<PgConnection>::new(CONFIG.db_url.clone());
 
-        match r2d2::Pool::builder()
+        match Pool::builder()
             .max_size(CONFIG.db_pool_size)
             .build(manager)
         {
