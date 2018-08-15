@@ -180,14 +180,14 @@ fn parse_fcp_subcommand<'a>(
             RfcBotCommand::ResolveConcern(parse_command_text(command, subcommand))
         },
 
-        // Parse an AskQuestion command:
+        // Parse a StartPoll command:
         "ask" | "asked" | "asking" | "asks" |
         "poll" | "polled" | "polling" | "polls" |
         "query" | "queried" | "querying" | "queries" |
         "inquire" | "inquired" | "inquiring" | "inquires" |
         "quiz" | "quizzed" | "quizzing" | "quizzes" |
         "survey" | "surveyed" | "surveying" | "surveys" => {
-            debug!("Parsed command as AskQuestion");
+            debug!("Parsed command as StartPoll");
 
             let mut question = parse_command_text(command, subcommand);
             let mut teams = BTreeSet::new();
@@ -199,7 +199,7 @@ fn parse_fcp_subcommand<'a>(
                     break;
                 }
             }
-            RfcBotCommand::AskQuestion { teams, question }
+            RfcBotCommand::StartPoll { teams, question }
         },
 
         _ => {
@@ -252,7 +252,7 @@ pub enum RfcBotCommand<'a> {
     NewConcern(&'a str),
     ResolveConcern(&'a str),
     FeedbackRequest(&'a str),
-    AskQuestion {
+    StartPoll {
         teams: BTreeSet<&'a str>,
         question: &'a str,
     },

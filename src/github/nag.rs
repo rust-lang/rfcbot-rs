@@ -699,7 +699,7 @@ impl<'a> RfcBotCommand<'a> {
                    -> DashResult<()> {
         use self::RfcBotCommand::*;
         match self {
-            AskQuestion { teams, question } =>
+            StartPoll { teams, question } =>
                 process_poll(author, issue, comment, question, teams),
             FcpPropose(disp) =>
                 process_fcp_propose(author, issue, comment, team_members, disp),
