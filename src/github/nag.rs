@@ -129,11 +129,11 @@ fn update_proposal_review_status(proposal_id: i32) -> DashResult<()> {
     Ok(())
 }
 
+/// Given a poll, parse out each "responded" status, in the poll's ticky boxes,
+// for each user, then update the responded status in the database.
 fn update_poll_response_status(poll_id: i32) -> DashResult<()> {
     let conn = &*DB_POOL.get()?;
     // this is an updated comment from the bot itself
-
-    // parse out each "responded" status for each user, then update them
 
     let survey: Poll = poll::table.find(poll_id).first(conn)?;
 
@@ -147,10 +147,15 @@ fn update_poll_response_status(poll_id: i32) -> DashResult<()> {
         .first(conn)?;
 
     // parse the status comment and mark any new responses as responded
-    for username in parse_ticky_boxes("poll", survey.id, &comment) {
-        let user: GitHubUser = githubuser::table
-            .filter(githubuser::login.eq(username))
-            .first(conn)?;
+    for respondent in parse_ticky_boxes("poll", survey.id, &comment) {
+        let user = githubuser::table
+            .filter(githubuser::login.eq(respondent))
+            .first(conn);
+        let user: GitHubUser = ok_or_continue!(user, why =>
+            error!("Can't find respondent {} in the database. \
+                   The poll comment has probably been manually edited. {:?}",
+                   respondent, why)
+        );
 
         {
             use domain::schema::poll_response_request::dsl::*;
