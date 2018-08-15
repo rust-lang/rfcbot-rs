@@ -455,7 +455,7 @@ somemoretext")
          "pr quiz", "pr quizzed", "pr quizzing", "pr quizzes",
          "pr survey", "pr surveyed", "pr surveying", "pr surveys"],
         some_text!("avengers T-justice-league TO BE OR NOT TO BE?"),
-        RfcBotCommand::AskQuestion {
+        RfcBotCommand::StartPoll {
             teams: btreeset! {
                 "T-avengers",
                 "justice-league",
