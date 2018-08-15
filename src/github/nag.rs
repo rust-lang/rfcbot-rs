@@ -84,8 +84,7 @@ pub fn update_nags(comment: &IssueComment) -> DashResult<()> {
                         comment.id, why));
     }
 
-    ok_or!(evaluate_nags(), why =>
-        error!("Unable to evaluate outstanding proposals: {:?}", why));
+    evaluate_nags();
 
     Ok(())
 }
@@ -193,11 +192,15 @@ fn parse_ticky_boxes<'a>(what: &'a str, id: i32, comment: &'a IssueComment)
     })
 }
 
-fn evaluate_nags() -> DashResult<()> {
-    evaluate_pendings()?;
-    evaluate_ffcps()?;
-    evaluate_polls()?;
-    Ok(())
+fn evaluate_nags() {
+    ok_or!(evaluate_pendings(), why =>
+        error!("Unable to evaluate outstanding proposals: {:?}", why));
+
+    ok_or!(evaluate_ffcps(), why =>
+        error!("Unable to evaluate outstanding ffcps: {:?}", why));
+
+    ok_or!(evaluate_polls(), why =>
+        error!("Unable to evaluate outstanding polls: {:?}", why));
 }
 
 fn evaluate_polls() -> DashResult<()> {
