@@ -3,6 +3,7 @@
 
 pub mod client;
 pub mod models;
+mod command;
 mod nag;
 pub mod webhooks;
 
