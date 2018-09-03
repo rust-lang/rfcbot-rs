@@ -53,18 +53,27 @@ pub fn update_nags(comment: &IssueComment) -> DashResult<()> {
         .first::<GitHubUser>(conn)?;
 
     let subteam_members = subteam_members(&issue)?;
+    let all_team_members = all_team_members()?;
 
     // Attempt to parse all commands out of the comment
     let mut any = false;
     for command in RfcBotCommand::from_str_all(&SETUP, &comment.body) {
         any = true;
 
-        // Don't accept bot commands from non-subteam members.
-        // Early return because we'll just get here again...
-        if subteam_members.iter().find(|&u| u == &author).is_none() {
-            info!("command author ({}) doesn't appear in any relevant subteams",
-                  author.login);
-            return Ok(());
+        if let RfcBotCommand::StartPoll {..} = command {
+            // Accept poll requests from any known user.
+            if all_team_members.iter().find(|&u| u == &author).is_none() {
+                info!("poll requester ({}) is not a known user", author.login);
+                return Ok(());
+            }
+        } else {
+            // Don't accept most bot commands from non-subteam members.
+            // Early return because we'll just get here again...
+            if subteam_members.iter().find(|&u| u == &author).is_none() {
+                info!("command author ({}) doesn't appear in any relevant subteams",
+                      author.login);
+                return Ok(());
+            }
         }
 
         debug!("processing rfcbot command: {:?}", &command);
@@ -631,6 +640,12 @@ where
         .into_iter() // diesel won't work with btreeset, and dedup has weird lifetime errors
         .collect::<Vec<_>>()
     )
+}
+
+/// Return a list of all known team members.
+fn all_team_members() -> DashResult<Vec<GitHubUser>>
+{
+    specific_subteam_members(|_| true)
 }
 
 /// Check if an issue comment is written by a member of one of the subteams
