@@ -22,13 +22,13 @@ Deployed to https://rfcbot.rs right now.
 
 ## Development
 
+### Chat
+
+There is an `#rfcbot` channel in the `ops` section of the [rust-lang discord server](https://discordapp.com/invite/rust-lang).
+
 ### Rust Version
 
-Rust nightly is required, as rfcbot uses [Rocket](rocket.rs) now. Pin `rustup` to the correct version:
-
-```
-$ rustup override set nightly-2017-08-26
-```
+Rust nightly is required, as rfcbot uses [Rocket](rocket.rs). If you use rustup, this version is controlled by a `rust-toolchain` file at the repository root.
 
 ### Heroku CLI
 
