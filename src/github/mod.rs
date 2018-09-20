@@ -10,7 +10,6 @@ pub mod webhooks;
 use chrono::{DateTime, NaiveDate, NaiveDateTime, NaiveTime, Utc};
 use diesel::prelude::*;
 use diesel::pg::PgConnection;
-use diesel::pg::upsert::*;
 use diesel;
 
 use DB_POOL;
@@ -56,7 +55,7 @@ pub fn record_successful_update(ingest_start: NaiveDateTime) -> DashResult<()> {
         message: None,
     };
 
-    diesel::insert(&sync_record).into(githubsync).execute(conn)?;
+    diesel::insert_into(githubsync).values(&sync_record).execute(conn)?;
     Ok(())
 }
 
@@ -123,9 +122,14 @@ pub fn handle_pr(conn: &PgConnection, pr: PullRequestFromJson, repo: &str) -> Da
     }
 
     let pr: PullRequest = pr.with_repo(repo);
-    diesel::insert(&pr.on_conflict((repository, number), do_update().set(&pr)))
-        .into(pullrequest)
+
+    diesel::insert_into(pullrequest)
+        .values(&pr)
+        .on_conflict((repository, number))
+        .do_update()
+        .set(&pr)
         .execute(conn)?;
+
     Ok(())
 }
 
@@ -144,8 +148,8 @@ pub fn handle_comment(conn: &PgConnection, comment: CommentFromJson, repo: &str)
             .set(&comment)
             .execute(conn)?;
     } else {
-        diesel::insert(&comment)
-            .into(issuecomment::table)
+        diesel::insert_into(issuecomment::table)
+            .values(&comment)
             .execute(conn)?;
 
         ok_or!(nag::update_nags(&comment), why => {
@@ -170,16 +174,23 @@ pub fn handle_issue(conn: &PgConnection, issue: IssueFromJson, repo: &str) -> Da
     let (i, milestone) = issue.with_repo(repo);
 
     if let Some(milestone) = milestone {
-        diesel::insert(&milestone.on_conflict(milestone::id, do_update().set(&milestone)))
-            .into(milestone::table)
+        diesel::insert_into(milestone::table)
+            .values(&milestone)
+            .on_conflict(milestone::id)
+            .do_update()
+            .set(&milestone)
             .execute(conn)?;
     }
 
     // handle issue itself
     {
         use domain::schema::issue::dsl::*;
-        diesel::insert(&i.on_conflict((repository, number), do_update().set(&i)))
-            .into(issue)
+
+        diesel::insert_into(issue)
+            .values(&i)
+            .on_conflict((repository, number))
+            .do_update()
+            .set(&i)
             .execute(conn)?;
     }
 
@@ -187,8 +198,11 @@ pub fn handle_issue(conn: &PgConnection, issue: IssueFromJson, repo: &str) -> Da
 }
 
 pub fn handle_user(conn: &PgConnection, user: &GitHubUser) -> DashResult<()> {
-    diesel::insert(&user.on_conflict(githubuser::id, do_update().set(user)))
-        .into(githubuser::table)
+    diesel::insert_into(githubuser::table)
+        .values(user)
+        .on_conflict(githubuser::id)
+        .do_update()
+        .set(user)
         .execute(conn)?;
     Ok(())
 }

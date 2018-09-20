@@ -699,9 +699,9 @@ fn post_insert_comment(issue: &Issue, comment: CommentType) -> DashResult<IssueC
     // we need to insert it
     let comment = comment.with_repo(&issue.repository)?;
     if let Err(why) =
-        diesel::insert(&comment)
-                .into(issuecomment::table)
-                .execute(conn) 
+        diesel::insert_into(issuecomment::table)
+                .values(&comment)
+                .execute(conn)
     {
         warn!("issue inserting new record, maybe received webhook for it: {:?}",
                 why);
@@ -775,7 +775,9 @@ fn process_poll
         poll_closed: false,
         poll_teams: &*teams_str,
     };
-    let new_poll = diesel::insert(&new_poll).into(poll).get_result::<Poll>(conn)?;
+    let new_poll = diesel::insert_into(poll)
+        .values(&new_poll)
+        .get_result::<Poll>(conn)?;
 
     debug!("poll inserted into the database");
 
@@ -791,8 +793,8 @@ fn process_poll
         })
         .collect::<Vec<_>>();
 
-    diesel::insert(&response_requests)
-        .into(poll_response_request::table)
+    diesel::insert_into(poll_response_request::table)
+        .values(&response_requests)
         .execute(conn)?;
 
     // they're in the database, but now we need them paired with githubuser
@@ -843,8 +845,8 @@ fn process_fcp_propose
             fcp_start: None,
             fcp_closed: false,
         };
-        let proposal = diesel::insert(&proposal)
-            .into(fcp_proposal)
+        let proposal = diesel::insert_into(fcp_proposal)
+            .values(&proposal)
             .get_result::<FcpProposal>(conn)?;
 
         debug!("proposal inserted into the database");
@@ -861,8 +863,8 @@ fn process_fcp_propose
             })
             .collect::<Vec<_>>();
 
-        diesel::insert(&review_requests)
-            .into(fcp_review_request::table)
+        diesel::insert_into(fcp_review_request::table)
+            .values(&review_requests)
             .execute(conn)?;
 
         // they're in the database, but now we need them paired with githubuser
@@ -940,7 +942,9 @@ fn process_new_concern
                 name: concern_name,
                 fk_initiating_comment: comment.id,
             };
-            diesel::insert(&new_concern).into(fcp_concern).execute(conn)?;
+            diesel::insert_into(fcp_concern)
+                .values(&new_concern)
+                .execute(conn)?;
 
             // Take us out of FCP and back into PFCP if need be:
             if proposal.fcp_start.is_some() {
@@ -1025,7 +1029,9 @@ fn process_feedback_request(author: &GitHubUser, issue: &Issue, username: &str)
             fk_issue: issue.id,
             fk_feedback_comment: None,
         };
-        diesel::insert(&new_request).into(rfc_feedback_request).execute(conn)?;
+        diesel::insert_into(rfc_feedback_request)
+            .values(&new_request)
+            .execute(conn)?;
     }
 
     Ok(())
@@ -1222,7 +1228,7 @@ impl<'a> RfcBotComment<'a> {
                 if let Some(comment_id) = existing_comment {
                     self.maybe_add_pfcp_label();
                     GH.edit_comment(&self.issue.repository, comment_id, &self.body)
-                } else { 
+                } else {
                     GH.new_comment(&self.issue.repository, self.issue.number, &self.body)
                 }
             } else {

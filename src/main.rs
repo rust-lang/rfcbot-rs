@@ -1,14 +1,13 @@
 #![feature(never_type)]
 
 #![feature(plugin)]
+#![feature(never_type)]
 #![plugin(rocket_codegen)]
 
 extern crate chrono;
 extern crate crypto;
 #[macro_use]
 extern crate diesel;
-#[macro_use]
-extern crate diesel_codegen;
 extern crate dotenv;
 extern crate env_logger;
 extern crate handlebars;
@@ -20,8 +19,6 @@ extern crate hyper_native_tls;
 extern crate lazy_static;
 #[macro_use]
 extern crate log;
-extern crate r2d2;
-extern crate r2d2_diesel;
 extern crate rocket;
 extern crate rocket_contrib;
 extern crate serde;
@@ -50,10 +47,10 @@ mod teams;
 
 use chrono::Local;
 use diesel::pg::PgConnection;
+use diesel::r2d2::Pool;
+use diesel::r2d2::ConnectionManager;
 use env_logger::LogBuilder;
 use log::LogRecord;
-use r2d2::Pool;
-use r2d2_diesel::ConnectionManager;
 
 use config::CONFIG;
 
@@ -96,12 +93,12 @@ lazy_static! {
     pub static ref DB_POOL: Pool<ConnectionManager<PgConnection>> = {
         info!("Initializing database connection pool.");
 
-        let config = r2d2::Config::builder()
-                         .pool_size(CONFIG.db_pool_size)
-                         .build();
-
         let manager = ConnectionManager::<PgConnection>::new(CONFIG.db_url.clone());
-        match Pool::new(config, manager) {
+
+        match Pool::builder()
+            .max_size(CONFIG.db_pool_size)
+            .build(manager)
+        {
             Ok(p) => {
                 info!("DB connection pool established.");
                 p

@@ -7,7 +7,6 @@ use std::io;
 use diesel;
 use handlebars;
 use hyper;
-use r2d2;
 use serde_json;
 
 pub type DashResult<T> = std::result::Result<T, DashError>;
@@ -17,7 +16,7 @@ pub enum DashError {
     Hyper(hyper::error::Error),
     Io(io::Error),
     Serde(serde_json::error::Error),
-    R2d2Timeout(r2d2::GetTimeout),
+    R2d2(diesel::r2d2::PoolError),
     DieselError(diesel::result::Error),
     Template(handlebars::RenderError),
     Misc(Option<String>),
@@ -39,8 +38,8 @@ impl From<serde_json::error::Error> for DashError {
     fn from(e: serde_json::error::Error) -> Self { DashError::Serde(e) }
 }
 
-impl From<r2d2::GetTimeout> for DashError {
-    fn from(e: r2d2::GetTimeout) -> Self { DashError::R2d2Timeout(e) }
+impl From<diesel::r2d2::PoolError> for DashError {
+    fn from(e: diesel::r2d2::PoolError) -> Self { DashError::R2d2(e) }
 }
 
 impl From<diesel::result::Error> for DashError {
