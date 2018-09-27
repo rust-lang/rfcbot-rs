@@ -88,7 +88,6 @@ members = [
   "aidanhs",
   "alexcrichton",
   "aturon",
-  "carols10cents",
   "erickt",
   "kennytm",
   "Mark-Simulacrum",
@@ -102,7 +101,6 @@ ping = "rust-lang/cargo"
 members = [
   "alexcrichton",
   "aturon",
-  "carols10cents",
   "joshtriplett",
   "matklad",
   "withoutboats",
