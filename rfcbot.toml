@@ -100,9 +100,11 @@ name = "Cargo"
 ping = "rust-lang/cargo"
 members = [
   "alexcrichton",
-  "aturon",
+  "dwijnand",
+  "Eh2406",
+  "ehuss",
   "joshtriplett",
-  "matklad",
+  "nrc",
   "withoutboats",
   "wycats",
 ]
