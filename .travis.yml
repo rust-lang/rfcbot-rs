@@ -35,8 +35,8 @@ before_script:
 - diesel migration run
 - psql -d $DATABASE_URL < githubuser-backup.pg
 script:
-- cargo build --verbose
-- cargo test --verbose
+- cargo build
+- cargo test
 before_deploy:
 - DATABASE_URL=$(heroku config:get DATABASE_URL -a rfcbot-rs) diesel migration run
 deploy:
