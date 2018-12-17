@@ -146,3 +146,28 @@ members = [
   "vlad20012",
   "Xanewok",
 ]
+
+[teams.T-crates-io]
+name = "Crates.io"
+ping = "rust-lang/crates-io"
+members = [
+  "ashleygwilliams",
+  "carols10cents",
+  "ishitatsuyuki",
+  "joshtriplett",
+  "jtgeibel",
+  "sgrif",
+  "withoutboats",
+  "wycats",
+]
+
+[teams.T-moderation]
+name = "Moderation"
+ping = "rust-lang/moderation"
+members = [
+  "BurntSushi",
+  "Manishearth",
+  "mbrubeck",
+  "niconii",
+  "pnkfelix",
+]
