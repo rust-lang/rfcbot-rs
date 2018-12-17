@@ -160,3 +160,14 @@ members = [
   "withoutboats",
   "wycats",
 ]
+
+[teams.T-moderation]
+name = "Moderation"
+ping = "rust-lang/moderation"
+members = [
+  "BurntSushi",
+  "Manishearth",
+  "mbrubeck",
+  "niconii",
+  "pnkfelix",
+]
