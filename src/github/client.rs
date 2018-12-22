@@ -143,8 +143,8 @@ impl Client {
 
                 if tokens[1] == "rel=\"next\"" {
                     let url = tokens[0]
-                        .trim_left_matches('<')
-                        .trim_right_matches('>')
+                        .trim_start_matches('<')
+                        .trim_end_matches('>')
                         .to_string();
                     return Some(url);
                 }

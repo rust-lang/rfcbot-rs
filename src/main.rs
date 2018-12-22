@@ -1,8 +1,5 @@
 #![feature(never_type)]
-
-#![feature(plugin)]
-#![feature(never_type)]
-#![plugin(rocket_codegen)]
+#![feature(proc_macro_hygiene, decl_macro)]
 
 extern crate chrono;
 extern crate crypto;
@@ -10,7 +7,6 @@ extern crate crypto;
 extern crate diesel;
 extern crate dotenv;
 extern crate env_logger;
-extern crate handlebars;
 extern crate hex;
 #[macro_use]
 extern crate hyper;
@@ -19,6 +15,7 @@ extern crate hyper_native_tls;
 extern crate lazy_static;
 #[macro_use]
 extern crate log;
+#[macro_use]
 extern crate rocket;
 extern crate rocket_contrib;
 extern crate serde;
