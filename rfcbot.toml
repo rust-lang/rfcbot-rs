@@ -87,12 +87,14 @@ ping = "rust-lang/infra"
 members = [
   "aidanhs",
   "alexcrichton",
-  "aturon",
   "erickt",
   "kennytm",
   "Mark-Simulacrum",
   "shepmaster",
   "TimNN",
+  "ashleygwilliams",
+  "sgrif",
+  "pietroalbini",
 ]
 
 [teams.T-cargo]
