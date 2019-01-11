@@ -33,7 +33,7 @@ install:
 before_script:
 - diesel setup
 - diesel migration run
-- psql -d $DATABASE_URL < githubuser-backup.pg
+- psql -q -d $DATABASE_URL < githubuser-backup.pg
 script:
 - cargo build
 - cargo test
