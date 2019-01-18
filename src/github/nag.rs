@@ -1110,7 +1110,7 @@ impl<'a> RfcBotComment<'a> {
                 msg.push_str(" has proposed to ");
                 msg.push_str(disposition.repr());
                 msg.push_str(" this. The next step is review by the rest of the tagged ");
-                msg.push_str("teams:\n\n");
+                msg.push_str("team members:\n\n");
 
                 format_ticky_boxes(&mut msg,
                     reviewers.iter().map(|(m, rr)| (m, rr.reviewed)));
