@@ -1,6 +1,6 @@
 use std::panic::catch_unwind;
-use handlebars::Handlebars;
 use rocket;
+use rocket_contrib::templates::handlebars::Handlebars;
 
 pub fn serve() {
     // in debug builds this will force an init, good enough for testing
@@ -26,12 +26,14 @@ pub fn serve() {
 mod html {
     use std::collections::BTreeMap;
     use rocket::response::content;
-    use super::TEMPLATES;
     use error::DashResult;
     use nag;
+    use super::TEMPLATES;
+
+    type Html = content::Html<String>;
 
     #[get("/")]
-    fn all_fcps() -> DashResult<content::Html<String>> {
+    pub fn all_fcps() -> DashResult<Html> {
         let mut teams = BTreeMap::new();
         for fcp in nag::all_fcps()? {
             let nag::FcpWithInfo {
@@ -79,7 +81,7 @@ mod html {
     }
 
     #[get("/fcp/<username>")]
-    fn member_fcps(username: String) -> DashResult<content::Html<String>> {
+    pub fn member_fcps(username: String) -> DashResult<Html> {
         let (user, fcps) = nag::individual_nags(&username)?;
 
         let context = json!({
@@ -95,7 +97,7 @@ mod html {
 }
 
 mod api {
-    use rocket_contrib::Json;
+    use rocket_contrib::json::Json;
     use DB_POOL;
     use domain::github::GitHubUser;
     use error::DashResult;

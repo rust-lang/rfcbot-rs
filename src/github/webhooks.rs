@@ -6,7 +6,7 @@ use crypto::mac::MacResult;
 use crypto::sha1::Sha1;
 use hex::FromHex;
 use rocket::http::Status;
-use rocket::data::{self, Data, FromData};
+use rocket::data::{self, Data, FromDataSimple};
 use rocket::request::Request;
 use rocket::outcome::Outcome::*;
 use serde_json;
@@ -22,7 +22,7 @@ pub struct Event {
     pub payload: Payload,
 }
 
-impl FromData for Event {
+impl FromDataSimple for Event {
     type Error = &'static str;
     fn from_data(request: &Request, data: Data) -> data::Outcome<Self, Self::Error> {
         let headers = request.headers();

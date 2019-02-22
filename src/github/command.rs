@@ -216,8 +216,8 @@ fn parse_fcp_subcommand<'a>(
 fn from_invocation_line<'a>
     (setup: &'a RfcbotConfig, command: &'a str) -> DashResult<RfcBotCommand<'a>>
 {
-    let mut tokens = command.trim_left_matches(RFC_BOT_MENTION).trim()
-                            .trim_left_matches(':').trim()
+    let mut tokens = command.trim_start_matches(RFC_BOT_MENTION).trim()
+                            .trim_start_matches(':').trim()
                             .split_whitespace();
     let invocation = tokens.next().ok_or(DashError::Misc(None))?;
     match invocation {
