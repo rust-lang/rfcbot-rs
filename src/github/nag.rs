@@ -1186,10 +1186,10 @@ impl<'a> RfcBotComment<'a> {
                 Self::add_comment_url(issue, &mut msg, status_comment_id);
                 msg.push_str("), is now **complete**.");
 
-                msg.push_str("\n\nAs the automated representative of the governance process,\
+                msg.push_str("\n\nAs the automated representative of the governance process, \
                               I would like to thank @");
                 msg.push_str(&author.login);
-                msg.push_str("for their work and everyone else who contributed.");
+                msg.push_str(" for their work and everyone else who contributed.");
 
                 match disposition {
                     FcpDisposition::Merge => {
