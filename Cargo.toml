@@ -7,8 +7,6 @@ version = "0.1.0"
 dotenv = "0.13.0"
 env_logger = "0.4"
 hex = "0.3.2"
-hyper = "0.10"
-hyper-native-tls = "0.3.0"
 lazy_static = "1.2.0"
 log = "0.3.6"
 rocket = "0.4.0"
@@ -22,6 +20,7 @@ url = "1.4"
 urlencoded = "0.5"
 maplit = "1.0.1"
 itertools = "0.8.0"
+reqwest = "0.9.12"
 
 [dependencies.chrono]
 features = ["serde"]

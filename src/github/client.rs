@@ -1,20 +1,14 @@
 // Copyright 2016 Adam Perry. Dual-licensed MIT and Apache 2.0 (see LICENSE files for details).
 
 use std::collections::BTreeMap;
-use std::io::Read;
 use std::thread::sleep;
 use std::time::Duration;
 use std::u32;
 
 use chrono::{DateTime, Utc};
-use hyper;
-use hyper::client::{RedirectPolicy, RequestBuilder, Response};
-use hyper::header::{Headers, Authorization, UserAgent};
-use hyper::net::HttpsConnector;
-use hyper::status::StatusCode;
-use hyper_native_tls::NativeTlsClient;
 use serde::de::DeserializeOwned;
 use serde_json;
+use reqwest::{self, StatusCode, Response, header::HeaderMap};
 
 use config::CONFIG;
 use error::{DashError, DashResult};
@@ -26,39 +20,28 @@ pub const DELAY: u64 = 300;
 
 type ParameterMap = BTreeMap<&'static str, String>;
 
-header! { (TZ, "Time-Zone") => [String] }
-header! { (Accept, "Accept") => [String] }
-header! { (RateLimitRemaining, "X-RateLimit-Remaining") => [u32] }
-header! { (RateLimitReset, "X-RateLimit-Reset") => [i64] }
-header! { (Link, "Link") => [String] }
-
 const PER_PAGE: u32 = 100;
 
 #[derive(Debug)]
 pub struct Client {
-    token: String,
-    ua: String,
-    client: hyper::Client,
+    client: reqwest::Client,
     rate_limit: u32,
     rate_limit_timeout: DateTime<Utc>,
 }
 
-fn read_to_string<R: Read>(reader: &mut R) -> DashResult<String> {    
-    let mut string = String::new();
-    reader.read_to_string(&mut string)?;
-    Ok(string)
-}
-
 impl Client {
     pub fn new() -> Self {
-        let tls_connector = HttpsConnector::new(NativeTlsClient::new().unwrap());
-        let mut client = hyper::Client::with_connector(tls_connector);
-        client.set_redirect_policy(RedirectPolicy::FollowAll);
-
+        let mut headers = HeaderMap::new();
+        headers.insert(
+            "Authorization",
+            format!("token {}", CONFIG.github_access_token).parse().unwrap(),
+        );
+        headers.insert("User-Agent", CONFIG.github_user_agent.parse().unwrap());
+        headers.insert("Time-Zone", "UTC".parse().unwrap());
+        headers.insert("Accept", "application/vnd.github.v3".parse().unwrap());
+        headers.insert("Connection", "close".parse().unwrap());
         Client {
-            token: CONFIG.github_access_token.clone(),
-            ua: CONFIG.github_user_agent.clone(),
-            client: client,
+            client: reqwest::Client::builder().default_headers(headers).build().unwrap(),
             rate_limit: u32::MAX,
             rate_limit_timeout: Utc::now(),
         }
@@ -113,26 +96,26 @@ impl Client {
                                        -> DashResult<Vec<M>> {
 
         let mut res = self.get(start_url, params)?;
-        let mut models = self.deserialize::<Vec<M>>(&mut res)?;
-        while let Some(url) = Self::next_page(&res.headers) {
+        let mut models: Vec<M> = res.json()?;
+        while let Some(url) = Self::next_page(res.headers()) {
             sleep(Duration::from_millis(DELAY));
             res = self.get(&url, None)?;
-            models.extend(self.deserialize::<Vec<M>>(&mut res)?);
+            models.extend(res.json::<Vec<M>>()?);
         }
         Ok(models)
     }
 
     pub fn fetch_pull_request(&self, pr_info: &PullRequestUrls) -> DashResult<PullRequestFromJson> {
         if let Some(url) = pr_info.get("url") {
-            let mut res = self.get(url, None)?;
-            self.deserialize(&mut res)
+            Ok(self.get(url, None)?.json()?)
         } else {
             throw!(DashError::Misc(None))
         }
     }
 
-    fn next_page(h: &Headers) -> Option<String> {
-        if let Some(lh) = h.get::<Link>() {
+    fn next_page(h: &HeaderMap) -> Option<String> {
+        if let Some(lh) = h.get("Link") {
+            let lh = &lh.to_str().unwrap();
             for link in (**lh).split(',').map(|s| s.trim()) {
 
                 let tokens = link.split(';').map(|s| s.trim()).collect::<Vec<_>>();
@@ -159,8 +142,8 @@ impl Client {
         let payload = serde_json::to_string(&btreemap!("state" => "closed"))?;
         let mut res = self.patch(&url, &payload)?;
 
-        if StatusCode::Ok != res.status {
-            throw!(DashError::Misc(Some(read_to_string(&mut res)?)))
+        if StatusCode::OK != res.status() {
+            throw!(DashError::Misc(Some(res.text()?)))
         }
 
         Ok(())
@@ -172,8 +155,8 @@ impl Client {
 
         let mut res = self.post(&url, &payload)?;
 
-        if StatusCode::Ok != res.status {
-            throw!(DashError::Misc(Some(read_to_string(&mut res)?)))
+        if StatusCode::OK != res.status() {
+            throw!(DashError::Misc(Some(res.text()?)))
         }
 
         Ok(())
@@ -187,8 +170,8 @@ impl Client {
                           label);
         let mut res = self.delete(&url)?;
 
-        if StatusCode::NoContent != res.status {
-            throw!(DashError::Misc(Some(read_to_string(&mut res)?)))
+        if StatusCode::NO_CONTENT != res.status() {
+            throw!(DashError::Misc(Some(res.text()?)))
         }
 
         Ok(())
@@ -201,8 +184,7 @@ impl Client {
                        -> DashResult<CommentFromJson> {
         let url = format!("{}/repos/{}/issues/{}/comments", BASE_URL, repo, issue_num);
         let payload = serde_json::to_string(&btreemap!("body" => text))?;
-        // FIXME propagate an error if it's a 404 or other error
-        self.deserialize(&mut self.post(&url, &payload)?)
+        Ok(self.post(&url, &payload)?.error_for_status()?.json()?)
     }
 
     pub fn edit_comment(&self,
@@ -214,69 +196,28 @@ impl Client {
                           BASE_URL,
                           repo,
                           comment_num);
-
         let payload = serde_json::to_string(&btreemap!("body" => text))?;
-
-        // FIXME propagate an error if it's a 404 or other error
-        self.deserialize(&mut self.patch(&url, &payload)?)
+        Ok(self.patch(&url, &payload)?.error_for_status()?.json()?)
     }
 
-    fn patch(&self, url: &str, payload: &str) -> Result<Response, hyper::error::Error> {
-        self.set_headers(self.client.patch(url).body(payload))
-            .send()
+    fn patch(&self, url: &str, payload: &str) -> Result<Response, reqwest::Error> {
+        self.client.patch(url).body(payload.to_string()).send()
     }
 
-    fn post(&self, url: &str, payload: &str) -> Result<Response, hyper::error::Error> {
-        self.set_headers(self.client.post(url).body(payload)).send()
+    fn post(&self, url: &str, payload: &str) -> Result<Response, reqwest::Error> {
+        self.client.post(url).body(payload.to_string()).send()
     }
 
-    fn delete(&self, url: &str) -> Result<Response, hyper::error::Error> {
-        self.set_headers(self.client.delete(url)).send()
+    fn delete(&self, url: &str) -> Result<Response, reqwest::Error> {
+        self.client.delete(url).send()
     }
 
-    fn get(&self,
-           url: &str,
-           params: Option<&ParameterMap>)
-           -> Result<Response, hyper::error::Error> {
-        let qp_string = match params {
-            Some(p) => {
-                let mut qp = String::from("?");
-                for (k, v) in p {
-                    if qp.len() > 1 {
-                        qp.push('&');
-                    }
-                    qp.push_str(&format!("{}={}", k, v));
-                }
-                qp
-            }
-            None => "".to_string(),
-        };
-
-        let url = format!("{}{}", url, qp_string);
-
+    fn get(&self, url: &str, params: Option<&ParameterMap>) -> Result<Response, reqwest::Error> {
         debug!("GETing: {}", &url);
-
-        self.set_headers(self.client.get(&url)).send()
-    }
-
-    fn deserialize<M: DeserializeOwned>(&self, res: &mut Response) -> DashResult<M> {
-        let mut buf = String::new();
-        res.read_to_string(&mut buf)?;
-
-        match serde_json::from_str(&buf) {
-            Ok(m) => Ok(m),
-            Err(why) => {
-                error!("Unable to parse from JSON ({:?}): {}", why, buf);
-                throw!(why)
-            }
+        let mut builder = self.client.get(url);
+        if let Some(params) = params {
+            builder = builder.query(params);
         }
-    }
-
-    fn set_headers<'a>(&self, req: RequestBuilder<'a>) -> RequestBuilder<'a> {
-        req.header(Authorization(format!("token {}", &self.token)))
-            .header(UserAgent(self.ua.clone()))
-            .header(TZ("UTC".to_string()))
-            .header(Accept("application/vnd.github.v3".to_string()))
-            .header(hyper::header::Connection::close())
+        builder.send()
     }
 }

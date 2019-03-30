@@ -9,12 +9,10 @@ extern crate dotenv;
 extern crate env_logger;
 extern crate hex;
 #[macro_use]
-extern crate hyper;
-extern crate hyper_native_tls;
-#[macro_use]
 extern crate lazy_static;
 #[macro_use]
 extern crate log;
+extern crate reqwest;
 #[macro_use]
 extern crate rocket;
 extern crate rocket_contrib;
