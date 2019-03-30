@@ -57,7 +57,8 @@ pub fn update_nags(comment: &IssueComment) -> DashResult<()> {
 
     // Attempt to parse all commands out of the comment
     let mut any = false;
-    for command in RfcBotCommand::from_str_all(&SETUP, &comment.body) {
+    let teams = SETUP.read().unwrap();
+    for command in RfcBotCommand::from_str_all(&teams, &comment.body) {
         any = true;
 
         if let RfcBotCommand::StartPoll {..} = command {
@@ -488,11 +489,11 @@ fn evaluate_ffcps() -> DashResult<()> {
 }
 
 fn can_ffcp_close(issue: &Issue) -> bool {
-    SETUP.should_ffcp_auto_close(&issue.repository)
+    SETUP.read().unwrap().should_ffcp_auto_close(&issue.repository)
 }
 
 fn can_ffcp_postpone(issue: &Issue) -> bool {
-    SETUP.should_ffcp_auto_postpone(&issue.repository)
+    SETUP.read().unwrap().should_ffcp_auto_postpone(&issue.repository)
 }
 
 fn execute_ffcp_actions(issue: &Issue, disposition: FcpDisposition) {
@@ -613,7 +614,7 @@ fn resolve_applicable_feedback_requests(author: &GitHubUser,
     Ok(())
 }
 
-fn resolve_logins_to_users(member_logins: &Vec<&str>) -> DashResult<Vec<GitHubUser>> {
+fn resolve_logins_to_users(member_logins: &[String]) -> DashResult<Vec<GitHubUser>> {
     use diesel::pg::expression::dsl::any;
     use domain::schema::githubuser;
     let conn = &*DB_POOL.get()?;
@@ -633,13 +634,15 @@ fn specific_subteam_members<F>(included: F) -> DashResult<Vec<GitHubUser>>
 where
     F: Fn(&String) -> bool
 {
-    resolve_logins_to_users(&SETUP.teams()
+    let setup = SETUP.read().unwrap();
+    let teams = setup.teams();
+    let members = teams
         .filter(|&(label, _)| included(&label.0))
-        .flat_map(|(_, team)| team.member_logins())
+        .flat_map(|(_, team)| team.member_logins().map(|i| i.to_string()))
         .collect::<BTreeSet<_>>()
         .into_iter() // diesel won't work with btreeset, and dedup has weird lifetime errors
-        .collect::<Vec<_>>()
-    )
+        .collect::<Vec<_>>();
+    resolve_logins_to_users(&members)
 }
 
 /// Return a list of all known team members.
@@ -652,7 +655,7 @@ fn all_team_members() -> DashResult<Vec<GitHubUser>>
 /// labelled on the issue.
 fn subteam_members(issue: &Issue) -> DashResult<Vec<GitHubUser>> {
     // retrieve all of the teams tagged on this issue
-    specific_subteam_members(|label| issue.labels.contains(label))
+    specific_subteam_members(|label| issue.labels.contains(&label))
 }
 
 fn cancel_fcp(author: &GitHubUser, issue: &Issue, existing: &FcpProposal) -> DashResult<()> {
@@ -744,11 +747,14 @@ fn process_poll
     use domain::schema::poll_response_request;
     let conn = &*DB_POOL.get()?;
 
+    let tmp_teams;
     let teams = if teams.is_empty() {
-        SETUP.teams()
+        let setup = SETUP.read().unwrap();
+        tmp_teams = setup.teams()
             .filter(|&(label, _)| issue.labels.contains(&label.0))
-            .map(|(label, _)| &*label.0)
-            .collect::<BTreeSet<_>>()
+            .map(|(label, _)| label.0.clone())
+            .collect::<BTreeSet<_>>();
+        tmp_teams.iter().map(|team| team.as_str()).collect()
     } else {
         teams
     };

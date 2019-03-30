@@ -75,8 +75,11 @@ fn main() {
     let _ = DB_POOL.get().expect("Unable to test connection pool.");
 
     // we want to panic if we're unable to find any of the usernames
-    let parsed_teams = teams::SETUP.team_labels().collect::<Vec<_>>();
-    info!("parsed teams: {:?}", parsed_teams);
+    {
+        let teams = teams::SETUP.read().unwrap();
+        let parsed_teams = teams.team_labels().collect::<Vec<_>>();
+        info!("parsed teams: {:?}", parsed_teams);
+    }
 
     // FIXME(anp) need to handle panics in both the listeners and crash the server
     let _ = scraper::start_scraping();

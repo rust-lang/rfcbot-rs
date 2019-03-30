@@ -1,6 +1,7 @@
 // TODO maybe pull from https://github.com/rust-lang/rust-www/blob/master/_data/team.yml instead
 
 use std::collections::BTreeMap;
+use std::sync::{Arc, RwLock};
 
 use diesel::prelude::*;
 use toml;
@@ -14,7 +15,7 @@ use error::*;
 //==============================================================================
 
 lazy_static! {
-    pub static ref SETUP: RfcbotConfig = read_rfcbot_cfg_validated();
+    pub static ref SETUP: Arc<RwLock<RfcbotConfig>> = Arc::new(RwLock::new(read_rfcbot_cfg_validated()));
 }
 
 #[derive(Debug, Deserialize)]
@@ -223,7 +224,8 @@ members = [
     #[test]
     fn team_members_exist() {
         ::utils::setup_test_env();
-        for (label, _) in SETUP.teams.iter() {
+        let setup = SETUP.read().unwrap();
+        for (label, _) in setup.teams.iter() {
             println!("found team {:?}", label);
         }
     }
