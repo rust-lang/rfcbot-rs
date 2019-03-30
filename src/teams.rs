@@ -222,6 +222,7 @@ members = [
 
     #[test]
     fn team_members_exist() {
+        ::utils::setup_test_env();
         for (label, _) in SETUP.teams.iter() {
             println!("found team {:?}", label);
         }

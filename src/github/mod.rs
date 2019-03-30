@@ -214,6 +214,7 @@ mod tests {
 
     #[test]
     fn test_handle_user() {
+        ::utils::setup_test_env();
         let db_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
         let conn = PgConnection::establish(&db_url)
             .expect(&format!("Error connecting to {}", db_url));

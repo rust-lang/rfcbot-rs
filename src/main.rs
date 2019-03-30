@@ -41,6 +41,7 @@ mod nag;
 mod scraper;
 mod server;
 mod teams;
+mod utils;
 
 use chrono::Local;
 use diesel::pg::PgConnection;
