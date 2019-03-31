@@ -9,12 +9,10 @@ extern crate dotenv;
 extern crate env_logger;
 extern crate hex;
 #[macro_use]
-extern crate hyper;
-extern crate hyper_native_tls;
-#[macro_use]
 extern crate lazy_static;
 #[macro_use]
 extern crate log;
+extern crate reqwest;
 #[macro_use]
 extern crate rocket;
 extern crate rocket_contrib;
@@ -41,6 +39,7 @@ mod nag;
 mod scraper;
 mod server;
 mod teams;
+mod utils;
 
 use chrono::Local;
 use diesel::pg::PgConnection;
@@ -74,8 +73,13 @@ fn main() {
     let _ = DB_POOL.get().expect("Unable to test connection pool.");
 
     // we want to panic if we're unable to find any of the usernames
-    let parsed_teams = teams::SETUP.team_labels().collect::<Vec<_>>();
-    info!("parsed teams: {:?}", parsed_teams);
+    {
+        let teams = teams::SETUP.read().unwrap();
+        let parsed_teams = teams.team_labels().collect::<Vec<_>>();
+        info!("parsed teams: {:?}", parsed_teams);
+    }
+
+    teams::start_updater_thread();
 
     // FIXME(anp) need to handle panics in both the listeners and crash the server
     let _ = scraper::start_scraping();

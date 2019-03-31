@@ -5,7 +5,6 @@ use std::convert::From;
 use std::io;
 
 use diesel;
-use hyper;
 use serde_json;
 use rocket_contrib::templates::handlebars;
 
@@ -13,7 +12,7 @@ pub type DashResult<T> = std::result::Result<T, DashError>;
 
 #[derive(Debug)]
 pub enum DashError {
-    Hyper(hyper::error::Error),
+    Reqwest(reqwest::Error),
     Io(io::Error),
     Serde(serde_json::error::Error),
     R2d2(diesel::r2d2::PoolError),
@@ -26,8 +25,8 @@ impl From<handlebars::RenderError> for DashError {
     fn from(e: handlebars::RenderError) -> Self { DashError::Template(e) }
 }
 
-impl From<hyper::error::Error> for DashError {
-    fn from(e: hyper::error::Error) -> Self { DashError::Hyper(e) }
+impl From<reqwest::Error> for DashError {
+    fn from(e: reqwest::Error) -> Self { DashError::Reqwest(e) }
 }
 
 impl From<io::Error> for DashError {

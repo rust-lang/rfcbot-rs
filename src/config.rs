@@ -28,7 +28,7 @@ pub struct Config {
     pub github_access_token: String,
     pub github_user_agent: String,
     pub github_webhook_secrets: Vec<String>,
-    pub github_interval_mins: u64,
+    pub github_interval_mins: Option<u64>,
     pub post_comments: bool,
 }
 
@@ -57,7 +57,6 @@ pub fn init() -> Result<Config, Vec<&'static str>> {
                     GITHUB_TOKEN,
                     GITHUB_WEBHOOK_SECRETS,
                     GITHUB_UA,
-                    GITHUB_INTERVAL,
                     POST_COMMENTS];
 
     for var in keys {
@@ -77,8 +76,11 @@ pub fn init() -> Result<Config, Vec<&'static str>> {
         let gh_token = vars.remove(GITHUB_TOKEN).unwrap();
         let gh_ua = vars.remove(GITHUB_UA).unwrap();
 
-        let gh_interval = vars.remove(GITHUB_INTERVAL).unwrap().parse::<u64>();
-        let gh_interval = ok_or!(gh_interval, throw!(vec![GITHUB_INTERVAL]));
+        let gh_interval = if let Ok(val) = env::var(GITHUB_INTERVAL) {
+            Some(ok_or!(val.parse::<u64>(), throw!(vec![GITHUB_INTERVAL])))
+        } else {
+            None
+        };
 
         let post_comments = vars.remove(POST_COMMENTS).unwrap().parse::<bool>();
         let post_comments = ok_or!(post_comments, throw!(vec![POST_COMMENTS]));
