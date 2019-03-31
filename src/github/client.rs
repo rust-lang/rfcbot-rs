@@ -33,10 +33,12 @@ pub struct Client {
 impl Client {
     pub fn new() -> Self {
         let mut headers = HeaderMap::new();
-        headers.insert(
-            "Authorization",
-            format!("token {}", CONFIG.github_access_token).parse().unwrap(),
-        );
+        if !CONFIG.github_access_token.trim().is_empty() {
+            headers.insert(
+                "Authorization",
+                format!("token {}", CONFIG.github_access_token).parse().unwrap(),
+            );
+        }
         headers.insert("User-Agent", CONFIG.github_user_agent.parse().unwrap());
         headers.insert("Time-Zone", "UTC".parse().unwrap());
         headers.insert("Accept", "application/vnd.github.v3".parse().unwrap());
