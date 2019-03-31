@@ -13,6 +13,7 @@ use reqwest::{self, StatusCode, Response, header::HeaderMap};
 use config::CONFIG;
 use error::{DashError, DashResult};
 use github::models::{CommentFromJson, IssueFromJson, PullRequestFromJson, PullRequestUrls};
+use domain::github::GitHubUser;
 
 pub const BASE_URL: &'static str = "https://api.github.com";
 
@@ -198,6 +199,11 @@ impl Client {
                           comment_num);
         let payload = serde_json::to_string(&btreemap!("body" => text))?;
         Ok(self.patch(&url, &payload)?.error_for_status()?.json()?)
+    }
+
+    pub fn get_user(&self, name: &str) -> DashResult<GitHubUser> {
+        let url = format!("{}/users/{}", BASE_URL, name);
+        Ok(self.get(&url, None)?.error_for_status()?.json()?)
     }
 
     fn patch(&self, url: &str, payload: &str) -> Result<Response, reqwest::Error> {

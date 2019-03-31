@@ -7,6 +7,7 @@ use toml;
 use super::DB_POOL;
 use domain::github::GitHubUser;
 use error::*;
+use github::GH;
 
 const UPDATE_CONFIG_EVERY_MIN: u64 = 5;
 
@@ -156,15 +157,14 @@ impl Team {
     fn validate(&self) -> DashResult<()> {
         use domain::schema::githubuser::dsl::*;
         let conn = &*(DB_POOL.get()?);
+        let gh = &*(GH);
 
         // bail if they don't exist, but we don't want to actually keep the id in ram
         for member_login in self.member_logins() {
-            let check_login = githubuser.filter(login.eq(member_login))
-                                        .first::<GitHubUser>(conn);
-            ok_or!(check_login, why => {
-                error!("unable to find {} in database: {:?}", member_login, why);
-                throw!(why);
-            });
+            if githubuser.filter(login.eq(member_login)).first::<GitHubUser>(conn).is_err() {
+                ::github::handle_user(&conn, &gh.get_user(member_login)?)?;
+                info!("loaded into the database user {}", member_login);
+            }
         }
 
         Ok(())
