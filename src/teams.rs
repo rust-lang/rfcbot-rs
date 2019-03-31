@@ -1,5 +1,3 @@
-// TODO maybe pull from https://github.com/rust-lang/rust-www/blob/master/_data/team.yml instead
-
 use std::collections::BTreeMap;
 use std::sync::{Arc, RwLock};
 
@@ -10,9 +8,13 @@ use super::DB_POOL;
 use domain::github::GitHubUser;
 use error::*;
 
+const UPDATE_CONFIG_EVERY_MIN: u64 = 5;
+
 //==============================================================================
 // Public API
 //==============================================================================
+
+type TeamsMap = BTreeMap<TeamLabel, Team>;
 
 lazy_static! {
     pub static ref SETUP: Arc<RwLock<RfcbotConfig>> = Arc::new(RwLock::new(read_rfcbot_cfg_validated()));
@@ -20,19 +22,26 @@ lazy_static! {
 
 #[derive(Debug, Deserialize)]
 pub struct RfcbotConfig {
+    #[serde(default)]
+    include_rust_team: bool,
     fcp_behaviors: BTreeMap<String, FcpBehavior>,
-    teams: BTreeMap<TeamLabel, Team>,
+    teams: RfcbotTeams,
+    #[serde(skip)]
+    cached_teams: TeamsMap,
 }
 
 impl RfcbotConfig {
     /// Retrive an iterator over all the team labels.
     pub fn team_labels(&self) -> impl Iterator<Item = &TeamLabel> {
-        self.teams.keys()
+        self.teams().map(|(k, _)| k)
     }
 
     /// Retrive an iterator over all the (team label, team) pairs.
     pub fn teams(&self) -> impl Iterator<Item = (&TeamLabel, &Team)> {
-        self.teams.iter()
+        match &self.teams {
+            RfcbotTeams::Local(teams) => teams.iter(),
+            RfcbotTeams::Remote { .. } => self.cached_teams.iter(),
+        }
     }
 
     /// Are we allowed to auto-close issues after F-FCP in this repo?
@@ -44,6 +53,21 @@ impl RfcbotConfig {
     pub fn should_ffcp_auto_postpone(&self, repo: &str) -> bool {
         self.fcp_behaviors.get(repo).map(|fcp| fcp.postpone).unwrap_or_default()
     }
+
+    // Update the list of teams from external sources, if needed
+    fn update(&mut self) -> Result<(), DashError> {
+        #[derive(Deserialize)]
+        struct ToDeserialize {
+            teams: TeamsMap,
+        }
+        if let RfcbotTeams::Remote { ref url } = &self.teams {
+            let de: ToDeserialize = ::reqwest::get(url)?
+                .error_for_status()?
+                .json()?;
+            self.cached_teams = de.teams;
+        }
+        Ok(())
+    }
 }
 
 #[derive(Debug, Deserialize)]
@@ -52,6 +76,19 @@ pub struct FcpBehavior {
     close: bool,
     #[serde(default)]
     postpone: bool,
+}
+
+// This enum definition mixes both struct-style and tuple-style variants: this is intentionally
+// done to get the wanted deserialization behavior from serde. Since this is an untagged enum from
+// serde's point of view it will deserialize a RfcbotTeams::Remote when it encounters a key named
+// url with a string in it, otherwise the normal team map.
+#[derive(Debug, Deserialize)]
+#[serde(untagged)]
+enum RfcbotTeams {
+    Local(TeamsMap),
+    Remote {
+        url: String,
+    }
 }
 
 #[derive(Debug, Deserialize)]
@@ -75,6 +112,17 @@ impl Team {
 #[serde(transparent)]
 pub struct TeamLabel(pub String);
 
+pub fn start_updater_thread() {
+    let _ = ::utils::spawn_thread("teams updater", UPDATE_CONFIG_EVERY_MIN, || {
+        let mut teams = SETUP.write().unwrap();
+        teams.update()?;
+        for (_name, team) in teams.teams() {
+            team.validate()?;
+        }
+        Ok(())
+    });
+}
+
 //==============================================================================
 // Implementation details
 //==============================================================================
@@ -83,7 +131,7 @@ pub struct TeamLabel(pub String);
 fn read_rfcbot_cfg_validated() -> RfcbotConfig {
     let cfg = read_rfcbot_cfg();
 
-    cfg.teams.values().for_each(|team|
+    cfg.teams().map(|(_, v)| v).for_each(|team|
         team.validate()
             .expect("unable to verify team member from database.
 if you're running this for tests, make sure you've pulled github users from prod")
@@ -94,8 +142,10 @@ if you're running this for tests, make sure you've pulled github users from prod
 
 /// Read the unprocessed `rfcbot.toml` configuration file.
 fn read_rfcbot_cfg() -> RfcbotConfig {
-    read_rfcbot_cfg_from(
-        include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/rfcbot.toml")))
+    let mut config = read_rfcbot_cfg_from(
+        include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/rfcbot.toml")));
+    config.update().expect("couldn't update the configuration!");
+    config
 }
 
 fn read_rfcbot_cfg_from(input: &str) -> RfcbotConfig {
@@ -225,7 +275,7 @@ members = [
     fn team_members_exist() {
         ::utils::setup_test_env();
         let setup = SETUP.read().unwrap();
-        for (label, _) in setup.teams.iter() {
+        for (label, _) in setup.teams() {
             println!("found team {:?}", label);
         }
     }

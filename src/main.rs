@@ -79,6 +79,8 @@ fn main() {
         info!("parsed teams: {:?}", parsed_teams);
     }
 
+    teams::start_updater_thread();
+
     // FIXME(anp) need to handle panics in both the listeners and crash the server
     let _ = scraper::start_scraping();
     let _server_handle = server::serve();

@@ -1,3 +1,23 @@
+use std::time::Duration;
+use std::thread::{self, JoinHandle};
+use error::DashResult;
+
+pub(crate) fn spawn_thread<F>(name: &'static str, interval_minutes: u64, f: F) -> JoinHandle<()>
+where
+    F: Fn() -> DashResult<()> + Send + 'static,
+{
+    let duration = Duration::from_secs(interval_minutes * 60);
+    thread::spawn(move || {
+        loop {
+            if let Err(err) = f() {
+                error!("the {} thread failed an iteration: {:?}", name, err);
+            }
+            info!("{} thread sleeping for {} seconds", name, duration.as_secs());
+            thread::sleep(duration);
+        }
+    })
+}
+
 #[cfg(test)]
 pub(crate) fn setup_test_env() {
     use std::sync::Once;
