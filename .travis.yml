@@ -3,11 +3,14 @@ notifications:
   email: false
 language: rust
 rust:
-  - nightly
+  # sync in `rust-toolchain` file
+  - nightly-2019-04-26
 cache:
-  cargo: true
   directories:
-  - "$HOME/.rustup"
+    - "$HOME/.cargo"
+# But don't cache the cargo registry
+before_cache:
+  - rm -rf "$HOME/.cargo/registry"
 addons:
   postgresql: '9.5'
   apt:
