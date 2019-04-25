@@ -5,9 +5,9 @@ use std::i32;
 
 use chrono::{DateTime, Utc};
 
-use DB_POOL;
-use domain::github::{IssueComment, IssuePartial, Milestone, PullRequest, GitHubUser};
+use domain::github::{GitHubUser, IssueComment, IssuePartial, Milestone, PullRequest};
 use error::DashResult;
+use DB_POOL;
 
 #[derive(Clone, Debug, Deserialize)]
 pub struct MilestoneFromJson {
@@ -82,7 +82,8 @@ impl IssueFromJson {
             open: self.state == "open",
             is_pull_request: self.pull_request.is_some(),
             title: self.title.replace(0x00 as char, ""),
-            body: self.body
+            body: self
+                .body
                 .unwrap_or_else(String::new)
                 .replace(0x00 as char, ""),
             locked: self.locked,
@@ -115,7 +116,8 @@ impl CommentFromJson {
         use diesel::prelude::*;
         use domain::schema::issue::dsl::*;
 
-        let issue_number = self.html_url
+        let issue_number = self
+            .html_url
             .split('#')
             .next()
             .map(|r| r.split('/').last().map(|n| n.parse::<i32>()));
@@ -131,20 +133,21 @@ impl CommentFromJson {
 
         let conn = DB_POOL.get()?;
 
-        let issue_id = issue.select(id)
-                            .filter(number.eq(issue_number))
-                            .filter(repository.eq(repo))
-                            .first::<i32>(&*conn)?;
+        let issue_id = issue
+            .select(id)
+            .filter(number.eq(issue_number))
+            .filter(repository.eq(repo))
+            .first::<i32>(&*conn)?;
 
         Ok(IssueComment {
-               id: self.id,
-               fk_issue: issue_id,
-               fk_user: self.user.id,
-               body: self.body.replace(0x00 as char, ""),
-               created_at: self.created_at.naive_utc(),
-               updated_at: self.updated_at.naive_utc(),
-               repository: repo.to_string(),
-           })
+            id: self.id,
+            fk_issue: issue_id,
+            fk_user: self.user.id,
+            body: self.body.replace(0x00 as char, ""),
+            created_at: self.created_at.naive_utc(),
+            updated_at: self.updated_at.naive_utc(),
+            repository: repo.to_string(),
+        })
     }
 }
 

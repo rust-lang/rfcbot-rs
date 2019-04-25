@@ -1,21 +1,20 @@
 // Copyright 2016 Adam Perry. Dual-licensed MIT and Apache 2.0 (see LICENSE files for details).
 
-
 pub mod client;
-pub mod models;
 mod command;
+pub mod models;
 mod nag;
 pub mod webhooks;
 
 use chrono::{DateTime, NaiveDate, NaiveDateTime, NaiveTime, Utc};
-use diesel::prelude::*;
-use diesel::pg::PgConnection;
 use diesel;
+use diesel::pg::PgConnection;
+use diesel::prelude::*;
 
-use DB_POOL;
 use domain::github::*;
 use domain::schema::*;
 use error::DashResult;
+use DB_POOL;
 
 use self::client::Client;
 use self::models::{CommentFromJson, IssueFromJson, PullRequestFromJson};
@@ -27,8 +26,10 @@ lazy_static! {
 pub fn most_recent_update() -> DashResult<DateTime<Utc>> {
     info!("finding most recent github updates");
 
-    let default_date = NaiveDateTime::new(NaiveDate::from_ymd(2015, 5, 15),
-                                          NaiveTime::from_hms(0, 0, 0));
+    let default_date = NaiveDateTime::new(
+        NaiveDate::from_ymd(2015, 5, 15),
+        NaiveTime::from_hms(0, 0, 0),
+    );
 
     let conn = &*DB_POOL.get()?;
 
@@ -55,7 +56,9 @@ pub fn record_successful_update(ingest_start: NaiveDateTime) -> DashResult<()> {
         message: None,
     };
 
-    diesel::insert_into(githubsync).values(&sync_record).execute(conn)?;
+    diesel::insert_into(githubsync)
+        .values(&sync_record)
+        .execute(conn)?;
     Ok(())
 }
 
@@ -77,18 +80,21 @@ pub fn ingest_since(repo: &str, start: DateTime<Utc>) -> DashResult<()> {
         }
     }
 
-    debug!("num pull requests updated since {}: {:#?}",
-           &start,
-           prs.len());
+    debug!(
+        "num pull requests updated since {}: {:#?}",
+        &start,
+        prs.len()
+    );
 
     debug!("num issues updated since {}: {:?}", &start, issues.len());
-    debug!("num comments updated since {}: {:?}",
-           &start,
-           comments.len());
+    debug!(
+        "num comments updated since {}: {:?}",
+        &start,
+        comments.len()
+    );
 
     let conn = &*DB_POOL.get()?;
     debug!("let's insert some stuff in the database");
-
 
     // make sure we have all of the users to ensure referential integrity
     for issue in issues {
@@ -141,9 +147,10 @@ pub fn handle_comment(conn: &PgConnection, comment: CommentFromJson, repo: &str)
     // We only want to run `nag::update_nags` on insert to avoid
     // double-processing commits, so we can't use upsert here
     if issuecomment::table
-           .find(comment.id)
-           .get_result::<IssueComment>(conn)
-           .is_ok() {
+        .find(comment.id)
+        .get_result::<IssueComment>(conn)
+        .is_ok()
+    {
         diesel::update(issuecomment::table.find(comment.id))
             .set(&comment)
             .execute(conn)?;
@@ -216,8 +223,8 @@ mod tests {
     fn test_handle_user() {
         ::utils::setup_test_env();
         let db_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
-        let conn = PgConnection::establish(&db_url)
-            .expect(&format!("Error connecting to {}", db_url));
+        let conn =
+            PgConnection::establish(&db_url).expect(&format!("Error connecting to {}", db_url));
 
         let user = GitHubUser {
             id: -1,

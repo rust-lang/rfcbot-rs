@@ -2,21 +2,23 @@ use std::collections::BTreeSet;
 use std::sync::Mutex;
 
 use chrono::{Duration, Utc};
-use diesel::prelude::*;
 use diesel;
+use diesel::prelude::*;
 
 use itertools::Itertools;
 
-use DB_POOL;
+use super::GH;
 use domain::github::{GitHubUser, Issue, IssueComment};
-use domain::rfcbot::{FcpConcern, FcpProposal, FcpReviewRequest, FeedbackRequest, NewFcpProposal,
-                     NewFcpConcern, NewFcpReviewRequest, NewFeedbackRequest,
-                     NewPoll, Poll, NewPollResponseRequest, PollResponseRequest};
+use domain::rfcbot::{
+    FcpConcern, FcpProposal, FcpReviewRequest, FeedbackRequest, NewFcpConcern, NewFcpProposal,
+    NewFcpReviewRequest, NewFeedbackRequest, NewPoll, NewPollResponseRequest, Poll,
+    PollResponseRequest,
+};
 use domain::schema::*;
 use error::*;
 use github::models::CommentFromJson;
 use teams::SETUP;
-use super::GH;
+use DB_POOL;
 
 use github::command::*;
 
@@ -61,7 +63,7 @@ pub fn update_nags(comment: &IssueComment) -> DashResult<()> {
     for command in RfcBotCommand::from_str_all(&teams, &comment.body) {
         any = true;
 
-        if let RfcBotCommand::StartPoll {..} = command {
+        if let RfcBotCommand::StartPoll { .. } = command {
             // Accept poll requests from any known user.
             if all_team_members.iter().find(|&u| u == &author).is_none() {
                 info!("poll requester ({}) is not a known user", author.login);
@@ -71,8 +73,10 @@ pub fn update_nags(comment: &IssueComment) -> DashResult<()> {
             // Don't accept most bot commands from non-subteam members.
             // Early return because we'll just get here again...
             if subteam_members.iter().find(|&u| u == &author).is_none() {
-                info!("command author ({}) doesn't appear in any relevant subteams",
-                      author.login);
+                info!(
+                    "command author ({}) doesn't appear in any relevant subteams",
+                    author.login
+                );
                 return Ok(());
             }
         }
@@ -184,26 +188,39 @@ fn update_poll_response_status(poll_id: i32) -> DashResult<()> {
     Ok(())
 }
 
-fn parse_ticky_boxes<'a>(what: &'a str, id: i32, comment: &'a IssueComment)
-    -> impl Iterator<Item = &'a str>
-{
-    comment.body.lines().filter_map(move |line| if line.starts_with("* [") {
-        let l = line.trim_start_matches("* [");
-        let reviewed = l.starts_with('x');
-        let remaining = l.trim_start_matches("x] @").trim_start_matches(" ] @");
+fn parse_ticky_boxes<'a>(
+    what: &'a str,
+    id: i32,
+    comment: &'a IssueComment,
+) -> impl Iterator<Item = &'a str> {
+    comment.body.lines().filter_map(move |line| {
+        if line.starts_with("* [") {
+            let l = line.trim_start_matches("* [");
+            let reviewed = l.starts_with('x');
+            let remaining = l.trim_start_matches("x] @").trim_start_matches(" ] @");
 
-        if let Some(username) = remaining.split_whitespace().next() {
-            trace!("reviewer parsed as reviewed? {} (line: \"{}\")",
-                    reviewed, l);
+            if let Some(username) = remaining.split_whitespace().next() {
+                trace!(
+                    "reviewer parsed as reviewed? {} (line: \"{}\")",
+                    reviewed,
+                    l
+                );
 
-            if reviewed { Some(username) } else { None }
+                if reviewed {
+                    Some(username)
+                } else {
+                    None
+                }
+            } else {
+                warn!(
+                    "An empty usename showed up in comment {} for {} {}",
+                    comment.id, what, id
+                );
+                None
+            }
         } else {
-            warn!("An empty usename showed up in comment {} for {} {}",
-                  comment.id, what, id);
             None
         }
-    } else {
-        None
     })
 }
 
@@ -219,9 +236,9 @@ fn evaluate_nags() {
 }
 
 fn evaluate_polls() -> DashResult<()> {
-    use domain::schema::poll::dsl::*;
-    use domain::schema::issuecomment::dsl::*;
     use domain::schema::issuecomment::dsl::id as issuecomment_id;
+    use domain::schema::issuecomment::dsl::*;
+    use domain::schema::poll::dsl::*;
     let conn = &*DB_POOL.get()?;
 
     // first process all "pending" polls (unresponded)
@@ -232,8 +249,9 @@ fn evaluate_polls() -> DashResult<()> {
     });
 
     for mut survey in pending {
-        let initiator = githubuser::table.find(survey.fk_initiator)
-                             .first::<GitHubUser>(conn);
+        let initiator = githubuser::table
+            .find(survey.fk_initiator)
+            .first::<GitHubUser>(conn);
         let initiator = ok_or_continue!(initiator, why =>
             error!("Unable to retrieve poll initiator for poll id {}: {:?}",
                     survey.id, why));
@@ -257,18 +275,22 @@ fn evaluate_polls() -> DashResult<()> {
         if responses.iter().all(|(_, response)| response.responded) {
             survey.poll_closed = true;
             let update = diesel::update(poll.find(survey.id))
-                                .set(&survey).execute(conn);
+                .set(&survey)
+                .execute(conn);
             ok_or_continue!(update, why =>
                 error!("Unable to close poll {}: {:?}", survey.id, why));
         }
 
         // update existing status comment with responses & concerns
-        let status_comment = RfcBotComment::new(&issue, CommentType::QuestionAsked {
-            initiator: &initiator,
-            respondents: &responses,
-            question: &survey.poll_question,
-            teams: survey.poll_teams.split(",").collect(),
-        });
+        let status_comment = RfcBotComment::new(
+            &issue,
+            CommentType::QuestionAsked {
+                initiator: &initiator,
+                respondents: &responses,
+                question: &survey.poll_question,
+                teams: survey.poll_teams.split(",").collect(),
+            },
+        );
 
         let previous_comment: IssueComment = issuecomment
             .filter(issuecomment_id.eq(survey.fk_bot_tracking_comment))
@@ -291,20 +313,23 @@ fn evaluate_polls() -> DashResult<()> {
 fn evaluate_pendings() -> DashResult<()> {
     use diesel::prelude::*;
     use domain::schema::fcp_proposal::dsl::*;
-    use domain::schema::issuecomment::dsl::*;
     use domain::schema::issuecomment::dsl::id as issuecomment_id;
+    use domain::schema::issuecomment::dsl::*;
     let conn = &*DB_POOL.get()?;
 
     // first process all "pending" proposals (unreviewed or remaining concerns)
-    let pending = fcp_proposal.filter(fcp_start.is_null()).load::<FcpProposal>(conn);
+    let pending = fcp_proposal
+        .filter(fcp_start.is_null())
+        .load::<FcpProposal>(conn);
     let pending_proposals = ok_or!(pending, why => {
         error!("Unable to retrieve list of pending proposals: {:?}", why);
         throw!(why)
     });
 
     for mut proposal in pending_proposals {
-        let initiator = githubuser::table.find(proposal.fk_initiator)
-                             .first::<GitHubUser>(conn);
+        let initiator = githubuser::table
+            .find(proposal.fk_initiator)
+            .first::<GitHubUser>(conn);
         let initiator = ok_or_continue!(initiator, why =>
             error!("Unable to retrieve proposal initiator for proposal id {}: {:?}",
                     proposal.id, why));
@@ -344,11 +369,15 @@ fn evaluate_pendings() -> DashResult<()> {
             .count();
 
         // update existing status comment with reviews & concerns
-        let status_comment = RfcBotComment::new(&issue, CommentType::FcpProposed(
-                    &initiator,
-                    FcpDisposition::from_str(&proposal.disposition)?,
-                    &reviews,
-                    &concerns));
+        let status_comment = RfcBotComment::new(
+            &issue,
+            CommentType::FcpProposed(
+                &initiator,
+                FcpDisposition::from_str(&proposal.disposition)?,
+                &reviews,
+                &concerns,
+            ),
+        );
 
         let previous_comment: IssueComment = issuecomment
             .filter(issuecomment_id.eq(proposal.fk_bot_tracking_comment))
@@ -373,7 +402,8 @@ fn evaluate_pendings() -> DashResult<()> {
             // FCP can start now -- update the database
             proposal.fcp_start = Some(Utc::now().naive_utc());
             let update = diesel::update(fcp_proposal.find(proposal.id))
-                          .set(&proposal).execute(conn);
+                .set(&proposal)
+                .execute(conn);
             ok_or_continue!(update, why =>
                 error!("Unable to mark FCP {} as started: {:?}",
                        proposal.id, why));
@@ -387,10 +417,10 @@ fn evaluate_pendings() -> DashResult<()> {
                 let added_label = match label_res {
                     Ok(()) => true,
                     Err(why) => {
-                        warn!("Unable to add FCP label to {}#{}: {:?}",
-                              &issue.repository,
-                              issue.number,
-                              why);
+                        warn!(
+                            "Unable to add FCP label to {}#{}: {:?}",
+                            &issue.repository, issue.number, why
+                        );
                         false
                     }
                 };
@@ -420,9 +450,10 @@ fn evaluate_ffcps() -> DashResult<()> {
 
     // look for any FCP proposals that entered FCP a week or more ago but aren't marked as closed
     let one_business_week_ago = Utc::now().naive_utc() - Duration::days(10);
-    let ffcps = fcp_proposal.filter(fcp_start.le(one_business_week_ago))
-                            .filter(fcp_closed.eq(false))
-                            .load::<FcpProposal>(conn);
+    let ffcps = fcp_proposal
+        .filter(fcp_start.le(one_business_week_ago))
+        .filter(fcp_closed.eq(false))
+        .load::<FcpProposal>(conn);
     let finished_fcps = ok_or!(ffcps, why => {
         error!("Unable to retrieve FCPs that need to be marked as finished: {:?}",
                why);
@@ -430,8 +461,9 @@ fn evaluate_ffcps() -> DashResult<()> {
     });
 
     for mut proposal in finished_fcps {
-        let initiator = githubuser::table.find(proposal.fk_initiator)
-                                         .first::<GitHubUser>(conn);
+        let initiator = githubuser::table
+            .find(proposal.fk_initiator)
+            .first::<GitHubUser>(conn);
         let initiator = ok_or_continue!(initiator, why =>
             error!("Unable to retrieve proposal initiator for proposal id {}: {:?}",
                     proposal.id,
@@ -447,7 +479,8 @@ fn evaluate_ffcps() -> DashResult<()> {
         // update the fcp
         proposal.fcp_closed = true;
         let update_fcp = diesel::update(fcp_proposal.find(proposal.id))
-                                .set(&proposal).execute(conn);
+            .set(&proposal)
+            .execute(conn);
         ok_or_continue!(update_fcp, why =>
             error!("Unable to update FCP {}: {:?}", proposal.id, why));
 
@@ -460,10 +493,10 @@ fn evaluate_ffcps() -> DashResult<()> {
         let added_label = match label_res {
             Ok(_) => true,
             Err(why) => {
-                warn!("Unable to add Finished-FCP label to {}#{}: {:?}",
-                        &issue.repository,
-                        issue.number,
-                        why);
+                warn!(
+                    "Unable to add Finished-FCP label to {}#{}: {:?}",
+                    &issue.repository, issue.number, why
+                );
                 false
             }
         };
@@ -473,7 +506,7 @@ fn evaluate_ffcps() -> DashResult<()> {
             added_label,
             author: &initiator,
             status_comment_id: proposal.fk_bot_tracking_comment,
-            disposition: disp
+            disposition: disp,
         };
         let fcp_close_comment = RfcBotComment::new(&issue, comment_type);
 
@@ -489,11 +522,17 @@ fn evaluate_ffcps() -> DashResult<()> {
 }
 
 fn can_ffcp_close(issue: &Issue) -> bool {
-    SETUP.read().unwrap().should_ffcp_auto_close(&issue.repository)
+    SETUP
+        .read()
+        .unwrap()
+        .should_ffcp_auto_close(&issue.repository)
 }
 
 fn can_ffcp_postpone(issue: &Issue) -> bool {
-    SETUP.read().unwrap().should_ffcp_auto_postpone(&issue.repository)
+    SETUP
+        .read()
+        .unwrap()
+        .should_ffcp_auto_postpone(&issue.repository)
 }
 
 fn execute_ffcp_actions(issue: &Issue, disposition: FcpDisposition) {
@@ -501,18 +540,18 @@ fn execute_ffcp_actions(issue: &Issue, disposition: FcpDisposition) {
         FcpDisposition::Merge => {
             // TODO: This one will require a lot of work to
             // auto-merge RFCs and create the tracking issue.
-        },
+        }
         FcpDisposition::Close if can_ffcp_close(issue) => {
             let _ = issue.add_label(Label::Closed);
             issue.remove_label(Label::DispositionClose);
             issue.close();
-        },
+        }
         FcpDisposition::Postpone if can_ffcp_postpone(issue) => {
             let _ = issue.add_label(Label::Postponed);
             issue.remove_label(Label::DispositionPostpone);
             issue.close();
-        },
-        _ => {},
+        }
+        _ => {}
     }
 }
 
@@ -540,10 +579,8 @@ fn list_review_requests(proposal_id: i32) -> DashResult<Vec<(GitHubUser, FcpRevi
     Ok(w_reviewers)
 }
 
-fn list_poll_response_requests(poll_id: i32)
-    -> DashResult<Vec<(GitHubUser, PollResponseRequest)>>
-{
-    use domain::schema::{poll_response_request, githubuser};
+fn list_poll_response_requests(poll_id: i32) -> DashResult<Vec<(GitHubUser, PollResponseRequest)>> {
+    use domain::schema::{githubuser, poll_response_request};
 
     let conn = &*DB_POOL.get()?;
 
@@ -589,11 +626,11 @@ fn list_concerns_with_authors(proposal_id: i32) -> DashResult<Vec<(GitHubUser, F
     Ok(w_authors)
 }
 
-fn resolve_applicable_feedback_requests(author: &GitHubUser,
-                                        issue: &Issue,
-                                        comment: &IssueComment)
-                                        -> DashResult<()> {
-
+fn resolve_applicable_feedback_requests(
+    author: &GitHubUser,
+    issue: &Issue,
+    comment: &IssueComment,
+) -> DashResult<()> {
     use domain::schema::rfc_feedback_request::dsl::*;
     let conn = &*DB_POOL.get()?;
 
@@ -632,7 +669,7 @@ fn resolve_logins_to_users(member_logins: &[String]) -> DashResult<Vec<GitHubUse
 /// satisfying the given predicate.
 fn specific_subteam_members<F>(included: F) -> DashResult<Vec<GitHubUser>>
 where
-    F: Fn(&String) -> bool
+    F: Fn(&String) -> bool,
 {
     let setup = SETUP.read().unwrap();
     let teams = setup.teams();
@@ -646,10 +683,7 @@ where
 }
 
 /// Return a list of all known team members.
-fn all_team_members() -> DashResult<Vec<GitHubUser>>
-{
-    specific_subteam_members(|_| true)
-}
+fn all_team_members() -> DashResult<Vec<GitHubUser>> { specific_subteam_members(|_| true) }
 
 /// Check if an issue comment is written by a member of one of the subteams
 /// labelled on the issue.
@@ -665,18 +699,20 @@ fn cancel_fcp(author: &GitHubUser, issue: &Issue, existing: &FcpProposal) -> Das
 
     // if exists delete FCP with associated concerns, reviews, feedback requests
     // db schema has ON DELETE CASCADE
-    diesel::delete(fcp_proposal.filter(id.eq(existing.id)))
-        .execute(conn)?;
+    diesel::delete(fcp_proposal.filter(id.eq(existing.id))).execute(conn)?;
 
     // leave github comment stating that FCP proposal cancelled
     let comment = RfcBotComment::new(issue, CommentType::FcpProposalCancelled(author));
     let _ = comment.post(None);
-    &[Label::FCP,
-      Label::PFCP,
-      Label::DispositionMerge,
-      Label::DispositionClose,
-      Label::DispositionPostpone,
-    ].iter().for_each(|&lab| issue.remove_label(lab));
+    &[
+        Label::FCP,
+        Label::PFCP,
+        Label::DispositionMerge,
+        Label::DispositionClose,
+        Label::DispositionPostpone,
+    ]
+    .iter()
+    .for_each(|&lab| issue.remove_label(lab));
 
     Ok(())
 }
@@ -701,48 +737,49 @@ fn post_insert_comment(issue: &Issue, comment: CommentType) -> DashResult<IssueC
     // at this point our new comment doesn't yet exist in the database, so
     // we need to insert it
     let comment = comment.with_repo(&issue.repository)?;
-    if let Err(why) =
-        diesel::insert_into(issuecomment::table)
-                .values(&comment)
-                .execute(conn)
+    if let Err(why) = diesel::insert_into(issuecomment::table)
+        .values(&comment)
+        .execute(conn)
     {
-        warn!("issue inserting new record, maybe received webhook for it: {:?}",
-                why);
+        warn!(
+            "issue inserting new record, maybe received webhook for it: {:?}",
+            why
+        );
     }
 
     Ok(comment)
 }
 
 impl<'a> RfcBotCommand<'a> {
-    pub fn process(self,
-                   author: &GitHubUser,
-                   issue: &Issue,
-                   comment: &IssueComment,
-                   team_members: &[GitHubUser])
-                   -> DashResult<()> {
+    pub fn process(
+        self,
+        author: &GitHubUser,
+        issue: &Issue,
+        comment: &IssueComment,
+        team_members: &[GitHubUser],
+    ) -> DashResult<()> {
         use self::RfcBotCommand::*;
         match self {
-            StartPoll { teams, question } =>
-                process_poll(author, issue, comment, question, teams),
-            FcpPropose(disp) =>
-                process_fcp_propose(author, issue, comment, team_members, disp),
+            StartPoll { teams, question } => process_poll(author, issue, comment, question, teams),
+            FcpPropose(disp) => process_fcp_propose(author, issue, comment, team_members, disp),
             FcpCancel => process_fcp_cancel(author, issue),
             Reviewed => process_reviewed(author, issue),
-            NewConcern(concern_name) =>
-                process_new_concern(author, issue, comment, concern_name),
-            ResolveConcern(concern_name) =>
-                process_resolve_concern(author, issue, comment, concern_name),
-            FeedbackRequest(username) =>
-                process_feedback_request(author, issue, username),
+            NewConcern(concern_name) => process_new_concern(author, issue, comment, concern_name),
+            ResolveConcern(concern_name) => {
+                process_resolve_concern(author, issue, comment, concern_name)
+            }
+            FeedbackRequest(username) => process_feedback_request(author, issue, username),
         }
     }
 }
 
-fn process_poll
-    (author: &GitHubUser, issue: &Issue, comment: &IssueComment,
-     question: &str, teams: BTreeSet<&str>)
-    -> DashResult<()>
-{
+fn process_poll(
+    author: &GitHubUser,
+    issue: &Issue,
+    comment: &IssueComment,
+    question: &str,
+    teams: BTreeSet<&str>,
+) -> DashResult<()> {
     use domain::schema::poll::dsl::*;
     use domain::schema::poll_response_request;
     let conn = &*DB_POOL.get()?;
@@ -750,7 +787,8 @@ fn process_poll
     let tmp_teams;
     let teams = if teams.is_empty() {
         let setup = SETUP.read().unwrap();
-        tmp_teams = setup.teams()
+        tmp_teams = setup
+            .teams()
             .filter(|&(label, _)| issue.labels.contains(&label.0))
             .map(|(label, _)| label.0.clone())
             .collect::<BTreeSet<_>>();
@@ -763,12 +801,15 @@ fn process_poll
     info!("adding a new poll to issue.");
 
     // leave github comment stating that question is asked, ping respondents
-    let gh_comment = post_insert_comment(issue, CommentType::QuestionAsked {
-        initiator: author,
-        teams: teams.clone(),
-        question,
-        respondents: &[],
-    })?;
+    let gh_comment = post_insert_comment(
+        issue,
+        CommentType::QuestionAsked {
+            initiator: author,
+            teams: teams.clone(),
+            question,
+            respondents: &[],
+        },
+    )?;
 
     let teams_str = teams.iter().cloned().intersperse(",").collect::<String>();
     let new_poll = NewPoll {
@@ -811,12 +852,15 @@ fn process_poll
 
     // we have all of the review requests, generate a new comment and post it
 
-    let new_gh_comment = RfcBotComment::new(issue, CommentType::QuestionAsked {
-        initiator: author,
-        teams,
-        question,
-        respondents: &*response_requests,
-    });
+    let new_gh_comment = RfcBotComment::new(
+        issue,
+        CommentType::QuestionAsked {
+            initiator: author,
+            teams,
+            question,
+            respondents: &*response_requests,
+        },
+    );
     new_gh_comment.post(Some(gh_comment.id))?;
 
     debug!("github comment updated with poll respondents");
@@ -824,11 +868,13 @@ fn process_poll
     Ok(())
 }
 
-fn process_fcp_propose
-    (author: &GitHubUser, issue: &Issue, comment: &IssueComment,
-     team_members: &[GitHubUser], disp: FcpDisposition)
-    -> DashResult<()>
-{
+fn process_fcp_propose(
+    author: &GitHubUser,
+    issue: &Issue,
+    comment: &IssueComment,
+    team_members: &[GitHubUser],
+    disp: FcpDisposition,
+) -> DashResult<()> {
     debug!("processing fcp proposal: {:?}", disp);
     use domain::schema::fcp_proposal::dsl::*;
     use domain::schema::fcp_review_request;
@@ -839,8 +885,8 @@ fn process_fcp_propose
         info!("proposal is a new FCP, creating...");
 
         // leave github comment stating that FCP is proposed, ping reviewers
-        let gh_comment = post_insert_comment(issue,
-            CommentType::FcpProposed(author, disp, &[], &[]))?;
+        let gh_comment =
+            post_insert_comment(issue, CommentType::FcpProposed(author, disp, &[], &[]))?;
 
         let proposal = NewFcpProposal {
             fk_issue: issue.id,
@@ -881,8 +927,10 @@ fn process_fcp_propose
 
         // we have all of the review requests, generate a new comment and post it
 
-        let new_gh_comment = RfcBotComment::new(issue,
-            CommentType::FcpProposed(author, disp, &review_requests, &[]));
+        let new_gh_comment = RfcBotComment::new(
+            issue,
+            CommentType::FcpProposed(author, disp, &review_requests, &[]),
+        );
         new_gh_comment.post(Some(gh_comment.id))?;
         debug!("github comment updated with reviewers");
     }
@@ -922,11 +970,12 @@ fn process_reviewed(author: &GitHubUser, issue: &Issue) -> DashResult<()> {
     Ok(())
 }
 
-fn process_new_concern
-    (author: &GitHubUser, issue: &Issue, comment: &IssueComment,
-     concern_name: &str)
-    -> DashResult<()>
-{
+fn process_new_concern(
+    author: &GitHubUser,
+    issue: &Issue,
+    comment: &IssueComment,
+    concern_name: &str,
+) -> DashResult<()> {
     if let Some(mut proposal) = existing_proposal(issue)? {
         // check for existing concern
         use domain::schema::fcp_concern::dsl::*;
@@ -957,8 +1006,8 @@ fn process_new_concern
                 // Update DB: FCP is not started anymore.
                 proposal.fcp_start = None;
                 let update = diesel::update(fcp_proposal.find(proposal.id))
-                                    .set(&proposal)
-                                    .execute(conn);
+                    .set(&proposal)
+                    .execute(conn);
                 ok_or!(update, why => {
                     error!("Unable to mark FCP {} as unstarted: {:?}", proposal.id, why);
                     return Ok(());
@@ -974,10 +1023,12 @@ fn process_new_concern
     Ok(())
 }
 
-fn process_resolve_concern
-    (author: &GitHubUser, issue: &Issue, comment: &IssueComment, concern_name: &str)
-    -> DashResult<()>
-{
+fn process_resolve_concern(
+    author: &GitHubUser,
+    issue: &Issue,
+    comment: &IssueComment,
+    concern_name: &str,
+) -> DashResult<()> {
     debug!("Command is to resolve a concern ({}).", concern_name);
 
     if let Some(proposal) = existing_proposal(issue)? {
@@ -1000,15 +1051,12 @@ fn process_resolve_concern
                 .set(&concern)
                 .execute(conn)?;
         }
-
     }
 
     Ok(())
 }
 
-fn process_feedback_request(author: &GitHubUser, issue: &Issue, username: &str)
-    -> DashResult<()>
-{
+fn process_feedback_request(author: &GitHubUser, issue: &Issue, username: &str) -> DashResult<()> {
     use domain::schema::githubuser;
     use domain::schema::rfc_feedback_request::dsl::*;
     let conn = &*DB_POOL.get()?;
@@ -1051,10 +1099,12 @@ struct RfcBotComment<'a> {
 
 #[derive(Clone)]
 enum CommentType<'a> {
-    FcpProposed(&'a GitHubUser,
-                FcpDisposition,
-                &'a [(GitHubUser, FcpReviewRequest)],
-                &'a [(GitHubUser, FcpConcern)]),
+    FcpProposed(
+        &'a GitHubUser,
+        FcpDisposition,
+        &'a [(GitHubUser, FcpReviewRequest)],
+        &'a [(GitHubUser, FcpConcern)],
+    ),
     FcpProposalCancelled(&'a GitHubUser),
     FcpAllReviewedNoConcerns {
         author: &'a GitHubUser,
@@ -1065,7 +1115,7 @@ enum CommentType<'a> {
         author: &'a GitHubUser,
         status_comment_id: i32,
         added_label: bool,
-        disposition: FcpDisposition
+        disposition: FcpDisposition,
     },
     QuestionAsked {
         initiator: &'a GitHubUser,
@@ -1077,7 +1127,6 @@ enum CommentType<'a> {
 
 impl<'a> RfcBotComment<'a> {
     fn new(issue: &'a Issue, comment_type: CommentType<'a>) -> RfcBotComment<'a> {
-
         let body = Self::format(issue, &comment_type);
 
         RfcBotComment {
@@ -1097,7 +1146,12 @@ impl<'a> RfcBotComment<'a> {
 
     fn format(issue: &Issue, comment_type: &CommentType) -> String {
         match *comment_type {
-            CommentType::QuestionAsked { initiator, respondents, question, ref teams } => {
+            CommentType::QuestionAsked {
+                initiator,
+                respondents,
+                question,
+                ref teams,
+            } => {
                 let mut msg = String::from("Team member @");
                 msg.push_str(&initiator.login);
                 msg.push_str(" has asked teams: ");
@@ -1105,8 +1159,10 @@ impl<'a> RfcBotComment<'a> {
                 msg.push_str(", for consensus on: \n > ");
                 msg.push_str(question);
                 msg.push_str("\n\n");
-                format_ticky_boxes(&mut msg,
-                    respondents.iter().map(|(m, rr)| (m, rr.responded)));
+                format_ticky_boxes(
+                    &mut msg,
+                    respondents.iter().map(|(m, rr)| (m, rr.responded)),
+                );
                 msg
             }
 
@@ -1118,8 +1174,7 @@ impl<'a> RfcBotComment<'a> {
                 msg.push_str(" this. The next step is review by the rest of the tagged ");
                 msg.push_str("team members:\n\n");
 
-                format_ticky_boxes(&mut msg,
-                    reviewers.iter().map(|(m, rr)| (m, rr.reviewed)));
+                format_ticky_boxes(&mut msg, reviewers.iter().map(|(m, rr)| (m, rr.reviewed)));
 
                 if concerns.is_empty() {
                     msg.push_str("\nNo concerns currently listed.\n");
@@ -1134,7 +1189,6 @@ impl<'a> RfcBotComment<'a> {
                         msg.push_str("~~ resolved by ");
                         Self::add_comment_url(issue, &mut msg, resolved_comment_id);
                         msg.push_str("\n");
-
                     } else {
                         msg.push_str("* ");
                         msg.push_str(&concern.name);
@@ -1183,7 +1237,7 @@ impl<'a> RfcBotComment<'a> {
                 author,
                 added_label,
                 status_comment_id,
-                disposition
+                disposition,
             } => {
                 let mut msg = String::new();
                 msg.push_str("The final comment period, with a disposition to **");
@@ -1192,9 +1246,11 @@ impl<'a> RfcBotComment<'a> {
                 Self::add_comment_url(issue, &mut msg, status_comment_id);
                 msg.push_str("), is now **complete**.");
 
-                msg.push_str("\n\nAs the automated representative of the governance process, \
-                              I would like to thank the author for their work and everyone else \
-                              who contributed.");
+                msg.push_str(
+                    "\n\nAs the automated representative of the governance process, \
+                     I would like to thank the author for their work and everyone else \
+                     who contributed.",
+                );
 
                 match disposition {
                     FcpDisposition::Merge => {
@@ -1202,11 +1258,11 @@ impl<'a> RfcBotComment<'a> {
                     }
                     FcpDisposition::Close if can_ffcp_close(issue) => {
                         msg.push_str("\n\nThe RFC is now closed.");
-                    },
+                    }
                     FcpDisposition::Postpone if can_ffcp_postpone(issue) => {
                         msg.push_str("\n\nThe RFC is now postponed.");
-                    },
-                    _ => {},
+                    }
+                    _ => {}
                 }
 
                 if !added_label {
@@ -1214,7 +1270,7 @@ impl<'a> RfcBotComment<'a> {
                 }
 
                 msg
-            },
+            }
         }
     }
 
@@ -1222,7 +1278,11 @@ impl<'a> RfcBotComment<'a> {
         let url = format!(
             "https://github.com/{repo}/{typ}/{number}#issuecomment-{id}",
             repo = issue.repository,
-            typ = if issue.is_pull_request { "pull" } else { "issues" },
+            typ = if issue.is_pull_request {
+                "pull"
+            } else {
+                "issues"
+            },
             number = issue.number,
             id = comment_id,
         );
@@ -1248,23 +1308,27 @@ impl<'a> RfcBotComment<'a> {
                     GH.new_comment(&self.issue.repository, self.issue.number, &self.body)
                 }
             } else {
-                info!("Skipping comment to {}#{}, the issue is no longer open",
-                      self.issue.repository,
-                      self.issue.number);
+                info!(
+                    "Skipping comment to {}#{}, the issue is no longer open",
+                    self.issue.repository, self.issue.number
+                );
 
                 throw!(DashError::Misc(None))
             }
         } else {
-            info!("Skipping comment to {}#{}, comment posts are disabled.",
-                  self.issue.repository,
-                  self.issue.number);
+            info!(
+                "Skipping comment to {}#{}, comment posts are disabled.",
+                self.issue.repository, self.issue.number
+            );
             throw!(DashError::Misc(None))
         }
     }
 }
 
-fn format_ticky_boxes<'a>
-    (msg: &mut String, reviewers: impl Iterator<Item = (&'a GitHubUser, bool)>) {
+fn format_ticky_boxes<'a>(
+    msg: &mut String,
+    reviewers: impl Iterator<Item = (&'a GitHubUser, bool)>,
+) {
     for (member, reviewed) in reviewers {
         msg.push_str(if reviewed { "* [x] @" } else { "* [ ] @" });
         msg.push_str(&member.login);

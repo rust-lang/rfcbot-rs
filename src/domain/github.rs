@@ -5,7 +5,7 @@ use chrono::NaiveDateTime;
 use super::schema::*;
 
 #[derive(AsChangeset, Clone, Debug, Queryable)]
-#[table_name="githubsync"]
+#[table_name = "githubsync"]
 pub struct GitHubSync {
     pub id: i32,
     pub successful: bool,
@@ -14,24 +14,36 @@ pub struct GitHubSync {
 }
 
 #[derive(Clone, Debug, Insertable)]
-#[table_name="githubsync"]
+#[table_name = "githubsync"]
 pub struct GitHubSyncPartial {
     pub successful: bool,
     pub ran_at: NaiveDateTime,
     pub message: Option<String>,
 }
 
-#[derive(AsChangeset, Clone, Debug, Deserialize, Eq, Insertable,
-         Ord, PartialEq, PartialOrd, Queryable, Serialize)]
-#[table_name="githubuser"]
+#[derive(
+    AsChangeset,
+    Clone,
+    Debug,
+    Deserialize,
+    Eq,
+    Insertable,
+    Ord,
+    PartialEq,
+    PartialOrd,
+    Queryable,
+    Serialize,
+)]
+#[table_name = "githubuser"]
 pub struct GitHubUser {
     pub id: i32,
     pub login: String,
 }
 
-#[derive(AsChangeset, Clone, Debug, Deserialize, Eq, Insertable,
-         Ord, PartialEq, PartialOrd, Queryable)]
-#[table_name="milestone"]
+#[derive(
+    AsChangeset, Clone, Debug, Deserialize, Eq, Insertable, Ord, PartialEq, PartialOrd, Queryable,
+)]
+#[table_name = "milestone"]
 #[changeset_options(treat_none_as_null = "true")]
 pub struct Milestone {
     pub id: i32,
@@ -49,9 +61,20 @@ pub struct Milestone {
     pub repository: String,
 }
 
-#[derive(AsChangeset, Clone, Debug, Deserialize, Eq, Insertable,
-         Ord, PartialEq, PartialOrd, Queryable, Serialize)]
-#[table_name="issue"]
+#[derive(
+    AsChangeset,
+    Clone,
+    Debug,
+    Deserialize,
+    Eq,
+    Insertable,
+    Ord,
+    PartialEq,
+    PartialOrd,
+    Queryable,
+    Serialize,
+)]
+#[table_name = "issue"]
 pub struct IssuePartial {
     pub number: i32,
     pub fk_milestone: Option<i32>,
@@ -91,9 +114,10 @@ impl IssuePartial {
     }
 }
 
-#[derive(AsChangeset, Clone, Debug, Deserialize, Eq, Ord,
-         PartialEq, PartialOrd, Queryable, Serialize)]
-#[table_name="issue"]
+#[derive(
+    AsChangeset, Clone, Debug, Deserialize, Eq, Ord, PartialEq, PartialOrd, Queryable, Serialize,
+)]
+#[table_name = "issue"]
 #[changeset_options(treat_none_as_null = "true")]
 pub struct Issue {
     pub id: i32,
@@ -113,9 +137,20 @@ pub struct Issue {
     pub repository: String,
 }
 
-#[derive(AsChangeset, Clone, Debug, Deserialize, Eq, Insertable,
-         Ord, PartialEq, PartialOrd, Queryable, Serialize)]
-#[table_name="issuecomment"]
+#[derive(
+    AsChangeset,
+    Clone,
+    Debug,
+    Deserialize,
+    Eq,
+    Insertable,
+    Ord,
+    PartialEq,
+    PartialOrd,
+    Queryable,
+    Serialize,
+)]
+#[table_name = "issuecomment"]
 #[changeset_options(treat_none_as_null = "true")]
 pub struct IssueComment {
     pub id: i32,
@@ -127,9 +162,10 @@ pub struct IssueComment {
     pub repository: String,
 }
 
-#[derive(AsChangeset, Clone, Debug, Deserialize, Eq, Insertable,
-         Ord, PartialEq, PartialOrd, Queryable)]
-#[table_name="pullrequest"]
+#[derive(
+    AsChangeset, Clone, Debug, Deserialize, Eq, Insertable, Ord, PartialEq, PartialOrd, Queryable,
+)]
+#[table_name = "pullrequest"]
 #[changeset_options(treat_none_as_null = "true")]
 pub struct PullRequest {
     pub number: i32,

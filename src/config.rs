@@ -12,11 +12,11 @@ lazy_static! {
             Ok(c) => {
                 info!("Configuration parsed from environment variables.");
                 c
-            },
+            }
             Err(missing) => {
                 error!("Unable to load environment variables {:?}", missing);
                 panic!("Unable to load environment variables {:?}", missing);
-            },
+            }
         }
     };
 }
@@ -34,8 +34,9 @@ pub struct Config {
 
 impl Config {
     pub fn check(&self) -> bool {
-        !self.db_url.is_empty() && !self.github_access_token.is_empty() &&
-        !self.github_user_agent.is_empty()
+        !self.db_url.is_empty()
+            && !self.github_access_token.is_empty()
+            && !self.github_user_agent.is_empty()
     }
 }
 
@@ -50,14 +51,15 @@ const POST_COMMENTS: &'static str = "POST_COMMENTS";
 // this is complex, but we'll shortly need a lot more config items
 // so checking them automagically seems like a nice solution
 pub fn init() -> Result<Config, Vec<&'static str>> {
-
     let mut vars: BTreeMap<&'static str, Result<String, _>> = BTreeMap::new();
-    let keys = vec![DB_URL,
-                    DB_POOL_SIZE,
-                    GITHUB_TOKEN,
-                    GITHUB_WEBHOOK_SECRETS,
-                    GITHUB_UA,
-                    POST_COMMENTS];
+    let keys = vec![
+        DB_URL,
+        DB_POOL_SIZE,
+        GITHUB_TOKEN,
+        GITHUB_WEBHOOK_SECRETS,
+        GITHUB_UA,
+        POST_COMMENTS,
+    ];
 
     for var in keys {
         vars.insert(var, env::var(var));
@@ -65,7 +67,8 @@ pub fn init() -> Result<Config, Vec<&'static str>> {
 
     let all_found = vars.iter().all(|(_, v)| v.is_ok());
     if all_found {
-        let mut vars = vars.into_iter()
+        let mut vars = vars
+            .into_iter()
             .map(|(k, v)| (k, v.unwrap()))
             .collect::<BTreeMap<_, _>>();
 
@@ -89,19 +92,19 @@ pub fn init() -> Result<Config, Vec<&'static str>> {
         let webhook_secrets = webhook_secrets.split(',').map(String::from).collect();
 
         Ok(Config {
-               db_url: db_url,
-               db_pool_size: db_pool_size,
-               github_access_token: gh_token,
-               github_user_agent: gh_ua,
-               github_webhook_secrets: webhook_secrets,
-               github_interval_mins: gh_interval,
-               post_comments: post_comments,
-           })
-
+            db_url: db_url,
+            db_pool_size: db_pool_size,
+            github_access_token: gh_token,
+            github_user_agent: gh_ua,
+            github_webhook_secrets: webhook_secrets,
+            github_interval_mins: gh_interval,
+            post_comments: post_comments,
+        })
     } else {
-        Err(vars.iter()
-                .filter(|&(_, v)| v.is_err())
-                .map(|(&k, _)| k)
-                .collect())
+        Err(vars
+            .iter()
+            .filter(|&(_, v)| v.is_err())
+            .map(|(&k, _)| k)
+            .collect())
     }
 }

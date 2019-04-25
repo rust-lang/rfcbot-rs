@@ -43,8 +43,8 @@ mod utils;
 
 use chrono::Local;
 use diesel::pg::PgConnection;
-use diesel::r2d2::Pool;
 use diesel::r2d2::ConnectionManager;
+use diesel::r2d2::Pool;
 use env_logger::LogBuilder;
 use log::LogRecord;
 
@@ -57,12 +57,14 @@ fn main() {
     LogBuilder::new()
         .format(|rec: &LogRecord| {
             let loc = rec.location();
-            format!("[{} {}:{} {}] {}",
-                    rec.level(),
-                    loc.module_path(),
-                    loc.line(),
-                    Local::now().format("%Y-%m-%d %H:%M:%S"),
-                    rec.args())
+            format!(
+                "[{} {}:{} {}] {}",
+                rec.level(),
+                loc.module_path(),
+                loc.line(),
+                Local::now().format("%Y-%m-%d %H:%M:%S"),
+                rec.args()
+            )
         })
         .parse(&std::env::var("RUST_LOG").unwrap_or_else(|_| "info".to_string()))
         .init()
@@ -96,14 +98,11 @@ lazy_static! {
 
         let manager = ConnectionManager::<PgConnection>::new(CONFIG.db_url.clone());
 
-        match Pool::builder()
-            .max_size(CONFIG.db_pool_size)
-            .build(manager)
-        {
+        match Pool::builder().max_size(CONFIG.db_pool_size).build(manager) {
             Ok(p) => {
                 info!("DB connection pool established.");
                 p
-            },
+            }
             Err(why) => {
                 error!("Failed to establish DB connection pool: {}", why);
                 panic!("Error creating connection pool.");

@@ -5,10 +5,10 @@ use crypto::mac::Mac;
 use crypto::mac::MacResult;
 use crypto::sha1::Sha1;
 use hex::FromHex;
-use rocket::http::Status;
 use rocket::data::{self, Data, FromDataSimple};
-use rocket::request::Request;
+use rocket::http::Status;
 use rocket::outcome::Outcome::*;
+use rocket::request::Request;
 use serde_json;
 
 use config::CONFIG;
@@ -59,13 +59,17 @@ impl FromDataSimple for Event {
                     Ok(p) => p,
                     Err(DashError::Serde(why)) => {
                         info!("failed to parse webhook payload: {:?}", why);
-                        return Failure((Status::BadRequest,
-                                        "failed to deserialize request payload"));
+                        return Failure((
+                            Status::BadRequest,
+                            "failed to deserialize request payload",
+                        ));
                     }
                     Err(why) => {
                         error!("non-json-parsing error with webhook payload: {:?}", why);
-                        return Failure((Status::InternalServerError,
-                                        "unknown failure, check the logs"));
+                        return Failure((
+                            Status::InternalServerError,
+                            "unknown failure, check the logs",
+                        ));
                     }
                 };
 
@@ -75,9 +79,10 @@ impl FromDataSimple for Event {
                     payload: payload,
                 };
 
-                info!("Received valid webhook ({} id {})",
-                      full_event.event_name,
-                      full_event.delivery_id);
+                info!(
+                    "Received valid webhook ({} id {})",
+                    full_event.event_name, full_event.delivery_id
+                );
 
                 return Success(full_event);
             }
@@ -85,7 +90,10 @@ impl FromDataSimple for Event {
 
         warn!("Received invalid webhook: {:?}", request);
         warn!("Invalid webhook body: `{}`", body);
-        warn!("Tried {} webhook secrets", CONFIG.github_webhook_secrets.len());
+        warn!(
+            "Tried {} webhook secrets",
+            CONFIG.github_webhook_secrets.len()
+        );
         Failure((Status::Forbidden, "unable to authenticate webhook"))
     }
 }
@@ -109,41 +117,42 @@ fn parse_event(event_name: &str, body: &str) -> DashResult<Payload> {
         "issues" => Ok(Payload::Issues(serde_json::from_str(body)?)),
         "pull_request" => Ok(Payload::PullRequest(serde_json::from_str(body)?)),
 
-        "commit_comment" |
-        "create" |
-        "delete" |
-        "deployment" |
-        "deployment_status" |
-        "fork" |
-        "gollum" |
-        "label" |
-        "member" |
-        "membership" |
-        "milestone" |
-        "organization" |
-        "page_build" |
-        "public" |
-        "pull_request_review_comment" |
-        "pull_request_review" |
-        "push" |
-        "repository" |
-        "release" |
-        "status" |
-        "team" |
-        "team_add" |
-        "watch" => {
+        "commit_comment"
+        | "create"
+        | "delete"
+        | "deployment"
+        | "deployment_status"
+        | "fork"
+        | "gollum"
+        | "label"
+        | "member"
+        | "membership"
+        | "milestone"
+        | "organization"
+        | "page_build"
+        | "public"
+        | "pull_request_review_comment"
+        | "pull_request_review"
+        | "push"
+        | "repository"
+        | "release"
+        | "status"
+        | "team"
+        | "team_add"
+        | "watch" => {
             info!("Received {} event, ignoring...", event_name);
             Ok(Payload::Unsupported)
         }
 
         _ => {
-            warn!("Received unrecognized event {}, check GitHub's API to see what's updated.",
-                  event_name);
+            warn!(
+                "Received unrecognized event {}, check GitHub's API to see what's updated.",
+                event_name
+            );
             Ok(Payload::Unsupported)
         }
     }
 }
-
 
 #[derive(Debug)]
 pub enum Payload {

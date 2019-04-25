@@ -1,9 +1,9 @@
 use std::collections::BTreeSet;
 use std::fmt;
 
-use error::{DashResult, DashError};
 use config::RFC_BOT_MENTION;
-use teams::{TeamLabel, RfcbotConfig};
+use error::{DashError, DashResult};
+use teams::{RfcbotConfig, TeamLabel};
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]
 pub enum Label {
@@ -34,9 +34,7 @@ impl Label {
 }
 
 impl fmt::Display for Label {
-    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        fmt.write_str(self.as_str())
-    }
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result { fmt.write_str(self.as_str()) }
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -84,26 +82,30 @@ fn parse_command_text<'a>(command: &'a str, subcommand: &'a str) -> &'a str {
 }
 
 fn strip_prefix<'h>(haystack: &'h str, prefix: &str) -> &'h str {
-    haystack.find(prefix)
-            .map(|idx| &haystack[idx + prefix.len()..])
-            .unwrap_or(haystack)
-            .trim()
+    haystack
+        .find(prefix)
+        .map(|idx| &haystack[idx + prefix.len()..])
+        .unwrap_or(haystack)
+        .trim()
 }
 
-fn match_team_candidate<'a>
-    (setup: &'a RfcbotConfig, team_candidate: &str)
-    -> Option<&'a TeamLabel>
-{
-    setup.teams().find(|&(label, team)| {
-        strip_prefix(&label.0, "T-") == strip_prefix(team_candidate, "T-") ||
-        team.ping() == strip_prefix(team_candidate, "@")
-    }).map(|(label, _)| label)
+fn match_team_candidate<'a>(
+    setup: &'a RfcbotConfig,
+    team_candidate: &str,
+) -> Option<&'a TeamLabel> {
+    setup
+        .teams()
+        .find(|&(label, team)| {
+            strip_prefix(&label.0, "T-") == strip_prefix(team_candidate, "T-")
+                || team.ping() == strip_prefix(team_candidate, "@")
+        })
+        .map(|(label, _)| label)
 }
 
 /// Parses all subcommands under the fcp command.
 /// If `fcp_context` is set to false, `@rfcbot <subcommand>`
 /// was passed and not `@rfcbot fcp <subcommand>`.
-/// 
+///
 /// @rfcbot accepts roughly the following grammar:
 ///
 /// merge ::= "merge" | "merged" | "merging" | "merges" ;
@@ -145,48 +147,47 @@ fn parse_fcp_subcommand<'a>(
     setup: &'a RfcbotConfig,
     command: &'a str,
     subcommand: &'a str,
-    fcp_context: bool
+    fcp_context: bool,
 ) -> DashResult<RfcBotCommand<'a>> {
     Ok(match subcommand {
         // Parse a FCP merge command:
-        "merge" | "merged" | "merging" | "merges" =>
-            RfcBotCommand::FcpPropose(FcpDisposition::Merge),
+        "merge" | "merged" | "merging" | "merges" => {
+            RfcBotCommand::FcpPropose(FcpDisposition::Merge)
+        }
 
         // Parse a FCP close command:
-        "close" | "closed" | "closing" | "closes" =>
-            RfcBotCommand::FcpPropose(FcpDisposition::Close),
+        "close" | "closed" | "closing" | "closes" => {
+            RfcBotCommand::FcpPropose(FcpDisposition::Close)
+        }
 
         // Parse a FCP postpone command:
-        "postpone" | "postponed" | "postponing" | "postpones" =>
-            RfcBotCommand::FcpPropose(FcpDisposition::Postpone),
+        "postpone" | "postponed" | "postponing" | "postpones" => {
+            RfcBotCommand::FcpPropose(FcpDisposition::Postpone)
+        }
 
         // Parse a FCP cancel command:
-        "cancel" | "canceled" | "canceling" | "cancels" =>
-            RfcBotCommand::FcpCancel,
+        "cancel" | "canceled" | "canceling" | "cancels" => RfcBotCommand::FcpCancel,
 
         // Parse a FCP reviewed command:
-        "reviewed" | "review" | "reviewing" | "reviews" =>
-            RfcBotCommand::Reviewed,
+        "reviewed" | "review" | "reviewing" | "reviews" => RfcBotCommand::Reviewed,
 
         // Parse a FCP concern command:
         "concern" | "concerned" | "concerning" | "concerns" => {
             debug!("Parsed command as NewConcern");
             RfcBotCommand::NewConcern(parse_command_text(command, subcommand))
-        },
+        }
 
         // Parse a FCP resolve command:
         "resolve" | "resolved" | "resolving" | "resolves" => {
             debug!("Parsed command as ResolveConcern");
             RfcBotCommand::ResolveConcern(parse_command_text(command, subcommand))
-        },
+        }
 
         // Parse a StartPoll command:
-        "ask" | "asked" | "asking" | "asks" |
-        "poll" | "polled" | "polling" | "polls" |
-        "query" | "queried" | "querying" | "queries" |
-        "inquire" | "inquired" | "inquiring" | "inquires" |
-        "quiz" | "quizzed" | "quizzing" | "quizzes" |
-        "survey" | "surveyed" | "surveying" | "surveys" => {
+        "ask" | "asked" | "asking" | "asks" | "poll" | "polled" | "polling" | "polls" | "query"
+        | "queried" | "querying" | "queries" | "inquire" | "inquired" | "inquiring"
+        | "inquires" | "quiz" | "quizzed" | "quizzing" | "quizzes" | "survey" | "surveyed"
+        | "surveying" | "surveys" => {
             debug!("Parsed command as StartPoll");
 
             let mut question = parse_command_text(command, subcommand);
@@ -200,25 +201,27 @@ fn parse_fcp_subcommand<'a>(
                 }
             }
             RfcBotCommand::StartPoll { teams, question }
-        },
-
-        _ => {
-            throw!(DashError::Misc(if fcp_context {
-                error!("unrecognized subcommand for fcp: {}", subcommand);
-                Some(format!("found bad subcommand: {}", subcommand))
-            } else {
-                None
-            }))
         }
+
+        _ => throw!(DashError::Misc(if fcp_context {
+            error!("unrecognized subcommand for fcp: {}", subcommand);
+            Some(format!("found bad subcommand: {}", subcommand))
+        } else {
+            None
+        })),
     })
 }
 
-fn from_invocation_line<'a>
-    (setup: &'a RfcbotConfig, command: &'a str) -> DashResult<RfcBotCommand<'a>>
-{
-    let mut tokens = command.trim_start_matches(RFC_BOT_MENTION).trim()
-                            .trim_start_matches(':').trim()
-                            .split_whitespace();
+fn from_invocation_line<'a>(
+    setup: &'a RfcbotConfig,
+    command: &'a str,
+) -> DashResult<RfcBotCommand<'a>> {
+    let mut tokens = command
+        .trim_start_matches(RFC_BOT_MENTION)
+        .trim()
+        .trim_start_matches(':')
+        .trim()
+        .split_whitespace();
     let invocation = tokens.next().ok_or(DashError::Misc(None))?;
     match invocation {
         "fcp" | "pr" => {
@@ -229,10 +232,9 @@ fn from_invocation_line<'a>
             parse_fcp_subcommand(setup, command, subcommand, true)
         }
         "f?" => {
-            let user =
-                tokens
-                    .next()
-                    .ok_or_else(|| DashError::Misc(Some("no user specified".to_string())))?;
+            let user = tokens
+                .next()
+                .ok_or_else(|| DashError::Misc(Some("no user specified".to_string())))?;
 
             if user.is_empty() {
                 throw!(DashError::Misc(Some("no user specified".to_string())));
@@ -259,15 +261,17 @@ pub enum RfcBotCommand<'a> {
 }
 
 impl<'a> RfcBotCommand<'a> {
-    pub fn from_str_all(setup: &'a RfcbotConfig, command: &'a str)
-        -> impl Iterator<Item = RfcBotCommand<'a>>
-    {
+    pub fn from_str_all(
+        setup: &'a RfcbotConfig,
+        command: &'a str,
+    ) -> impl Iterator<Item = RfcBotCommand<'a>> {
         // Get the tokens for each command line (starts with a bot mention)
-        command.lines()
-               .map(|l| l.trim())
-               .filter(|&l| l.starts_with(RFC_BOT_MENTION))
-               .map(move |l| from_invocation_line(setup, l))
-               .filter_map(Result::ok)
+        command
+            .lines()
+            .map(|l| l.trim())
+            .filter(|&l| l.starts_with(RFC_BOT_MENTION))
+            .map(move |l| from_invocation_line(setup, l))
+            .filter_map(Result::ok)
     }
 }
 
@@ -282,7 +286,7 @@ mod test {
 
     #[test]
     fn multiple_commands() {
-let text = r#"
+        let text = r#"
 someothertext
 @rfcbot: resolved CONCERN_NAME
 somemoretext
@@ -294,16 +298,19 @@ foobar
 @rfcbot concern foobar
 "#;
 
-        assert_eq!(parse_commands(text).collect::<Vec<_>>(), vec![
-            RfcBotCommand::ResolveConcern("CONCERN_NAME"),
-            RfcBotCommand::FcpCancel,
-            RfcBotCommand::NewConcern("foobar"),
-        ]);
+        assert_eq!(
+            parse_commands(text).collect::<Vec<_>>(),
+            vec![
+                RfcBotCommand::ResolveConcern("CONCERN_NAME"),
+                RfcBotCommand::FcpCancel,
+                RfcBotCommand::NewConcern("foobar"),
+            ]
+        );
     }
 
     #[test]
     fn accept_leading_whitespace() {
-let text = r#"
+        let text = r#"
 someothertext
        @rfcbot: resolved CONCERN_NAME
 somemoretext
@@ -315,16 +322,19 @@ foobar
  @rfcbot concern foobar
 "#;
 
-        assert_eq!(parse_commands(text).collect::<Vec<_>>(), vec![
-            RfcBotCommand::ResolveConcern("CONCERN_NAME"),
-            RfcBotCommand::FcpCancel,
-            RfcBotCommand::NewConcern("foobar"),
-        ]);
+        assert_eq!(
+            parse_commands(text).collect::<Vec<_>>(),
+            vec![
+                RfcBotCommand::ResolveConcern("CONCERN_NAME"),
+                RfcBotCommand::FcpCancel,
+                RfcBotCommand::NewConcern("foobar"),
+            ]
+        );
     }
 
     #[test]
     fn fix_issue_225() {
-let text = r#"
+        let text = r#"
 someothertext
     @rfcbot : resolved CONCERN_NAME
 somemoretext
@@ -336,11 +346,14 @@ foobar
 @rfcbot : concern foobar
 "#;
 
-        assert_eq!(parse_commands(text).collect::<Vec<_>>(), vec![
-            RfcBotCommand::ResolveConcern("CONCERN_NAME"),
-            RfcBotCommand::FcpCancel,
-            RfcBotCommand::NewConcern("foobar"),
-        ]);
+        assert_eq!(
+            parse_commands(text).collect::<Vec<_>>(),
+            vec![
+                RfcBotCommand::ResolveConcern("CONCERN_NAME"),
+                RfcBotCommand::FcpCancel,
+                RfcBotCommand::NewConcern("foobar"),
+            ]
+        );
     }
 
     fn ensure_take_singleton<I: Iterator>(mut iter: I) -> I::Item {
@@ -350,16 +363,22 @@ foobar
     }
 
     macro_rules! justification {
-        () => { "\n\nSome justification here." };
+        () => {
+            "\n\nSome justification here."
+        };
     }
 
     macro_rules! some_text {
         ($important: expr) => {
-            concat!(" ", $important, "
+            concat!(
+                " ",
+                $important,
+                "
 someothertext
 somemoretext
 
-somemoretext")
+somemoretext"
+            )
         };
     }
 
@@ -387,73 +406,219 @@ somemoretext")
         };
     }
 
-    test_from_str!(success_fcp_reviewed,
-        ["reviewed", "review", "reviewing", "reviews",
-         "fcp reviewed", "fcp review", "fcp reviewing",
-         "pr reviewed", "pr review", "pr reviewing"],
-        RfcBotCommand::Reviewed);
+    test_from_str!(
+        success_fcp_reviewed,
+        [
+            "reviewed",
+            "review",
+            "reviewing",
+            "reviews",
+            "fcp reviewed",
+            "fcp review",
+            "fcp reviewing",
+            "pr reviewed",
+            "pr review",
+            "pr reviewing"
+        ],
+        RfcBotCommand::Reviewed
+    );
 
-    test_from_str!(success_fcp_merge,
-        ["merge", "merged", "merging", "merges",
-         "fcp merge", "fcp merged", "fcp merging", "fcp merges",
-         "pr merge", "pr merged", "pr merging", "pr merges"],
+    test_from_str!(
+        success_fcp_merge,
+        [
+            "merge",
+            "merged",
+            "merging",
+            "merges",
+            "fcp merge",
+            "fcp merged",
+            "fcp merging",
+            "fcp merges",
+            "pr merge",
+            "pr merged",
+            "pr merging",
+            "pr merges"
+        ],
         justification!(),
-        RfcBotCommand::FcpPropose(FcpDisposition::Merge));
+        RfcBotCommand::FcpPropose(FcpDisposition::Merge)
+    );
 
-    test_from_str!(success_fcp_close,
-        ["close", "closed", "closing", "closes",
-         "fcp close", "fcp closed", "fcp closing", "fcp closes",
-         "pr close", "pr closed", "pr closing", "pr closes"],
+    test_from_str!(
+        success_fcp_close,
+        [
+            "close",
+            "closed",
+            "closing",
+            "closes",
+            "fcp close",
+            "fcp closed",
+            "fcp closing",
+            "fcp closes",
+            "pr close",
+            "pr closed",
+            "pr closing",
+            "pr closes"
+        ],
         justification!(),
-        RfcBotCommand::FcpPropose(FcpDisposition::Close));
+        RfcBotCommand::FcpPropose(FcpDisposition::Close)
+    );
 
-    test_from_str!(success_fcp_postpone,
-        ["postpone", "postponed", "postponing", "postpones",
-         "fcp postpone", "fcp postponed", "fcp postponing", "fcp postpones",
-         "pr postpone", "pr postponed", "pr postponing", "pr postpones"],
+    test_from_str!(
+        success_fcp_postpone,
+        [
+            "postpone",
+            "postponed",
+            "postponing",
+            "postpones",
+            "fcp postpone",
+            "fcp postponed",
+            "fcp postponing",
+            "fcp postpones",
+            "pr postpone",
+            "pr postponed",
+            "pr postponing",
+            "pr postpones"
+        ],
         justification!(),
-        RfcBotCommand::FcpPropose(FcpDisposition::Postpone));
+        RfcBotCommand::FcpPropose(FcpDisposition::Postpone)
+    );
 
-    test_from_str!(success_fcp_cancel,
-        ["cancel", "canceled", "canceling", "cancels",
-         "fcp cancel", "fcp canceled", "fcp canceling", "fcp cancels",
-         "pr cancel", "pr canceled", "pr canceling", "pr cancels"],
+    test_from_str!(
+        success_fcp_cancel,
+        [
+            "cancel",
+            "canceled",
+            "canceling",
+            "cancels",
+            "fcp cancel",
+            "fcp canceled",
+            "fcp canceling",
+            "fcp cancels",
+            "pr cancel",
+            "pr canceled",
+            "pr canceling",
+            "pr cancels"
+        ],
         justification!(),
-        RfcBotCommand::FcpCancel);
+        RfcBotCommand::FcpCancel
+    );
 
-    test_from_str!(success_concern,
-        ["concern", "concerned", "concerning", "concerns",
-         "fcp concern", "fcp concerned", "fcp concerning", "fcp concerns",
-         "pr concern", "pr concerned", "pr concerning", "pr concerns"],
+    test_from_str!(
+        success_concern,
+        [
+            "concern",
+            "concerned",
+            "concerning",
+            "concerns",
+            "fcp concern",
+            "fcp concerned",
+            "fcp concerning",
+            "fcp concerns",
+            "pr concern",
+            "pr concerned",
+            "pr concerning",
+            "pr concerns"
+        ],
         some_text!("CONCERN_NAME"),
-        RfcBotCommand::NewConcern("CONCERN_NAME"));
+        RfcBotCommand::NewConcern("CONCERN_NAME")
+    );
 
-    test_from_str!(success_resolve,
-        ["resolve", "resolved", "resolving", "resolves",
-         "fcp resolve", "fcp resolved", "fcp resolving", "fcp resolves",
-         "pr resolve", "pr resolved", "pr resolving", "pr resolves"],
+    test_from_str!(
+        success_resolve,
+        [
+            "resolve",
+            "resolved",
+            "resolving",
+            "resolves",
+            "fcp resolve",
+            "fcp resolved",
+            "fcp resolving",
+            "fcp resolves",
+            "pr resolve",
+            "pr resolved",
+            "pr resolving",
+            "pr resolves"
+        ],
         some_text!("CONCERN_NAME"),
-        RfcBotCommand::ResolveConcern("CONCERN_NAME"));
+        RfcBotCommand::ResolveConcern("CONCERN_NAME")
+    );
 
-    test_from_str!(success_ask_question,
-        ["ask", "asked", "asking", "asks",
-         "poll", "polled", "polling", "polls",
-         "query", "queried", "querying", "queries",
-         "inquire", "inquired", "inquiring", "inquires",
-         "quiz", "quizzed", "quizzing", "quizzes",
-         "survey", "surveyed", "surveying", "surveys",
-         "fcp ask", "fcp asked", "fcp asking", "fcp asks",
-         "fcp poll", "fcp polled", "fcp polling", "fcp polls",
-         "fcp query", "fcp queried", "fcp querying", "fcp queries",
-         "fcp inquire", "fcp inquired", "fcp inquiring", "fcp inquires",
-         "fcp quiz", "fcp quizzed", "fcp quizzing", "fcp quizzes",
-         "fcp survey", "fcp surveyed", "fcp surveying", "fcp surveys",
-         "pr ask", "pr asked", "pr asking", "pr asks",
-         "pr poll", "pr polled", "pr polling", "pr polls",
-         "pr query", "pr queried", "pr querying", "pr queries",
-         "pr inquire", "pr inquired", "pr inquiring", "pr inquires",
-         "pr quiz", "pr quizzed", "pr quizzing", "pr quizzes",
-         "pr survey", "pr surveyed", "pr surveying", "pr surveys"],
+    test_from_str!(
+        success_ask_question,
+        [
+            "ask",
+            "asked",
+            "asking",
+            "asks",
+            "poll",
+            "polled",
+            "polling",
+            "polls",
+            "query",
+            "queried",
+            "querying",
+            "queries",
+            "inquire",
+            "inquired",
+            "inquiring",
+            "inquires",
+            "quiz",
+            "quizzed",
+            "quizzing",
+            "quizzes",
+            "survey",
+            "surveyed",
+            "surveying",
+            "surveys",
+            "fcp ask",
+            "fcp asked",
+            "fcp asking",
+            "fcp asks",
+            "fcp poll",
+            "fcp polled",
+            "fcp polling",
+            "fcp polls",
+            "fcp query",
+            "fcp queried",
+            "fcp querying",
+            "fcp queries",
+            "fcp inquire",
+            "fcp inquired",
+            "fcp inquiring",
+            "fcp inquires",
+            "fcp quiz",
+            "fcp quizzed",
+            "fcp quizzing",
+            "fcp quizzes",
+            "fcp survey",
+            "fcp surveyed",
+            "fcp surveying",
+            "fcp surveys",
+            "pr ask",
+            "pr asked",
+            "pr asking",
+            "pr asks",
+            "pr poll",
+            "pr polled",
+            "pr polling",
+            "pr polls",
+            "pr query",
+            "pr queried",
+            "pr querying",
+            "pr queries",
+            "pr inquire",
+            "pr inquired",
+            "pr inquiring",
+            "pr inquires",
+            "pr quiz",
+            "pr quizzed",
+            "pr quizzing",
+            "pr quizzes",
+            "pr survey",
+            "pr surveyed",
+            "pr surveying",
+            "pr surveys"
+        ],
         some_text!("avengers T-justice-league TO BE OR NOT TO BE?"),
         RfcBotCommand::StartPoll {
             teams: btreeset! {
@@ -461,7 +626,8 @@ somemoretext")
                 "justice-league",
             },
             question: "TO BE OR NOT TO BE?",
-        });
+        }
+    );
 
     #[test]
     fn success_resolve_mid_body() {
@@ -484,6 +650,10 @@ somemoretext";
         assert_eq!(with_colon, RfcBotCommand::ResolveConcern("CONCERN_NAME"));
     }
 
-    test_from_str!(success_feedback, ["f?"], some_text!("@bob"),
-        RfcBotCommand::FeedbackRequest("bob"));
+    test_from_str!(
+        success_feedback,
+        ["f?"],
+        some_text!("@bob"),
+        RfcBotCommand::FeedbackRequest("bob")
+    );
 }

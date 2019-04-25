@@ -1,6 +1,6 @@
-use std::panic::catch_unwind;
 use rocket;
 use rocket_contrib::templates::handlebars::Handlebars;
+use std::panic::catch_unwind;
 
 pub fn serve() {
     // in debug builds this will force an init, good enough for testing
@@ -24,11 +24,11 @@ pub fn serve() {
 }
 
 mod html {
-    use std::collections::BTreeMap;
-    use rocket::response::content;
+    use super::TEMPLATES;
     use error::DashResult;
     use nag;
-    use super::TEMPLATES;
+    use rocket::response::content;
+    use std::collections::BTreeMap;
 
     type Html = content::Html<String>;
 
@@ -70,9 +70,9 @@ mod html {
             .into_iter()
             .map(|(team_label, fcps)| {
                 json!({
-                "team": team_label,
-                "fcps": fcps,
-            })
+                    "team": team_label,
+                    "fcps": fcps,
+                })
             })
             .collect::<Vec<_>>();
 
@@ -97,13 +97,13 @@ mod html {
 }
 
 mod api {
-    use rocket_contrib::json::Json;
-    use DB_POOL;
     use domain::github::GitHubUser;
     use error::DashResult;
-    use github::{handle_comment, handle_issue, handle_pr};
     use github::webhooks::{Event, Payload};
+    use github::{handle_comment, handle_issue, handle_pr};
     use nag;
+    use rocket_contrib::json::Json;
+    use DB_POOL;
 
     #[get("/all")]
     pub fn all_fcps() -> DashResult<Json<Vec<nag::FcpWithInfo>>> { Ok(Json(nag::all_fcps()?)) }
@@ -165,9 +165,11 @@ lazy_static! {
         let user_fcps_fragment = include_str!("templates/fcp-user.hbs");
         let user_fcps_template = root_template.replace("{{content}}", user_fcps_fragment);
 
-        hbars.register_template_string("all", &all_fcps_template)
+        hbars
+            .register_template_string("all", &all_fcps_template)
             .expect("unable to register all-fcps template");
-        hbars.register_template_string("user", &user_fcps_template)
+        hbars
+            .register_template_string("user", &user_fcps_template)
             .expect("unable to register user fcps template");
 
         hbars
