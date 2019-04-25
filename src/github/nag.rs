@@ -1219,11 +1219,12 @@ impl<'a> RfcBotComment<'a> {
     }
 
     fn add_comment_url(issue: &Issue, msg: &mut String, comment_id: i32) {
-        let to_add = format!("https://github.com/{}/issues/{}#issuecomment-{}",
+        let url = format!("https://github.com/{}/{}/{}#issuecomment-{}",
                              issue.repository,
                              issue.number,
+                             if issue.is_pull_request { "pull" } else { "issues" },
                              comment_id);
-        msg.push_str(&to_add);
+        msg.push_str(&url);
     }
 
     fn maybe_add_pfcp_label(&self) {
