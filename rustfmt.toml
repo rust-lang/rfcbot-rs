@@ -1,3 +1,2 @@
-struct_lit_width = 24
 fn_single_line = true
 format_strings = false
