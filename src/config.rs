@@ -52,18 +52,18 @@ const POST_COMMENTS: &str = "POST_COMMENTS";
 // so checking them automagically seems like a nice solution
 pub fn init() -> Result<Config, Vec<&'static str>> {
     let mut vars: BTreeMap<&'static str, Result<String, _>> = BTreeMap::new();
-    let keys = vec![
+    [
         DB_URL,
         DB_POOL_SIZE,
         GITHUB_TOKEN,
         GITHUB_WEBHOOK_SECRETS,
         GITHUB_UA,
         POST_COMMENTS,
-    ];
-
-    for var in keys {
+    ]
+    .iter()
+    .for_each(|var| {
         vars.insert(var, env::var(var));
-    }
+    });
 
     let all_found = vars.iter().all(|(_, v)| v.is_ok());
     if all_found {

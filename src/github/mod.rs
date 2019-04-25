@@ -222,8 +222,8 @@ mod tests {
     fn test_handle_user() {
         crate::utils::setup_test_env();
         let db_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
-        let conn =
-            PgConnection::establish(&db_url).expect(&format!("Error connecting to {}", db_url));
+        let conn = PgConnection::establish(&db_url)
+            .unwrap_or_else(|_| panic!("Error connecting to {}", db_url));
 
         let user = GitHubUser {
             id: -1,

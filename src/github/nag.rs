@@ -699,7 +699,7 @@ fn cancel_fcp(author: &GitHubUser, issue: &Issue, existing: &FcpProposal) -> Das
     // leave github comment stating that FCP proposal cancelled
     let comment = RfcBotComment::new(issue, CommentType::FcpProposalCancelled(author));
     let _ = comment.post(None);
-    &[
+    [
         Label::FCP,
         Label::PFCP,
         Label::DispositionMerge,

@@ -240,7 +240,7 @@ members = [
         );
 
         // Teams are correct:
-        let map: BTreeMap<_, _> = cfg.teams().map(|(k, v)| (k.0.clone(), v.clone())).collect();
+        let map: BTreeMap<_, _> = cfg.teams().map(|(k, v)| (k.0.clone(), v)).collect();
 
         let avengers = map.get("T-avengers").unwrap();
         //assert_eq!(avengers.name, "The Avengers");
