@@ -1,12 +1,9 @@
 // Copyright 2016 Adam Perry. Dual-licensed MIT and Apache 2.0 (see LICENSE files for details).
 
-use std;
 use std::convert::From;
 use std::io;
 
-use diesel;
 use rocket_contrib::templates::handlebars;
-use serde_json;
 
 pub type DashResult<T> = std::result::Result<T, DashError>;
 

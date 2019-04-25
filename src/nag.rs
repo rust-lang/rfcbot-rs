@@ -1,9 +1,9 @@
 use diesel::prelude::*;
 
-use domain::github::{GitHubUser, Issue, IssueComment};
-use domain::rfcbot::{FcpProposal, FcpReviewRequest};
-use error::DashResult;
-use DB_POOL;
+use crate::domain::github::{GitHubUser, Issue, IssueComment};
+use crate::domain::rfcbot::{FcpProposal, FcpReviewRequest};
+use crate::error::DashResult;
+use crate::DB_POOL;
 
 #[derive(Serialize)]
 pub struct FcpWithInfo {
@@ -14,7 +14,7 @@ pub struct FcpWithInfo {
 }
 
 pub fn all_fcps() -> DashResult<Vec<FcpWithInfo>> {
-    use domain::schema::{fcp_proposal, fcp_review_request, githubuser, issue, issuecomment};
+    use crate::domain::schema::{fcp_proposal, fcp_review_request, githubuser, issue, issuecomment};
 
     let conn = &*DB_POOL.get()?;
 
@@ -67,7 +67,7 @@ pub struct IndividualFcp {
 }
 
 pub fn individual_nags(username: &str) -> DashResult<(GitHubUser, Vec<IndividualFcp>)> {
-    use domain::schema::{fcp_proposal, fcp_review_request, githubuser, issue};
+    use crate::domain::schema::{fcp_proposal, fcp_review_request, githubuser, issue};
     let conn = &*DB_POOL.get()?;
 
     let user = githubuser::table

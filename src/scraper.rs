@@ -2,11 +2,11 @@ use std::thread::JoinHandle;
 
 use chrono::{DateTime, Utc};
 
-use config::{CONFIG, GH_ORGS};
-use github;
+use crate::config::{CONFIG, GH_ORGS};
+use crate::github;
 
 pub fn start_scraping() -> Option<JoinHandle<()>> {
-    Some(::utils::spawn_thread(
+    Some(crate::utils::spawn_thread(
         "GitHub scraper",
         CONFIG.github_interval_mins?,
         || {

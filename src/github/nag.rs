@@ -2,25 +2,24 @@ use std::collections::BTreeSet;
 use std::sync::Mutex;
 
 use chrono::{Duration, Utc};
-use diesel;
 use diesel::prelude::*;
 
 use itertools::Itertools;
 
 use super::GH;
-use domain::github::{GitHubUser, Issue, IssueComment};
-use domain::rfcbot::{
+use crate::domain::github::{GitHubUser, Issue, IssueComment};
+use crate::domain::rfcbot::{
     FcpConcern, FcpProposal, FcpReviewRequest, FeedbackRequest, NewFcpConcern, NewFcpProposal,
     NewFcpReviewRequest, NewFeedbackRequest, NewPoll, NewPollResponseRequest, Poll,
     PollResponseRequest,
 };
-use domain::schema::*;
-use error::*;
-use github::models::CommentFromJson;
-use teams::SETUP;
-use DB_POOL;
+use crate::domain::schema::*;
+use crate::error::*;
+use crate::github::models::CommentFromJson;
+use crate::teams::SETUP;
+use crate::DB_POOL;
 
-use github::command::*;
+use crate::github::command::*;
 
 impl Issue {
     fn remove_label(&self, label: Label) {
@@ -127,7 +126,7 @@ fn update_proposal_review_status(proposal_id: i32) -> DashResult<()> {
             .first(conn)?;
 
         {
-            use domain::schema::fcp_review_request::dsl::*;
+            use crate::domain::schema::fcp_review_request::dsl::*;
             let mut review_request: FcpReviewRequest = fcp_review_request
                 .filter(fk_proposal.eq(proposal.id))
                 .filter(fk_reviewer.eq(user.id))
@@ -172,7 +171,7 @@ fn update_poll_response_status(poll_id: i32) -> DashResult<()> {
         );
 
         {
-            use domain::schema::poll_response_request::dsl::*;
+            use crate::domain::schema::poll_response_request::dsl::*;
             let mut review_request: PollResponseRequest = poll_response_request
                 .filter(fk_poll.eq(survey.id))
                 .filter(fk_respondent.eq(user.id))
@@ -236,9 +235,9 @@ fn evaluate_nags() {
 }
 
 fn evaluate_polls() -> DashResult<()> {
-    use domain::schema::issuecomment::dsl::id as issuecomment_id;
-    use domain::schema::issuecomment::dsl::*;
-    use domain::schema::poll::dsl::*;
+    use crate::domain::schema::issuecomment::dsl::id as issuecomment_id;
+    use crate::domain::schema::issuecomment::dsl::*;
+    use crate::domain::schema::poll::dsl::*;
     let conn = &*DB_POOL.get()?;
 
     // first process all "pending" polls (unresponded)
@@ -312,9 +311,9 @@ fn evaluate_polls() -> DashResult<()> {
 
 fn evaluate_pendings() -> DashResult<()> {
     use diesel::prelude::*;
-    use domain::schema::fcp_proposal::dsl::*;
-    use domain::schema::issuecomment::dsl::id as issuecomment_id;
-    use domain::schema::issuecomment::dsl::*;
+    use crate::domain::schema::fcp_proposal::dsl::*;
+    use crate::domain::schema::issuecomment::dsl::id as issuecomment_id;
+    use crate::domain::schema::issuecomment::dsl::*;
     let conn = &*DB_POOL.get()?;
 
     // first process all "pending" proposals (unreviewed or remaining concerns)
@@ -410,7 +409,7 @@ fn evaluate_pendings() -> DashResult<()> {
 
             // attempt to add the final-comment-period label
             // TODO only add label if FCP > 1 day
-            use config::CONFIG;
+            use crate::config::CONFIG;
             if CONFIG.post_comments {
                 let label_res = issue.add_label(Label::FCP);
                 issue.remove_label(Label::PFCP);
@@ -445,7 +444,7 @@ fn evaluate_pendings() -> DashResult<()> {
 
 fn evaluate_ffcps() -> DashResult<()> {
     use diesel::prelude::*;
-    use domain::schema::fcp_proposal::dsl::*;
+    use crate::domain::schema::fcp_proposal::dsl::*;
     let conn = &*DB_POOL.get()?;
 
     // look for any FCP proposals that entered FCP a week or more ago but aren't marked as closed
@@ -556,7 +555,7 @@ fn execute_ffcp_actions(issue: &Issue, disposition: FcpDisposition) {
 }
 
 fn list_review_requests(proposal_id: i32) -> DashResult<Vec<(GitHubUser, FcpReviewRequest)>> {
-    use domain::schema::{fcp_review_request, githubuser};
+    use crate::domain::schema::{fcp_review_request, githubuser};
 
     let conn = &*DB_POOL.get()?;
 
@@ -580,7 +579,7 @@ fn list_review_requests(proposal_id: i32) -> DashResult<Vec<(GitHubUser, FcpRevi
 }
 
 fn list_poll_response_requests(poll_id: i32) -> DashResult<Vec<(GitHubUser, PollResponseRequest)>> {
-    use domain::schema::{githubuser, poll_response_request};
+    use crate::domain::schema::{githubuser, poll_response_request};
 
     let conn = &*DB_POOL.get()?;
 
@@ -604,7 +603,7 @@ fn list_poll_response_requests(poll_id: i32) -> DashResult<Vec<(GitHubUser, Poll
 }
 
 fn list_concerns_with_authors(proposal_id: i32) -> DashResult<Vec<(GitHubUser, FcpConcern)>> {
-    use domain::schema::{fcp_concern, githubuser};
+    use crate::domain::schema::{fcp_concern, githubuser};
 
     let conn = &*DB_POOL.get()?;
 
@@ -631,7 +630,7 @@ fn resolve_applicable_feedback_requests(
     issue: &Issue,
     comment: &IssueComment,
 ) -> DashResult<()> {
-    use domain::schema::rfc_feedback_request::dsl::*;
+    use crate::domain::schema::rfc_feedback_request::dsl::*;
     let conn = &*DB_POOL.get()?;
 
     // check for an open feedback request, close since no longer applicable
@@ -653,7 +652,7 @@ fn resolve_applicable_feedback_requests(
 
 fn resolve_logins_to_users(member_logins: &[String]) -> DashResult<Vec<GitHubUser>> {
     use diesel::pg::expression::dsl::any;
-    use domain::schema::githubuser;
+    use crate::domain::schema::githubuser;
     let conn = &*DB_POOL.get()?;
 
     // resolve each member into an actual user
@@ -693,7 +692,7 @@ fn subteam_members(issue: &Issue) -> DashResult<Vec<GitHubUser>> {
 }
 
 fn cancel_fcp(author: &GitHubUser, issue: &Issue, existing: &FcpProposal) -> DashResult<()> {
-    use domain::schema::fcp_proposal::dsl::*;
+    use crate::domain::schema::fcp_proposal::dsl::*;
 
     let conn = &*DB_POOL.get()?;
 
@@ -718,7 +717,7 @@ fn cancel_fcp(author: &GitHubUser, issue: &Issue, existing: &FcpProposal) -> Das
 }
 
 fn existing_proposal(issue: &Issue) -> DashResult<Option<FcpProposal>> {
-    use domain::schema::fcp_proposal::dsl::*;
+    use crate::domain::schema::fcp_proposal::dsl::*;
     let conn = &*DB_POOL.get()?;
     Ok(fcp_proposal
         .filter(fk_issue.eq(issue.id))
@@ -726,8 +725,7 @@ fn existing_proposal(issue: &Issue) -> DashResult<Option<FcpProposal>> {
         .optional()?)
 }
 
-fn post_insert_comment(issue: &Issue, comment: CommentType) -> DashResult<IssueComment> {
-    use domain::schema::issuecomment;
+fn post_insert_comment(issue: &Issue, comment: CommentType<'_>) -> DashResult<IssueComment> {
     let conn = &*DB_POOL.get()?;
 
     let comment = RfcBotComment::new(issue, comment);
@@ -780,8 +778,8 @@ fn process_poll(
     question: &str,
     teams: BTreeSet<&str>,
 ) -> DashResult<()> {
-    use domain::schema::poll::dsl::*;
-    use domain::schema::poll_response_request;
+    use crate::domain::schema::poll::dsl::*;
+    use crate::domain::schema::poll_response_request;
     let conn = &*DB_POOL.get()?;
 
     let tmp_teams;
@@ -876,8 +874,8 @@ fn process_fcp_propose(
     disp: FcpDisposition,
 ) -> DashResult<()> {
     debug!("processing fcp proposal: {:?}", disp);
-    use domain::schema::fcp_proposal::dsl::*;
-    use domain::schema::fcp_review_request;
+    use crate::domain::schema::fcp_proposal::dsl::*;
+    use crate::domain::schema::fcp_review_request;
 
     if existing_proposal(issue)?.is_none() {
         let conn = &*DB_POOL.get()?;
@@ -948,7 +946,7 @@ fn process_fcp_cancel(author: &GitHubUser, issue: &Issue) -> DashResult<()> {
 fn process_reviewed(author: &GitHubUser, issue: &Issue) -> DashResult<()> {
     // set a reviewed entry for the comment author on this issue
     if let Some(proposal) = existing_proposal(issue)? {
-        use domain::schema::fcp_review_request::dsl::*;
+        use crate::domain::schema::fcp_review_request::dsl::*;
         let conn = &*DB_POOL.get()?;
 
         let review_request = fcp_review_request
@@ -978,8 +976,8 @@ fn process_new_concern(
 ) -> DashResult<()> {
     if let Some(mut proposal) = existing_proposal(issue)? {
         // check for existing concern
-        use domain::schema::fcp_concern::dsl::*;
-        use domain::schema::fcp_proposal::dsl::*;
+        use crate::domain::schema::fcp_concern::dsl::*;
+        use crate::domain::schema::fcp_proposal::dsl::*;
         let conn = &*DB_POOL.get()?;
 
         let existing_concern = fcp_concern
@@ -1033,7 +1031,7 @@ fn process_resolve_concern(
 
     if let Some(proposal) = existing_proposal(issue)? {
         // check for existing concern
-        use domain::schema::fcp_concern::dsl::*;
+        use crate::domain::schema::fcp_concern::dsl::*;
         let conn = &*DB_POOL.get()?;
 
         let existing_concern = fcp_concern
@@ -1057,8 +1055,8 @@ fn process_resolve_concern(
 }
 
 fn process_feedback_request(author: &GitHubUser, issue: &Issue, username: &str) -> DashResult<()> {
-    use domain::schema::githubuser;
-    use domain::schema::rfc_feedback_request::dsl::*;
+    use crate::domain::schema::githubuser;
+    use crate::domain::schema::rfc_feedback_request::dsl::*;
     let conn = &*DB_POOL.get()?;
 
     // we'll just assume that this user exists...it's very unlikely that someone
@@ -1144,7 +1142,7 @@ impl<'a> RfcBotComment<'a> {
         msg.push_str("` label, please do so.*");
     }
 
-    fn format(issue: &Issue, comment_type: &CommentType) -> String {
+    fn format(issue: &Issue, comment_type: &CommentType<'_>) -> String {
         match *comment_type {
             CommentType::QuestionAsked {
                 initiator,
@@ -1297,7 +1295,7 @@ impl<'a> RfcBotComment<'a> {
     }
 
     fn post(&self, existing_comment: Option<i32>) -> DashResult<CommentFromJson> {
-        use config::CONFIG;
+        use crate::config::CONFIG;
 
         if CONFIG.post_comments {
             if self.issue.open {

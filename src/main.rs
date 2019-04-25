@@ -1,32 +1,21 @@
+#![deny(rust_2018_idioms)]
 #![feature(never_type)]
 #![feature(proc_macro_hygiene, decl_macro)]
 
-extern crate chrono;
-extern crate crypto;
 #[macro_use]
 extern crate diesel;
-extern crate dotenv;
-extern crate env_logger;
-extern crate hex;
 #[macro_use]
 extern crate lazy_static;
 #[macro_use]
 extern crate log;
-extern crate reqwest;
 #[macro_use]
 extern crate rocket;
-extern crate rocket_contrib;
-extern crate serde;
 #[macro_use]
 extern crate serde_derive;
 #[macro_use]
 extern crate serde_json;
-extern crate toml;
-extern crate url;
-extern crate urlencoded;
 #[macro_use]
 extern crate maplit;
-extern crate itertools;
 
 #[macro_use]
 mod macros;
@@ -48,14 +37,14 @@ use diesel::r2d2::Pool;
 use env_logger::LogBuilder;
 use log::LogRecord;
 
-use config::CONFIG;
+use crate::config::CONFIG;
 
 fn main() {
     // init environment variables, CLI, and logging
     dotenv::dotenv().ok();
 
     LogBuilder::new()
-        .format(|rec: &LogRecord| {
+        .format(|rec: &LogRecord<'_>| {
             let loc = rec.location();
             format!(
                 "[{} {}:{} {}] {}",

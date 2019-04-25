@@ -2,6 +2,7 @@
 authors = ["Adam Perry <adam.n.perry@gmail.com>"]
 name = "rfcbot-rs"
 version = "0.1.0"
+edition = "2018"
 
 [dependencies]
 dotenv = "0.13.0"

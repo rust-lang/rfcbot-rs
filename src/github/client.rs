@@ -8,12 +8,11 @@ use std::u32;
 use chrono::{DateTime, Utc};
 use reqwest::{self, header::HeaderMap, Response, StatusCode};
 use serde::de::DeserializeOwned;
-use serde_json;
 
-use config::CONFIG;
-use domain::github::GitHubUser;
-use error::{DashError, DashResult};
-use github::models::{CommentFromJson, IssueFromJson, PullRequestFromJson, PullRequestUrls};
+use crate::config::CONFIG;
+use crate::domain::github::GitHubUser;
+use crate::error::{DashError, DashResult};
+use crate::github::models::{CommentFromJson, IssueFromJson, PullRequestFromJson, PullRequestUrls};
 
 pub const BASE_URL: &'static str = "https://api.github.com";
 

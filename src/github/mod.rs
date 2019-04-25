@@ -7,14 +7,13 @@ mod nag;
 pub mod webhooks;
 
 use chrono::{DateTime, NaiveDate, NaiveDateTime, NaiveTime, Utc};
-use diesel;
 use diesel::pg::PgConnection;
 use diesel::prelude::*;
 
-use domain::github::*;
-use domain::schema::*;
-use error::DashResult;
-use DB_POOL;
+use crate::domain::github::*;
+use crate::domain::schema::*;
+use crate::error::DashResult;
+use crate::DB_POOL;
 
 use self::client::Client;
 use self::models::{CommentFromJson, IssueFromJson, PullRequestFromJson};
@@ -34,7 +33,7 @@ pub fn most_recent_update() -> DashResult<DateTime<Utc>> {
     let conn = &*DB_POOL.get()?;
 
     let updated: NaiveDateTime = {
-        use domain::schema::githubsync::dsl::*;
+        use crate::domain::schema::githubsync::dsl::*;
         githubsync
             .select(ran_at)
             .filter(successful.eq(true))
@@ -49,7 +48,7 @@ pub fn most_recent_update() -> DashResult<DateTime<Utc>> {
 pub fn record_successful_update(ingest_start: NaiveDateTime) -> DashResult<()> {
     let conn = &*DB_POOL.get()?;
     // insert a successful sync record
-    use domain::schema::githubsync::dsl::*;
+    use crate::domain::schema::githubsync::dsl::*;
     let sync_record = GitHubSyncPartial {
         successful: true,
         ran_at: ingest_start,
@@ -122,7 +121,7 @@ pub fn ingest_since(repo: &str, start: DateTime<Utc>) -> DashResult<()> {
 }
 
 pub fn handle_pr(conn: &PgConnection, pr: PullRequestFromJson, repo: &str) -> DashResult<()> {
-    use domain::schema::pullrequest::dsl::*;
+    use crate::domain::schema::pullrequest::dsl::*;
     if let Some(ref assignee) = pr.assignee {
         handle_user(conn, assignee)?;
     }
@@ -191,7 +190,7 @@ pub fn handle_issue(conn: &PgConnection, issue: IssueFromJson, repo: &str) -> Da
 
     // handle issue itself
     {
-        use domain::schema::issue::dsl::*;
+        use crate::domain::schema::issue::dsl::*;
 
         diesel::insert_into(issue)
             .values(&i)
@@ -221,7 +220,7 @@ mod tests {
 
     #[test]
     fn test_handle_user() {
-        ::utils::setup_test_env();
+        crate::utils::setup_test_env();
         let db_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
         let conn =
             PgConnection::establish(&db_url).expect(&format!("Error connecting to {}", db_url));
