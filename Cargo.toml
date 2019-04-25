@@ -4,12 +4,16 @@ name = "rfcbot-rs"
 version = "0.1.0"
 edition = "2018"
 
+# Sorted by alphanumeric order
 [dependencies]
 dotenv = "0.13.0"
 env_logger = "0.4"
 hex = "0.3.2"
+itertools = "0.8.0"
 lazy_static = "1.2.0"
 log = "0.3.6"
+maplit = "1.0.1"
+reqwest = "0.9.12"
 rocket = "0.4.0"
 rocket_contrib = { version = "0.4.0", features = ["json", "handlebars_templates"] }
 rust-crypto = "0.2.36"
@@ -19,9 +23,6 @@ serde_json = "1.0"
 toml = "0.4"
 url = "1.4"
 urlencoded = "0.5"
-maplit = "1.0.1"
-itertools = "0.8.0"
-reqwest = "0.9.12"
 
 [dependencies.chrono]
 features = ["serde"]
