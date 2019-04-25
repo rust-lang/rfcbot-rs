@@ -14,7 +14,9 @@ pub struct FcpWithInfo {
 }
 
 pub fn all_fcps() -> DashResult<Vec<FcpWithInfo>> {
-    use crate::domain::schema::{fcp_proposal, fcp_review_request, githubuser, issue, issuecomment};
+    use crate::domain::schema::{
+        fcp_proposal, fcp_review_request, githubuser, issue, issuecomment,
+    };
 
     let conn = &*DB_POOL.get()?;
 

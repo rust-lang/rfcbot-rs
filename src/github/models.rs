@@ -113,8 +113,8 @@ pub struct CommentFromJson {
 
 impl CommentFromJson {
     pub fn with_repo(self, repo: &str) -> DashResult<IssueComment> {
-        use diesel::prelude::*;
         use crate::domain::schema::issue::dsl::*;
+        use diesel::prelude::*;
 
         let issue_number = self
             .html_url

@@ -101,8 +101,8 @@ mod api {
     use crate::github::webhooks::{Event, Payload};
     use crate::github::{handle_comment, handle_issue, handle_pr};
     use crate::nag;
-    use rocket_contrib::json::Json;
     use crate::DB_POOL;
+    use rocket_contrib::json::Json;
 
     #[get("/all")]
     pub fn all_fcps() -> DashResult<Json<Vec<nag::FcpWithInfo>>> { Ok(Json(nag::all_fcps()?)) }
