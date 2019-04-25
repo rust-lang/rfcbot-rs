@@ -6,10 +6,14 @@ use config::{CONFIG, GH_ORGS};
 use github;
 
 pub fn start_scraping() -> Option<JoinHandle<()>> {
-    Some(::utils::spawn_thread("GitHub scraper", CONFIG.github_interval_mins?, || {
-        scrape_github(github::most_recent_update()?);
-        Ok(())
-    }))
+    Some(::utils::spawn_thread(
+        "GitHub scraper",
+        CONFIG.github_interval_mins?,
+        || {
+            scrape_github(github::most_recent_update()?);
+            Ok(())
+        },
+    ))
 }
 
 pub fn scrape_github(since: DateTime<Utc>) {

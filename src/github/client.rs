@@ -6,14 +6,14 @@ use std::time::Duration;
 use std::u32;
 
 use chrono::{DateTime, Utc};
+use reqwest::{self, header::HeaderMap, Response, StatusCode};
 use serde::de::DeserializeOwned;
 use serde_json;
-use reqwest::{self, StatusCode, Response, header::HeaderMap};
 
 use config::CONFIG;
+use domain::github::GitHubUser;
 use error::{DashError, DashResult};
 use github::models::{CommentFromJson, IssueFromJson, PullRequestFromJson, PullRequestUrls};
-use domain::github::GitHubUser;
 
 pub const BASE_URL: &'static str = "https://api.github.com";
 
@@ -36,7 +36,9 @@ impl Client {
         if !CONFIG.github_access_token.trim().is_empty() {
             headers.insert(
                 "Authorization",
-                format!("token {}", CONFIG.github_access_token).parse().unwrap(),
+                format!("token {}", CONFIG.github_access_token)
+                    .parse()
+                    .unwrap(),
             );
         }
         headers.insert("User-Agent", CONFIG.github_user_agent.parse().unwrap());
@@ -44,7 +46,10 @@ impl Client {
         headers.insert("Accept", "application/vnd.github.v3".parse().unwrap());
         headers.insert("Connection", "close".parse().unwrap());
         Client {
-            client: reqwest::Client::builder().default_headers(headers).build().unwrap(),
+            client: reqwest::Client::builder()
+                .default_headers(headers)
+                .build()
+                .unwrap(),
             rate_limit: u32::MAX,
             rate_limit_timeout: Utc::now(),
         }
@@ -65,39 +70,43 @@ impl Client {
                 }
             }
             throw!(DashError::Misc(None))
-
         }
         Ok(repos)
     }
 
     pub fn issues_since(&self, repo: &str, start: DateTime<Utc>) -> DashResult<Vec<IssueFromJson>> {
-        self.get_models(&format!("{}/repos/{}/issues", BASE_URL, repo),
+        self.get_models(
+            &format!("{}/repos/{}/issues", BASE_URL, repo),
             Some(&btreemap! {
                 "state" => "all".to_string(),
                 "since" => format!("{:?}", start),
                 "per_page" => format!("{}", PER_PAGE),
-                "direction" => "asc".to_string()    
-            }))
+                "direction" => "asc".to_string()
+            }),
+        )
     }
 
-    pub fn comments_since(&self,
-                          repo: &str,
-                          start: DateTime<Utc>)
-                          -> DashResult<Vec<CommentFromJson>> {
-        self.get_models(&format!("{}/repos/{}/issues/comments", BASE_URL, repo),
+    pub fn comments_since(
+        &self,
+        repo: &str,
+        start: DateTime<Utc>,
+    ) -> DashResult<Vec<CommentFromJson>> {
+        self.get_models(
+            &format!("{}/repos/{}/issues/comments", BASE_URL, repo),
             Some(&btreemap! {
                 "sort" => "created".to_string(),
                 "direction" => "asc".to_string(),
                 "since" => format!("{:?}", start),
                 "per_page" => format!("{}", PER_PAGE)
-            }))
+            }),
+        )
     }
 
-    fn get_models<M: DeserializeOwned>(&self,
-                                       start_url: &str,
-                                       params: Option<&ParameterMap>)
-                                       -> DashResult<Vec<M>> {
-
+    fn get_models<M: DeserializeOwned>(
+        &self,
+        start_url: &str,
+        params: Option<&ParameterMap>,
+    ) -> DashResult<Vec<M>> {
         let mut res = self.get(start_url, params)?;
         let mut models: Vec<M> = res.json()?;
         while let Some(url) = Self::next_page(res.headers()) {
@@ -120,7 +129,6 @@ impl Client {
         if let Some(lh) = h.get("Link") {
             let lh = &lh.to_str().unwrap();
             for link in (**lh).split(',').map(|s| s.trim()) {
-
                 let tokens = link.split(';').map(|s| s.trim()).collect::<Vec<_>>();
 
                 if tokens.len() != 2 {
@@ -166,11 +174,10 @@ impl Client {
     }
 
     pub fn remove_label(&self, repo: &str, issue_num: i32, label: &str) -> DashResult<()> {
-        let url = format!("{}/repos/{}/issues/{}/labels/{}",
-                          BASE_URL,
-                          repo,
-                          issue_num,
-                          label);
+        let url = format!(
+            "{}/repos/{}/issues/{}/labels/{}",
+            BASE_URL, repo, issue_num, label
+        );
         let mut res = self.delete(&url)?;
 
         if StatusCode::NO_CONTENT != res.status() {
@@ -180,25 +187,27 @@ impl Client {
         Ok(())
     }
 
-    pub fn new_comment(&self,
-                       repo: &str,
-                       issue_num: i32,
-                       text: &str)
-                       -> DashResult<CommentFromJson> {
+    pub fn new_comment(
+        &self,
+        repo: &str,
+        issue_num: i32,
+        text: &str,
+    ) -> DashResult<CommentFromJson> {
         let url = format!("{}/repos/{}/issues/{}/comments", BASE_URL, repo, issue_num);
         let payload = serde_json::to_string(&btreemap!("body" => text))?;
         Ok(self.post(&url, &payload)?.error_for_status()?.json()?)
     }
 
-    pub fn edit_comment(&self,
-                        repo: &str,
-                        comment_num: i32,
-                        text: &str)
-                        -> DashResult<CommentFromJson> {
-        let url = format!("{}/repos/{}/issues/comments/{}",
-                          BASE_URL,
-                          repo,
-                          comment_num);
+    pub fn edit_comment(
+        &self,
+        repo: &str,
+        comment_num: i32,
+        text: &str,
+    ) -> DashResult<CommentFromJson> {
+        let url = format!(
+            "{}/repos/{}/issues/comments/{}",
+            BASE_URL, repo, comment_num
+        );
         let payload = serde_json::to_string(&btreemap!("body" => text))?;
         Ok(self.patch(&url, &payload)?.error_for_status()?.json()?)
     }

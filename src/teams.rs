@@ -18,7 +18,8 @@ const UPDATE_CONFIG_EVERY_MIN: u64 = 5;
 type TeamsMap = BTreeMap<TeamLabel, Team>;
 
 lazy_static! {
-    pub static ref SETUP: Arc<RwLock<RfcbotConfig>> = Arc::new(RwLock::new(read_rfcbot_cfg_validated()));
+    pub static ref SETUP: Arc<RwLock<RfcbotConfig>> =
+        Arc::new(RwLock::new(read_rfcbot_cfg_validated()));
 }
 
 #[derive(Debug, Deserialize)]
@@ -33,9 +34,7 @@ pub struct RfcbotConfig {
 
 impl RfcbotConfig {
     /// Retrive an iterator over all the team labels.
-    pub fn team_labels(&self) -> impl Iterator<Item = &TeamLabel> {
-        self.teams().map(|(k, _)| k)
-    }
+    pub fn team_labels(&self) -> impl Iterator<Item = &TeamLabel> { self.teams().map(|(k, _)| k) }
 
     /// Retrive an iterator over all the (team label, team) pairs.
     pub fn teams(&self) -> impl Iterator<Item = (&TeamLabel, &Team)> {
@@ -47,12 +46,18 @@ impl RfcbotConfig {
 
     /// Are we allowed to auto-close issues after F-FCP in this repo?
     pub fn should_ffcp_auto_close(&self, repo: &str) -> bool {
-        self.fcp_behaviors.get(repo).map(|fcp| fcp.close).unwrap_or_default()
+        self.fcp_behaviors
+            .get(repo)
+            .map(|fcp| fcp.close)
+            .unwrap_or_default()
     }
 
     /// Are we allowed to auto-postpone issues after F-FCP in this repo?
     pub fn should_ffcp_auto_postpone(&self, repo: &str) -> bool {
-        self.fcp_behaviors.get(repo).map(|fcp| fcp.postpone).unwrap_or_default()
+        self.fcp_behaviors
+            .get(repo)
+            .map(|fcp| fcp.postpone)
+            .unwrap_or_default()
     }
 
     // Update the list of teams from external sources, if needed
@@ -62,9 +67,7 @@ impl RfcbotConfig {
             teams: TeamsMap,
         }
         if let RfcbotTeams::Remote { ref url } = &self.teams {
-            let de: ToDeserialize = ::reqwest::get(url)?
-                .error_for_status()?
-                .json()?;
+            let de: ToDeserialize = ::reqwest::get(url)?.error_for_status()?.json()?;
             self.cached_teams = de.teams;
         }
         Ok(())
@@ -87,9 +90,7 @@ pub struct FcpBehavior {
 #[serde(untagged)]
 enum RfcbotTeams {
     Local(TeamsMap),
-    Remote {
-        url: String,
-    }
+    Remote { url: String },
 }
 
 #[derive(Debug, Deserialize)]
@@ -100,9 +101,7 @@ pub struct Team {
 }
 
 impl Team {
-    pub fn ping(&self) -> &str {
-        &self.ping
-    }
+    pub fn ping(&self) -> &str { &self.ping }
 
     pub fn member_logins(&self) -> impl Iterator<Item = &str> {
         self.members.iter().map(|s| s.as_str())
@@ -132,19 +131,22 @@ pub fn start_updater_thread() {
 fn read_rfcbot_cfg_validated() -> RfcbotConfig {
     let cfg = read_rfcbot_cfg();
 
-    cfg.teams().map(|(_, v)| v).for_each(|team|
-        team.validate()
-            .expect("unable to verify team member from database.
-if you're running this for tests, make sure you've pulled github users from prod")
-    );
+    cfg.teams().map(|(_, v)| v).for_each(|team| {
+        team.validate().expect(
+            "unable to verify team member from database.
+if you're running this for tests, make sure you've pulled github users from prod",
+        )
+    });
 
     cfg
 }
 
 /// Read the unprocessed `rfcbot.toml` configuration file.
 fn read_rfcbot_cfg() -> RfcbotConfig {
-    let mut config = read_rfcbot_cfg_from(
-        include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/rfcbot.toml")));
+    let mut config = read_rfcbot_cfg_from(include_str!(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/rfcbot.toml"
+    )));
     config.update().expect("couldn't update the configuration!");
     config
 }
@@ -161,7 +163,11 @@ impl Team {
 
         // bail if they don't exist, but we don't want to actually keep the id in ram
         for member_login in self.member_logins() {
-            if githubuser.filter(login.eq(member_login)).first::<GitHubUser>(conn).is_err() {
+            if githubuser
+                .filter(login.eq(member_login))
+                .first::<GitHubUser>(conn)
+                .is_err()
+            {
                 ::github::handle_user(&conn, &gh.get_user(member_login)?)?;
                 info!("loaded into the database user {}", member_login);
             }
@@ -180,8 +186,8 @@ pub mod test {
     use super::*;
 
     lazy_static! {
-        pub static ref TEST_SETUP: RfcbotConfig =
-            read_rfcbot_cfg_from(r#"
+        pub static ref TEST_SETUP: RfcbotConfig = read_rfcbot_cfg_from(
+            r#"
 [fcp_behaviors]
 
 [fcp_behaviors."rust-lang/alpha"]
@@ -220,7 +226,8 @@ members = [
   "batman",
   "theflash"
 ]
-"#);
+"#
+        );
     }
 
     #[test]
@@ -228,25 +235,36 @@ members = [
         let cfg = &*TEST_SETUP;
 
         // Labels are correct:
-        assert_eq!(cfg.team_labels().map(|tl| tl.0.clone()).collect::<Vec<_>>(),
-                   vec!["T-avengers", "justice-league"]);
+        assert_eq!(
+            cfg.team_labels().map(|tl| tl.0.clone()).collect::<Vec<_>>(),
+            vec!["T-avengers", "justice-league"]
+        );
 
         // Teams are correct:
-        let map: BTreeMap<_, _> =
-            cfg.teams().map(|(k, v)| (k.0.clone(), v.clone())).collect();
+        let map: BTreeMap<_, _> = cfg.teams().map(|(k, v)| (k.0.clone(), v.clone())).collect();
 
         let avengers = map.get("T-avengers").unwrap();
         //assert_eq!(avengers.name, "The Avengers");
         //assert_eq!(avengers.ping, "marvel/avengers");
-        assert_eq!(avengers.member_logins().collect::<Vec<_>>(),
-            vec!["hulk", "thor", "thevision", "blackwidow",
-                 "spiderman", "captainamerica"]);
+        assert_eq!(
+            avengers.member_logins().collect::<Vec<_>>(),
+            vec![
+                "hulk",
+                "thor",
+                "thevision",
+                "blackwidow",
+                "spiderman",
+                "captainamerica"
+            ]
+        );
 
         let jsa = map.get("justice-league").unwrap();
         //assert_eq!(jsa.name, "Justice League of America");
         //assert_eq!(jsa.ping, "dc-comics/justice-league");
-        assert_eq!(jsa.member_logins().collect::<Vec<_>>(),
-            vec!["superman", "wonderwoman", "aquaman", "batman", "theflash"]);
+        assert_eq!(
+            jsa.member_logins().collect::<Vec<_>>(),
+            vec!["superman", "wonderwoman", "aquaman", "batman", "theflash"]
+        );
 
         // Random non-existent team does not exist:
         assert!(map.get("random").is_none());

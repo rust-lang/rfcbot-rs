@@ -5,8 +5,8 @@ use std::convert::From;
 use std::io;
 
 use diesel;
-use serde_json;
 use rocket_contrib::templates::handlebars;
+use serde_json;
 
 pub type DashResult<T> = std::result::Result<T, DashError>;
 

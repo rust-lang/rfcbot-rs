@@ -3,7 +3,7 @@ use chrono::NaiveDateTime;
 use super::schema::*;
 
 #[derive(Clone, Debug, Eq, Ord, Insertable, PartialEq, PartialOrd)]
-#[table_name="poll"]
+#[table_name = "poll"]
 pub struct NewPoll<'a> {
     pub fk_issue: i32,
     pub fk_initiator: i32,
@@ -15,9 +15,10 @@ pub struct NewPoll<'a> {
     pub poll_teams: &'a str,
 }
 
-#[derive(AsChangeset, Clone, Debug, Deserialize, Eq, Ord,
-         PartialEq, PartialOrd, Queryable, Serialize)]
-#[table_name="poll"]
+#[derive(
+    AsChangeset, Clone, Debug, Deserialize, Eq, Ord, PartialEq, PartialOrd, Queryable, Serialize,
+)]
+#[table_name = "poll"]
 pub struct Poll {
     pub id: i32,
     pub fk_issue: i32,
@@ -31,7 +32,7 @@ pub struct Poll {
 }
 
 #[derive(Clone, Debug, Eq, Ord, Insertable, PartialEq, PartialOrd)]
-#[table_name="fcp_proposal"]
+#[table_name = "fcp_proposal"]
 pub struct NewFcpProposal<'a> {
     pub fk_issue: i32,
     pub fk_initiator: i32,
@@ -43,16 +44,17 @@ pub struct NewFcpProposal<'a> {
 }
 
 #[derive(Clone, Debug, Eq, Insertable, Ord, PartialEq, PartialOrd, Serialize)]
-#[table_name="poll_response_request"]
+#[table_name = "poll_response_request"]
 pub struct NewPollResponseRequest {
     pub fk_poll: i32,
     pub fk_respondent: i32,
     pub responded: bool,
 }
 
-#[derive(AsChangeset, Clone, Debug, Deserialize, Eq, Ord,
-         PartialEq, PartialOrd, Queryable, Serialize)]
-#[table_name="poll_response_request"]
+#[derive(
+    AsChangeset, Clone, Debug, Deserialize, Eq, Ord, PartialEq, PartialOrd, Queryable, Serialize,
+)]
+#[table_name = "poll_response_request"]
 pub struct PollResponseRequest {
     pub id: i32,
     pub fk_poll: i32,
@@ -60,10 +62,11 @@ pub struct PollResponseRequest {
     pub responded: bool,
 }
 
-#[derive(AsChangeset, Clone, Debug, Deserialize, Eq, Ord,
-         PartialEq, PartialOrd, Queryable, Serialize)]
-#[table_name="fcp_proposal"]
-#[changeset_options(treat_none_as_null="true")]
+#[derive(
+    AsChangeset, Clone, Debug, Deserialize, Eq, Ord, PartialEq, PartialOrd, Queryable, Serialize,
+)]
+#[table_name = "fcp_proposal"]
+#[changeset_options(treat_none_as_null = "true")]
 pub struct FcpProposal {
     pub id: i32,
     pub fk_issue: i32,
@@ -76,16 +79,17 @@ pub struct FcpProposal {
 }
 
 #[derive(Clone, Debug, Eq, Insertable, Ord, PartialEq, PartialOrd, Serialize)]
-#[table_name="fcp_review_request"]
+#[table_name = "fcp_review_request"]
 pub struct NewFcpReviewRequest {
     pub fk_proposal: i32,
     pub fk_reviewer: i32,
     pub reviewed: bool,
 }
 
-#[derive(AsChangeset, Clone, Debug, Deserialize, Eq, Ord,
-         PartialEq, PartialOrd, Queryable, Serialize)]
-#[table_name="fcp_review_request"]
+#[derive(
+    AsChangeset, Clone, Debug, Deserialize, Eq, Ord, PartialEq, PartialOrd, Queryable, Serialize,
+)]
+#[table_name = "fcp_review_request"]
 pub struct FcpReviewRequest {
     pub id: i32,
     pub fk_proposal: i32,
@@ -94,7 +98,7 @@ pub struct FcpReviewRequest {
 }
 
 #[derive(Clone, Debug, Eq, Insertable, Ord, PartialEq, PartialOrd)]
-#[table_name="fcp_concern"]
+#[table_name = "fcp_concern"]
 pub struct NewFcpConcern<'a> {
     pub fk_proposal: i32,
     pub fk_initiator: i32,
@@ -104,7 +108,7 @@ pub struct NewFcpConcern<'a> {
 }
 
 #[derive(AsChangeset, Clone, Debug, Deserialize, Eq, Ord, PartialEq, PartialOrd, Queryable)]
-#[table_name="fcp_concern"]
+#[table_name = "fcp_concern"]
 pub struct FcpConcern {
     pub id: i32,
     pub fk_proposal: i32,
@@ -115,7 +119,7 @@ pub struct FcpConcern {
 }
 
 #[derive(Clone, Debug, Eq, Insertable, Ord, PartialEq, PartialOrd)]
-#[table_name="rfc_feedback_request"]
+#[table_name = "rfc_feedback_request"]
 pub struct NewFeedbackRequest {
     pub fk_initiator: i32,
     pub fk_requested: i32,
@@ -124,7 +128,7 @@ pub struct NewFeedbackRequest {
 }
 
 #[derive(AsChangeset, Clone, Debug, Deserialize, Eq, Ord, PartialEq, PartialOrd, Queryable)]
-#[table_name="rfc_feedback_request"]
+#[table_name = "rfc_feedback_request"]
 pub struct FeedbackRequest {
     pub id: i32,
     pub fk_initiator: i32,
