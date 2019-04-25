@@ -75,7 +75,7 @@ impl FromDataSimple for Event {
                 let full_event = Event {
                     delivery_id: delivery_id.to_owned(),
                     event_name: event_name.to_owned(),
-                    payload: payload,
+                    payload,
                 };
 
                 info!(

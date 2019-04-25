@@ -49,10 +49,10 @@ pub fn all_fcps() -> DashResult<Vec<FcpWithInfo>> {
             .first::<Issue>(conn)?;
 
         let fcp_with_info = FcpWithInfo {
-            fcp: fcp,
+            fcp,
             reviews: reviews_with_users,
-            issue: issue,
-            status_comment: status_comment,
+            issue,
+            status_comment,
         };
 
         all_fcps.push(fcp_with_info);
@@ -90,8 +90,8 @@ pub fn individual_nags(username: &str) -> DashResult<(GitHubUser, Vec<Individual
             .first::<Issue>(conn)?;
 
         fcps.push(IndividualFcp {
-            issue: issue,
-            proposal: proposal,
+            issue,
+            proposal,
             review_request: rr,
         });
     }

@@ -92,13 +92,13 @@ pub fn init() -> Result<Config, Vec<&'static str>> {
         let webhook_secrets = webhook_secrets.split(',').map(String::from).collect();
 
         Ok(Config {
-            db_url: db_url,
-            db_pool_size: db_pool_size,
+            db_url,
+            db_pool_size,
             github_access_token: gh_token,
             github_user_agent: gh_ua,
             github_webhook_secrets: webhook_secrets,
             github_interval_mins: gh_interval,
-            post_comments: post_comments,
+            post_comments,
         })
     } else {
         Err(vars

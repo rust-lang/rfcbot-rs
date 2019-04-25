@@ -95,7 +95,7 @@ pub struct IssuePartial {
 impl IssuePartial {
     pub fn complete(self, id: i32) -> Issue {
         Issue {
-            id: id,
+            id,
             number: self.number,
             fk_milestone: self.fk_milestone,
             fk_user: self.fk_user,

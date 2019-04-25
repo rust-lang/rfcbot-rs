@@ -428,7 +428,7 @@ fn evaluate_pendings() -> DashResult<()> {
                 };
 
                 let comment_type = CommentType::FcpAllReviewedNoConcerns {
-                    added_label: added_label,
+                    added_label,
                     author: &initiator,
                     status_comment_id: proposal.fk_bot_tracking_comment,
                 };
@@ -1121,9 +1121,9 @@ impl<'a> RfcBotComment<'a> {
         let body = Self::format(issue, &comment_type);
 
         RfcBotComment {
-            issue: issue,
-            body: body,
-            comment_type: comment_type,
+            issue,
+            body,
+            comment_type,
         }
     }
 
