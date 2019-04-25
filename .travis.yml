@@ -15,6 +15,9 @@ addons:
     - curl
     - libpq-dev
     - pkg-config
+before_install:
+  - rustup component add rustfmt
+  - cargo fmt --all -- --check
 install:
   - export RUST_LOG=debug,hyper=info,rustc=error,cargo=error,jobserver=error
   - export GITHUB_WEBHOOK_SECRETS=none
