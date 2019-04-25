@@ -290,7 +290,7 @@ fn evaluate_polls() -> DashResult<()> {
                 initiator: &initiator,
                 respondents: &responses,
                 question: &survey.poll_question,
-                teams: survey.poll_teams.split(",").collect(),
+                teams: survey.poll_teams.split(',').collect(),
             },
         );
 
