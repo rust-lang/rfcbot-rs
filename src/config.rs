@@ -3,8 +3,8 @@
 use std::collections::BTreeMap;
 use std::env;
 
-pub const RFC_BOT_MENTION: &'static str = "@rfcbot";
-pub const GH_ORGS: [&'static str; 3] = ["rust-lang", "rust-lang-nursery", "rust-lang-deprecated"];
+pub const RFC_BOT_MENTION: &str = "@rfcbot";
+pub const GH_ORGS: [&str; 3] = ["rust-lang", "rust-lang-nursery", "rust-lang-deprecated"];
 
 lazy_static! {
     pub static ref CONFIG: Config = {
@@ -40,13 +40,13 @@ impl Config {
     }
 }
 
-const DB_URL: &'static str = "DATABASE_URL";
-const DB_POOL_SIZE: &'static str = "DATABASE_POOL_SIZE";
-const GITHUB_TOKEN: &'static str = "GITHUB_ACCESS_TOKEN";
-const GITHUB_WEBHOOK_SECRETS: &'static str = "GITHUB_WEBHOOK_SECRETS";
-const GITHUB_UA: &'static str = "GITHUB_USER_AGENT";
-const GITHUB_INTERVAL: &'static str = "GITHUB_SCRAPE_INTERVAL";
-const POST_COMMENTS: &'static str = "POST_COMMENTS";
+const DB_URL: &str = "DATABASE_URL";
+const DB_POOL_SIZE: &str = "DATABASE_POOL_SIZE";
+const GITHUB_TOKEN: &str = "GITHUB_ACCESS_TOKEN";
+const GITHUB_WEBHOOK_SECRETS: &str = "GITHUB_WEBHOOK_SECRETS";
+const GITHUB_UA: &str = "GITHUB_USER_AGENT";
+const GITHUB_INTERVAL: &str = "GITHUB_SCRAPE_INTERVAL";
+const POST_COMMENTS: &str = "POST_COMMENTS";
 
 // this is complex, but we'll shortly need a lot more config items
 // so checking them automagically seems like a nice solution

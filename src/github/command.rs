@@ -44,9 +44,9 @@ pub enum FcpDisposition {
     Postpone,
 }
 
-const FCP_REPR_MERGE: &'static str = "merge";
-const FCP_REPR_CLOSE: &'static str = "close";
-const FCP_REPR_POSTPONE: &'static str = "postpone";
+const FCP_REPR_MERGE: &str = "merge";
+const FCP_REPR_CLOSE: &str = "close";
+const FCP_REPR_POSTPONE: &str = "postpone";
 
 impl FcpDisposition {
     pub fn repr(self) -> &'static str {

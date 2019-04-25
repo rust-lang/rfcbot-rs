@@ -14,7 +14,7 @@ use crate::domain::github::GitHubUser;
 use crate::error::{DashError, DashResult};
 use crate::github::models::{CommentFromJson, IssueFromJson, PullRequestFromJson, PullRequestUrls};
 
-pub const BASE_URL: &'static str = "https://api.github.com";
+pub const BASE_URL: &str = "https://api.github.com";
 
 pub const DELAY: u64 = 300;
 
