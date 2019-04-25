@@ -1,4 +1,4 @@
-dist: trusty
+dist: xenial
 notifications:
   email: false
 language: rust
@@ -26,10 +26,10 @@ install:
   - export GITHUB_WEBHOOK_SECRETS=none
   - export GITHUB_ACCESS_TOKEN=
   - export GITHUB_SCRAPE_INTERVAL=6000
-  - export GITHUB_USER_AGENT=none-agent-with-left-beef
+  - export GITHUB_USER_AGENT=rfcbot-rs
   - export POST_COMMENTS=false
   - export RUST_BACKTRACE=1
-  - export PATH=$PATH:$HOME/.cargo/bin
+  - . "$HOME"/.cargo/env
   - export DATABASE_URL=postgres://localhost/dashboard
   - export DATABASE_POOL_SIZE=5
   - rustup default $(cat rust-toolchain)
@@ -39,7 +39,7 @@ install:
 before_script:
   - diesel setup
   - diesel migration run
-  - psql -q -d $DATABASE_URL < githubuser-backup.pg
+  - psql -q -d "$DATABASE_URL" < githubuser-backup.pg
 script:
   - cargo build
   - cargo test
