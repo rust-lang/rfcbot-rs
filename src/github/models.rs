@@ -120,7 +120,7 @@ impl CommentFromJson {
             .html_url
             .split('#')
             .next()
-            .map(|r| r.split('/').last().map(|n| n.parse::<i32>()));
+            .map(|r| r.split('/').last().map(str::parse));
 
         let issue_number = match issue_number {
             Some(Some(Ok(n))) => n,

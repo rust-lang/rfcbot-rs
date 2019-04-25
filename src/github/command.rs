@@ -268,7 +268,7 @@ impl<'a> RfcBotCommand<'a> {
         // Get the tokens for each command line (starts with a bot mention)
         command
             .lines()
-            .map(|l| l.trim())
+            .map(str::trim)
             .filter(|&l| l.starts_with(RFC_BOT_MENTION))
             .map(move |l| from_invocation_line(setup, l))
             .filter_map(Result::ok)

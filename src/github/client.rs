@@ -128,7 +128,7 @@ impl Client {
         if let Some(lh) = h.get("Link") {
             let lh = &lh.to_str().unwrap();
             for link in (**lh).split(',').map(|s| s.trim()) {
-                let tokens = link.split(';').map(|s| s.trim()).collect::<Vec<_>>();
+                let tokens = link.split(';').map(str::trim).collect::<Vec<_>>();
 
                 if tokens.len() != 2 {
                     continue;

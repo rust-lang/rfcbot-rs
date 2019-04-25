@@ -670,7 +670,7 @@ where
     let teams = setup.teams();
     let members = teams
         .filter(|&(label, _)| included(&label.0))
-        .flat_map(|(_, team)| team.member_logins().map(|i| i.to_string()))
+        .flat_map(|(_, team)| team.member_logins().map(std::string::ToString::to_string))
         .collect::<BTreeSet<_>>()
         .into_iter() // diesel won't work with btreeset, and dedup has weird lifetime errors
         .collect::<Vec<_>>();
@@ -785,7 +785,7 @@ fn process_poll(
             .filter(|&(label, _)| issue.labels.contains(&label.0))
             .map(|(label, _)| label.0.clone())
             .collect::<BTreeSet<_>>();
-        tmp_teams.iter().map(|team| team.as_str()).collect()
+        tmp_teams.iter().map(std::string::String::as_str).collect()
     } else {
         teams
     };

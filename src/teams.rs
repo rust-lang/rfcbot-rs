@@ -103,7 +103,7 @@ impl Team {
     pub fn ping(&self) -> &str { &self.ping }
 
     pub fn member_logins(&self) -> impl Iterator<Item = &str> {
-        self.members.iter().map(|s| s.as_str())
+        self.members.iter().map(std::string::String::as_str)
     }
 }
 
