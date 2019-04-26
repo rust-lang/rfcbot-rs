@@ -1,4 +1,4 @@
-use error::DashResult;
+use crate::error::DashResult;
 use std::thread::{self, JoinHandle};
 use std::time::Duration;
 

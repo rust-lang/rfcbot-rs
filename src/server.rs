@@ -1,4 +1,3 @@
-use rocket;
 use rocket_contrib::templates::handlebars::Handlebars;
 use std::panic::catch_unwind;
 
@@ -7,7 +6,7 @@ pub fn serve() {
     let _hbars = &*TEMPLATES;
 
     loop {
-        let port = ::std::env::var("ROCKET_PORT").unwrap_or(String::from("OOPS"));
+        let port = std::env::var("ROCKET_PORT").unwrap_or_else(|_| String::from("OOPS"));
         info!("Attempting to launch Rocket at port {}...", &port);
         let result = catch_unwind(|| {
             rocket::ignite()
@@ -25,8 +24,8 @@ pub fn serve() {
 
 mod html {
     use super::TEMPLATES;
-    use error::DashResult;
-    use nag;
+    use crate::error::DashResult;
+    use crate::nag;
     use rocket::response::content;
     use std::collections::BTreeMap;
 
@@ -97,13 +96,13 @@ mod html {
 }
 
 mod api {
-    use domain::github::GitHubUser;
-    use error::DashResult;
-    use github::webhooks::{Event, Payload};
-    use github::{handle_comment, handle_issue, handle_pr};
-    use nag;
+    use crate::domain::github::GitHubUser;
+    use crate::error::DashResult;
+    use crate::github::webhooks::{Event, Payload};
+    use crate::github::{handle_comment, handle_issue, handle_pr};
+    use crate::nag;
+    use crate::DB_POOL;
     use rocket_contrib::json::Json;
-    use DB_POOL;
 
     #[get("/all")]
     pub fn all_fcps() -> DashResult<Json<Vec<nag::FcpWithInfo>>> { Ok(Json(nag::all_fcps()?)) }

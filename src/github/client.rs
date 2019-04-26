@@ -8,14 +8,13 @@ use std::u32;
 use chrono::{DateTime, Utc};
 use reqwest::{self, header::HeaderMap, Response, StatusCode};
 use serde::de::DeserializeOwned;
-use serde_json;
 
-use config::CONFIG;
-use domain::github::GitHubUser;
-use error::{DashError, DashResult};
-use github::models::{CommentFromJson, IssueFromJson, PullRequestFromJson, PullRequestUrls};
+use crate::config::CONFIG;
+use crate::domain::github::GitHubUser;
+use crate::error::{DashError, DashResult};
+use crate::github::models::{CommentFromJson, IssueFromJson, PullRequestFromJson, PullRequestUrls};
 
-pub const BASE_URL: &'static str = "https://api.github.com";
+pub const BASE_URL: &str = "https://api.github.com";
 
 pub const DELAY: u64 = 300;
 
@@ -129,7 +128,7 @@ impl Client {
         if let Some(lh) = h.get("Link") {
             let lh = &lh.to_str().unwrap();
             for link in (**lh).split(',').map(|s| s.trim()) {
-                let tokens = link.split(';').map(|s| s.trim()).collect::<Vec<_>>();
+                let tokens = link.split(';').map(str::trim).collect::<Vec<_>>();
 
                 if tokens.len() != 2 {
                     continue;

@@ -5,9 +5,9 @@ use std::i32;
 
 use chrono::{DateTime, Utc};
 
-use domain::github::{GitHubUser, IssueComment, IssuePartial, Milestone, PullRequest};
-use error::DashResult;
-use DB_POOL;
+use crate::domain::github::{GitHubUser, IssueComment, IssuePartial, Milestone, PullRequest};
+use crate::error::DashResult;
+use crate::DB_POOL;
 
 #[derive(Clone, Debug, Deserialize)]
 pub struct MilestoneFromJson {
@@ -113,14 +113,14 @@ pub struct CommentFromJson {
 
 impl CommentFromJson {
     pub fn with_repo(self, repo: &str) -> DashResult<IssueComment> {
+        use crate::domain::schema::issue::dsl::*;
         use diesel::prelude::*;
-        use domain::schema::issue::dsl::*;
 
         let issue_number = self
             .html_url
             .split('#')
             .next()
-            .map(|r| r.split('/').last().map(|n| n.parse::<i32>()));
+            .map(|r| r.split('/').last().map(str::parse));
 
         let issue_number = match issue_number {
             Some(Some(Ok(n))) => n,

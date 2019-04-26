@@ -2,12 +2,11 @@ use std::collections::BTreeMap;
 use std::sync::{Arc, RwLock};
 
 use diesel::prelude::*;
-use toml;
 
 use super::DB_POOL;
-use domain::github::GitHubUser;
-use error::*;
-use github::GH;
+use crate::domain::github::GitHubUser;
+use crate::error::*;
+use crate::github::GH;
 
 const UPDATE_CONFIG_EVERY_MIN: u64 = 5;
 
@@ -104,7 +103,7 @@ impl Team {
     pub fn ping(&self) -> &str { &self.ping }
 
     pub fn member_logins(&self) -> impl Iterator<Item = &str> {
-        self.members.iter().map(|s| s.as_str())
+        self.members.iter().map(std::string::String::as_str)
     }
 }
 
@@ -113,7 +112,7 @@ impl Team {
 pub struct TeamLabel(pub String);
 
 pub fn start_updater_thread() {
-    let _ = ::utils::spawn_thread("teams updater", UPDATE_CONFIG_EVERY_MIN, || {
+    let _ = crate::utils::spawn_thread("teams updater", UPDATE_CONFIG_EVERY_MIN, || {
         let mut teams = SETUP.write().unwrap();
         teams.update()?;
         for (_name, team) in teams.teams() {
@@ -157,7 +156,13 @@ fn read_rfcbot_cfg_from(input: &str) -> RfcbotConfig {
 
 impl Team {
     fn validate(&self) -> DashResult<()> {
-        use domain::schema::githubuser::dsl::*;
+        use crate::domain::schema::githubuser::dsl::*;
+        use std::thread::sleep;
+        use std::time::Duration;
+
+        // GitHub rate limits using OAuth is 5_000 requests / hour =~ 1.39s
+        const RATE_LIMIT_DEPLAY: Duration = Duration::from_millis(1390);
+
         let conn = &*(DB_POOL.get()?);
         let gh = &*(GH);
 
@@ -168,7 +173,8 @@ impl Team {
                 .first::<GitHubUser>(conn)
                 .is_err()
             {
-                ::github::handle_user(&conn, &gh.get_user(member_login)?)?;
+                crate::github::handle_user(&conn, &gh.get_user(member_login)?)?;
+                sleep(RATE_LIMIT_DEPLAY);
                 info!("loaded into the database user {}", member_login);
             }
         }
@@ -241,7 +247,7 @@ members = [
         );
 
         // Teams are correct:
-        let map: BTreeMap<_, _> = cfg.teams().map(|(k, v)| (k.0.clone(), v.clone())).collect();
+        let map: BTreeMap<_, _> = cfg.teams().map(|(k, v)| (k.0.clone(), v)).collect();
 
         let avengers = map.get("T-avengers").unwrap();
         //assert_eq!(avengers.name, "The Avengers");
@@ -290,8 +296,9 @@ members = [
     }
 
     #[test]
+    #[ignore = "we now load all usernames from the team repo"]
     fn team_members_exist() {
-        ::utils::setup_test_env();
+        crate::utils::setup_test_env();
         let setup = SETUP.read().unwrap();
         for (label, _) in setup.teams() {
             println!("found team {:?}", label);
