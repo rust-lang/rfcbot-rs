@@ -24,7 +24,7 @@ before_install:
 install:
   - export RUST_LOG=debug,hyper=info,rustc=error,cargo=error,jobserver=error
   - export GITHUB_WEBHOOK_SECRETS=none
-  - export GITHUB_ACCESS_TOKEN=
+  - export GITHUB_ACCESS_TOKEN="$GITHUB_ACCESS_TOKEN"
   - export GITHUB_SCRAPE_INTERVAL=6000
   - export GITHUB_USER_AGENT=rfcbot-rs
   - export POST_COMMENTS=false

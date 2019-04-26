@@ -157,6 +157,12 @@ fn read_rfcbot_cfg_from(input: &str) -> RfcbotConfig {
 impl Team {
     fn validate(&self) -> DashResult<()> {
         use crate::domain::schema::githubuser::dsl::*;
+        use std::thread::sleep;
+        use std::time::Duration;
+
+        // GitHub rate limits using OAuth is 5_000 requests / hour =~ 1.39s
+        const RATE_LIMIT_DEPLAY: Duration = Duration::from_millis(1390);
+
         let conn = &*(DB_POOL.get()?);
         let gh = &*(GH);
 
@@ -168,6 +174,7 @@ impl Team {
                 .is_err()
             {
                 crate::github::handle_user(&conn, &gh.get_user(member_login)?)?;
+                sleep(RATE_LIMIT_DEPLAY);
                 info!("loaded into the database user {}", member_login);
             }
         }
