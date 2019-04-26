@@ -296,6 +296,7 @@ members = [
     }
 
     #[test]
+    #[ignore = "we now load all usernames from the team repo"]
     fn team_members_exist() {
         crate::utils::setup_test_env();
         let setup = SETUP.read().unwrap();
