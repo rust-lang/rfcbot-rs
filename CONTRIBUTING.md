@@ -1,6 +1,6 @@
 # rfcbot-rs
 
-[![Travis](https://img.shields.io/travis/rust-lang/rust.svg)](https://travis-ci.org/anp/rfcbot-rs)
+[![Travis](https://img.shields.io/travis/rust-lang/rust.svg)](https://travis-ci.com/rust-lang/rfcbot-rs)
 
 Deployed to https://rfcbot.rs right now.
 
@@ -101,7 +101,7 @@ Deployed to Heroku via TravisCI from the master branch.
 
 ## Conduct
 
-This project has a [Code of Conduct and moderation policy](https://github.com/anp/rfcbot-rs/blob/master/CONDUCT.md) very similar to the Rust CoC.
+This project has a [Code of Conduct and moderation policy](https://github.com/rust-lang/rfcbot-rs/blob/master/CONDUCT.md) very similar to the Rust CoC.
 
 ## License
 
