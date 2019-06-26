@@ -6,12 +6,12 @@ edition = "2018"
 
 # Sorted by alphanumeric order
 [dependencies]
-dotenv = "0.13.0"
-env_logger = "0.4"
+dotenv = "0.14.1"
+env_logger = "0.6.1"
 hex = "0.3.2"
 itertools = "0.8.0"
 lazy_static = "1.2.0"
-log = "0.3.6"
+log = "0.4.6"
 maplit = "1.0.1"
 reqwest = "0.9.12"
 rocket = "0.4.0"
@@ -22,7 +22,7 @@ serde_derive = "1.0.59"
 serde_json = "1.0"
 toml = "0.4"
 url = "1.4"
-urlencoded = "0.5"
+urlencoded = "0.6.0"
 
 [dependencies.chrono]
 features = ["serde"]

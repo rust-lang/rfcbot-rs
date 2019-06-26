@@ -34,30 +34,29 @@ use chrono::Local;
 use diesel::pg::PgConnection;
 use diesel::r2d2::ConnectionManager;
 use diesel::r2d2::Pool;
-use env_logger::LogBuilder;
-use log::LogRecord;
 
 use crate::config::CONFIG;
 
 fn main() {
+    use std::io::Write;
+
     // init environment variables, CLI, and logging
     dotenv::dotenv().ok();
 
-    LogBuilder::new()
-        .format(|rec: &LogRecord<'_>| {
-            let loc = rec.location();
-            format!(
+    env_logger::Builder::new()
+        .format(|buf, rec| {
+            writeln!(
+                buf,
                 "[{} {}:{} {}] {}",
                 rec.level(),
-                loc.module_path(),
-                loc.line(),
+                rec.module_path().unwrap_or("<unnamed>"),
+                rec.line().unwrap_or(0),
                 Local::now().format("%Y-%m-%d %H:%M:%S"),
                 rec.args()
             )
         })
-        .parse(&std::env::var("RUST_LOG").unwrap_or_else(|_| "info".to_string()))
-        .init()
-        .unwrap();
+        .parse_filters(&std::env::var("RUST_LOG").unwrap_or_else(|_| "info".to_string()))
+        .init();
 
     debug!("Logging initialized.");
     let _ = CONFIG.check();
