@@ -8,7 +8,7 @@ edition = "2018"
 [dependencies]
 dotenv = "0.14.1"
 env_logger = "0.6.1"
-hex = "0.3.2"
+hex = "0.4"
 itertools = "0.8.0"
 lazy_static = "1.2.0"
 log = "0.4.6"
