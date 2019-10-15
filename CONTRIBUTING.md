@@ -90,7 +90,7 @@ To init, make sure `DATABASE_URL` is set and postgres is running, and:
 
 ```
 cargo install diesel_cli
-diesel database setup
+diesel setup
 diesel print-schema > src/domain/schema.rs
 ```
 
