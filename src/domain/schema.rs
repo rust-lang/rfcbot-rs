@@ -80,6 +80,14 @@ table! {
 }
 
 table! {
+    memberships (id) {
+        id -> Int4,
+        fk_member -> Int4,
+        fk_team -> Int4,
+    }
+}
+
+table! {
     milestone (id) {
         id -> Int4,
         number -> Int4,
@@ -94,6 +102,29 @@ table! {
         closed_at -> Nullable<Timestamp>,
         due_on -> Nullable<Timestamp>,
         repository -> Varchar,
+    }
+}
+
+table! {
+    poll (id) {
+        id -> Int4,
+        fk_issue -> Int4,
+        fk_initiator -> Int4,
+        fk_initiating_comment -> Int4,
+        fk_bot_tracking_comment -> Int4,
+        poll_question -> Varchar,
+        poll_created_at -> Timestamp,
+        poll_closed -> Bool,
+        poll_teams -> Varchar,
+    }
+}
+
+table! {
+    poll_response_request (id) {
+        id -> Int4,
+        fk_poll -> Int4,
+        fk_respondent -> Int4,
+        responded -> Bool,
     }
 }
 
@@ -130,62 +161,48 @@ table! {
 }
 
 table! {
-    poll (id) {
+    teams (id) {
         id -> Int4,
-        fk_issue -> Int4,
-        fk_initiator -> Int4,
-        fk_initiating_comment -> Int4,
-        fk_bot_tracking_comment -> Int4,
-        poll_question -> Varchar,
-        poll_created_at -> Timestamp,
-        poll_closed -> Bool,
-        poll_teams -> Varchar,
+        name -> Varchar,
+        ping -> Varchar,
+        label -> Varchar,
     }
 }
 
-table! {
-    poll_response_request (id) {
-        id -> Int4,
-        fk_poll -> Int4,
-        fk_respondent -> Int4,
-        responded -> Bool,
-    }
-}
-
-joinable!(fcp_concern -> githubuser (fk_initiator));
 joinable!(fcp_concern -> fcp_proposal (fk_proposal));
+joinable!(fcp_concern -> githubuser (fk_initiator));
 joinable!(fcp_proposal -> githubuser (fk_initiator));
 joinable!(fcp_proposal -> issue (fk_issue));
 joinable!(fcp_review_request -> fcp_proposal (fk_proposal));
 joinable!(fcp_review_request -> githubuser (fk_reviewer));
 joinable!(issue -> milestone (fk_milestone));
-joinable!(issuecomment -> issue (fk_issue));
 joinable!(issuecomment -> githubuser (fk_user));
+joinable!(issuecomment -> issue (fk_issue));
+joinable!(memberships -> githubuser (fk_member));
+joinable!(memberships -> teams (fk_team));
 joinable!(milestone -> githubuser (fk_creator));
-joinable!(pullrequest -> githubuser (fk_assignee));
-joinable!(pullrequest -> milestone (fk_milestone));
-joinable!(rfc_feedback_request -> issuecomment (fk_feedback_comment));
-joinable!(rfc_feedback_request -> issue (fk_issue));
 joinable!(poll -> githubuser (fk_initiator));
 joinable!(poll -> issue (fk_issue));
-joinable!(poll_response_request -> poll (fk_poll));
 joinable!(poll_response_request -> githubuser (fk_respondent));
+joinable!(poll_response_request -> poll (fk_poll));
+joinable!(pullrequest -> githubuser (fk_assignee));
+joinable!(pullrequest -> milestone (fk_milestone));
+joinable!(rfc_feedback_request -> issue (fk_issue));
+joinable!(rfc_feedback_request -> issuecomment (fk_feedback_comment));
 
-allow_tables_to_appear_in_same_query!(fcp_concern, githubuser);
-allow_tables_to_appear_in_same_query!(fcp_concern, fcp_proposal);
-allow_tables_to_appear_in_same_query!(fcp_proposal, githubuser);
-allow_tables_to_appear_in_same_query!(fcp_proposal, issue);
-allow_tables_to_appear_in_same_query!(fcp_review_request, fcp_proposal);
-allow_tables_to_appear_in_same_query!(fcp_review_request, githubuser);
-allow_tables_to_appear_in_same_query!(issue, milestone);
-allow_tables_to_appear_in_same_query!(issuecomment, issue);
-allow_tables_to_appear_in_same_query!(issuecomment, githubuser);
-allow_tables_to_appear_in_same_query!(milestone, githubuser);
-allow_tables_to_appear_in_same_query!(pullrequest, githubuser);
-allow_tables_to_appear_in_same_query!(pullrequest, milestone);
-allow_tables_to_appear_in_same_query!(rfc_feedback_request, issuecomment);
-allow_tables_to_appear_in_same_query!(rfc_feedback_request, issue);
-allow_tables_to_appear_in_same_query!(poll, githubuser);
-allow_tables_to_appear_in_same_query!(poll, issue);
-allow_tables_to_appear_in_same_query!(poll_response_request, poll);
-allow_tables_to_appear_in_same_query!(poll_response_request, githubuser);
+allow_tables_to_appear_in_same_query!(
+    fcp_concern,
+    fcp_proposal,
+    fcp_review_request,
+    githubsync,
+    githubuser,
+    issue,
+    issuecomment,
+    memberships,
+    milestone,
+    poll,
+    poll_response_request,
+    pullrequest,
+    rfc_feedback_request,
+    teams,
+);
