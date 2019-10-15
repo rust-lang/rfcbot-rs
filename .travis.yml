@@ -2,9 +2,6 @@ dist: xenial
 notifications:
   email: false
 language: rust
-rust:
-  # sync in `rust-toolchain` file
-  - nightly-2019-06-26
 cache:
   directories:
     - "$HOME/.cargo"
