@@ -4,7 +4,7 @@ notifications:
 language: rust
 rust:
   # sync in `rust-toolchain` file
-  - nightly-2019-04-26
+  - nightly-2019-06-26
 cache:
   directories:
     - "$HOME/.cargo"
