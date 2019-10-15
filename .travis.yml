@@ -2,9 +2,6 @@ dist: xenial
 notifications:
   email: false
 language: rust
-rust:
-  # sync in `rust-toolchain` file
-  - nightly-2019-04-26
 cache:
   directories:
     - "$HOME/.cargo"
@@ -33,9 +30,7 @@ install:
   - export DATABASE_URL=postgres://localhost/dashboard
   - export DATABASE_POOL_SIZE=5
   - rustup default $(cat rust-toolchain)
-  - cargo install cargo-update || true
-  - cargo install-update-config diesel_cli --default-features false --feature postgres
-  - cargo install-update -i diesel_cli
+  - cargo install diesel_cli --no-default-features --features postgres -Z install-upgrade
 before_script:
   - diesel setup
   - diesel migration run

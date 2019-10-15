@@ -38,9 +38,14 @@ https://devcenter.heroku.com/articles/heroku-cli
 
 See config.rs for the environment variables expected. Also, rocket env vars are supported.
 
+You can also create a [local `.env` file](https://github.com/dotenv-rs/dotenv#examples) which will 
+be added to the environment variables the server sees.
+
 ### Database dumps
 
 It can be useful to have a database with some existing data to start from. "Bootstrap" files are available at https://www.dropbox.com/sh/dl4pxj1d49ici1f/AAAzZQxWVqQzVk_zOksn0Rbya?dl=0. They usually are behind several migrations, so you'll still need to run the migrations if you start from one.
+
+See [below](#database) for information about restoring from a bootstrap file.
 
 ### Running server processes
 
@@ -81,13 +86,16 @@ Note that you can configure the Rocket web server using environment variables li
 
 ## Database
 
-I'm testing with PostgreSQL 9.5. To init, make sure `DATABASE_URL` is set, and:
+To init, make sure `DATABASE_URL` is set and postgres is running, and:
 
 ```
 cargo install diesel_cli
-diesel migration run
+diesel setup
 diesel print-schema > src/domain/schema.rs
 ```
+
+If the database setup experiences errors, your user may not have permission to create databases or
+there may be other configuration problems.
 
 That should have the database you've specified ready to receive data. Then you can run some of the bootstrapping commands (see below). Alternatively, you can use `bootstrap.sql` to get a nice starting point for the database (note that this isn't maintained regularly).
 
