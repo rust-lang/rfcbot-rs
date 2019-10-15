@@ -30,7 +30,7 @@ install:
   - export DATABASE_URL=postgres://localhost/dashboard
   - export DATABASE_POOL_SIZE=5
   - rustup default $(cat rust-toolchain)
-  - cargo install diesel_cli --default-features false --feature postgres -Z install-upgrade
+  - cargo install diesel_cli --no-default-features --features postgres -Z install-upgrade
 before_script:
   - diesel setup
   - diesel migration run
