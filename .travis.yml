@@ -21,7 +21,6 @@ before_install:
 install:
   - cargo install diesel_cli --no-default-features --features postgres -Z install-upgrade
 before_script:
-  - env
   - diesel setup
   - diesel migration run
   - psql -q -d "$DATABASE_URL" < githubuser-backup.pg
