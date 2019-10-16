@@ -27,7 +27,7 @@ install:
   - export POST_COMMENTS=false
   - export RUST_BACKTRACE=1
   - . "$HOME"/.cargo/env
-  - export DATABASE_URL=postgres://localhost/dashboard
+  - export DATABASE_URL=postgres://localhost/rfcbot
   - export DATABASE_POOL_SIZE=5
   - rustup default $(cat rust-toolchain)
   - cargo install diesel_cli --no-default-features --features postgres -Z install-upgrade
