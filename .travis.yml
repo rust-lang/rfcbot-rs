@@ -4,7 +4,6 @@ notifications:
 addons:
   apt:
     packages:
-      - curl
       - libpq-dev
       - pkg-config
       - postgresql-11
@@ -14,7 +13,7 @@ services:
 language: rust
 env: |
   DATABASE_POOL_SIZE=5 \
-  DATABASE_URL=postgres://postgres@127.0.0.1:5433/rfcbot \
+  DATABASE_URL=postgres://postgres@127.0.0.1:5432/rfcbot \
   GITHUB_SCRAPE_INTERVAL=6000 \
   GITHUB_USER_AGENT=rfcbot-rs \
   GITHUB_WEBHOOK_SECRETS=none \
