@@ -17,6 +17,7 @@ install:
   - sudo apt-get install -y curl libpq-dev pkg-config
   - cargo install diesel_cli --no-default-features --features postgres -Z install-upgrade
 before_script:
+  - sudo -u postgres createuser --superuser --no-password $USER
   - diesel setup
   - diesel migration run
   - psql -q -d "$DATABASE_URL" < githubuser-backup.pg
