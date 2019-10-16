@@ -18,14 +18,15 @@ addons:
 before_install:
   - rustup component add rustfmt
   - cargo fmt --all -- --check
+env:
+  - GITHUB_SCRAPE_INTERVAL=6000
+  - GITHUB_USER_AGENT=rfcbot-rs
+  - GITHUB_WEBHOOK_SECRETS=none
+  - POST_COMMENTS=false
+  - RUST_BACKTRACE=1
+  - RUST_LOG="debug,hyper=info,rustc=error,cargo=error,jobserver=error"
 install:
-  - export RUST_LOG=debug,hyper=info,rustc=error,cargo=error,jobserver=error
-  - export GITHUB_WEBHOOK_SECRETS=none
   - export GITHUB_ACCESS_TOKEN="$GITHUB_ACCESS_TOKEN"
-  - export GITHUB_SCRAPE_INTERVAL=6000
-  - export GITHUB_USER_AGENT=rfcbot-rs
-  - export POST_COMMENTS=false
-  - export RUST_BACKTRACE=1
   - . "$HOME"/.cargo/env
   - export DATABASE_URL=postgres://localhost/rfcbot
   - export DATABASE_POOL_SIZE=5
