@@ -8,17 +8,13 @@ cache:
 # But don't cache the cargo registry
 before_cache:
   - rm -rf "$HOME/.cargo/registry"
-addons:
-  postgresql: "9.6"
-  apt:
-    packages:
-    - curl
-    - libpq-dev
-    - pkg-config
+services:
+  - postgresql
 before_install:
   - . "$HOME"/.cargo/env
   - cargo fmt --all -- --check
 install:
+  - sudo apt-get install -y curl libpq-dev pkg-config
   - cargo install diesel_cli --no-default-features --features postgres -Z install-upgrade
 before_script:
   - diesel setup
