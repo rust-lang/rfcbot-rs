@@ -7,8 +7,8 @@ edition = "2018"
 # Sorted by alphanumeric order
 [dependencies]
 dotenv = "0.14.1"
-env_logger = "0.6.1"
-hex = "0.3.2"
+env_logger = "0.7.0"
+hex = "0.4.0"
 itertools = "0.8.0"
 lazy_static = "1.2.0"
 log = "0.4.6"
@@ -20,8 +20,8 @@ rust-crypto = "0.2.36"
 serde = "1.0.59"
 serde_derive = "1.0.59"
 serde_json = "1.0"
-toml = "0.4"
-url = "1.4"
+toml = "0.5.3"
+url = "2.1.0"
 urlencoded = "0.6.0"
 
 [dependencies.chrono]
