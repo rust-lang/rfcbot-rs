@@ -21,6 +21,7 @@ env: |
   RUST_BACKTRACE=1 \
   RUST_LOG=error,rfcbot=debug
 before_install:
+  - sudo systemctl start postgresql
   - psql --list
   - psql -d "$DATABASE_URL" --list
   - cargo fmt --all -- --check
