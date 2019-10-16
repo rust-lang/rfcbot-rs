@@ -1,17 +1,17 @@
 dist: bionic
 notifications:
   email: false
-language: rust
-services:
-  - postgresql
 addons:
-  postgresql: "11.2"
   apt:
     packages:
       - curl
       - libpq-dev
       - pkg-config
       - postgresql-11
+  postgresql: "11.2"
+services:
+  - postgresql
+language: rust
 env: |
   DATABASE_POOL_SIZE=5 \
   DATABASE_URL=postgres://postgres@127.0.0.1:5433/rfcbot \
