@@ -10,6 +10,8 @@ before_cache:
   - rm -rf "$HOME/.cargo/registry"
 services:
   - postgresql
+addons:
+  postgresql: "11.2"
 before_install:
   - . "$HOME"/.cargo/env
   - cargo fmt --all -- --check
@@ -26,7 +28,7 @@ script:
   - cargo test
 env: |
   DATABASE_POOL_SIZE=5 \
-  DATABASE_URL=postgres://postgres@127.0.0.1:5432/rfcbot \
+  DATABASE_URL=postgres://postgres@127.0.0.1:5433/rfcbot \
   GITHUB_SCRAPE_INTERVAL=6000 \
   GITHUB_USER_AGENT=rfcbot-rs \
   GITHUB_WEBHOOK_SECRETS=none \
