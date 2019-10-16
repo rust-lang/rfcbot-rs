@@ -16,7 +16,6 @@ addons:
     - libpq-dev
     - pkg-config
 before_install:
-  - if [ -z ${DATABASE_URL+x} ]; then echo "environment not set correctly" && false; fi
   - . "$HOME"/.cargo/env
   - cargo fmt --all -- --check
 install:
@@ -38,7 +37,7 @@ env: |
   GITHUB_WEBHOOK_SECRETS=none \
   POST_COMMENTS=false \
   RUST_BACKTRACE=1 \
-  RUST_LOG=debug,hyper=info,rustc=error,cargo=error,jobserver=error
+  RUST_LOG=error,rfcbot=debug
 before_deploy:
   - DATABASE_URL=$(heroku config:get DATABASE_URL -a rfcbot-rs) diesel migration run
 deploy:
