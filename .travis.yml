@@ -21,6 +21,7 @@ env: |
   RUST_BACKTRACE=1 \
   RUST_LOG=error,rfcbot=debug
 before_install:
+  - psql -d "$DATABASE_URL" --list
   - cargo fmt --all -- --check
 install:
   - cargo install diesel_cli --no-default-features --features postgres -Z install-upgrade
