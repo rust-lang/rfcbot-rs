@@ -18,15 +18,15 @@ addons:
 before_install:
   - . "$HOME"/.cargo/env
   - cargo fmt --all -- --check
-env:
-  - DATABASE_POOL_SIZE=5
-  - DATABASE_URL=postgres://localhost/rfcbot
-  - GITHUB_SCRAPE_INTERVAL=6000
-  - GITHUB_USER_AGENT=rfcbot-rs
-  - GITHUB_WEBHOOK_SECRETS=none
-  - POST_COMMENTS=false
-  - RUST_BACKTRACE=1
-  - RUST_LOG=debug,hyper=info,rustc=error,cargo=error,jobserver=error
+env: |
+  DATABASE_POOL_SIZE=5
+  DATABASE_URL=postgres://localhost/rfcbot
+  GITHUB_SCRAPE_INTERVAL=6000
+  GITHUB_USER_AGENT=rfcbot-rs
+  GITHUB_WEBHOOK_SECRETS=none
+  POST_COMMENTS=false
+  RUST_BACKTRACE=1
+  RUST_LOG=debug,hyper=info,rustc=error,cargo=error,jobserver=error
 install:
   - cargo install diesel_cli --no-default-features --features postgres -Z install-upgrade
 before_script:
