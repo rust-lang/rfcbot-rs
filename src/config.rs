@@ -1,4 +1,31 @@
 // Copyright 2016 Adam Perry. Dual-licensed MIT and Apache 2.0 (see LICENSE files for details).
+//! Configuration environment variables for rfcbot.
+//!
+//! Note that you can configure the Rocket web server using environment variables like
+//! `ROCKET_PORT`, according to the Rocket
+//! [configuration guide](https://rocket.rs/guide/configuration/).
+//!
+//! Here are the variables rfcbot expects to see in its environment:
+//!
+//! * `DATABASE_URL`: postgres database URL
+//! * `DATABASE_POOL_SIZE`: number of connections to maintain in the pool
+//! * `GITHUB_ACCESS_TOKEN`: your access token from GitHub. See
+//!   [this page](https://help.github.com/articles/creating-an-access-token-for-command-line-use/)
+//!   for more information. You shouldn't need to check any of the boxes for granting scopes when
+//!   creating it.
+//! * `GITHUB_USER_AGENT`: the UA string to send to GitHub (they request that you send your GitHub
+//!   username or the app name you registered for the client ID)
+//! * `GITHUB_WEBHOOK_SECRETS`: a comma-delimited string of the secrets used for any ingestion
+//!   webhooks. The webhook handler will attempt to validate any POST'd webhook against each secret
+//!   until it either finds a matching one or runs out.
+//! * `RUST_LOG`: the logging configuration for [env_logger](https://crates.io/crates/env_logger).
+//!   If you're unfamiliar, you can read about it in the documentation linked on crates.io. If it's
+//!   not defined, logging will default to `info!()` and above.
+//! * `GITHUB_SCRAPE_INTERVAL`: time (in minutes) to wait in between GitHub scrapes (scraping is
+//!   disabled if this environment variable is omitted)
+//! * `POST_COMMENTS`: whether to post RFC bot comments on issues -- either `true` or `false`. Be
+//!   very careful setting to true when testing -- it will post comments using whatever account is
+//!   associated with the GitHub API key you provide.
 
 use std::collections::BTreeMap;
 use std::env;

@@ -4,43 +4,31 @@ notifications:
 addons:
   apt:
     packages:
-      - libpq-dev
-      - pkg-config
-      - postgresql-11
-  postgresql: "11.2"
+    - libpq-dev
+    - pkg-config
 services:
-  - postgresql
+  - docker
 language: rust
-env: |
-  DATABASE_POOL_SIZE=5 \
-  DATABASE_URL=postgres:///rfcbot \
-  GITHUB_SCRAPE_INTERVAL=6000 \
-  GITHUB_USER_AGENT=rfcbot-rs \
-  GITHUB_WEBHOOK_SECRETS=none \
-  POST_COMMENTS=false \
-  RUST_BACKTRACE=1 \
-  RUST_LOG=error,rfcbot=debug
 before_install:
   - cargo fmt --all -- --check
 install:
-  - sudo systemctl start postgresql
-  - sudo -u postgres createuser --no-password --superuser $USER
-  - cargo install diesel_cli --no-default-features --features postgres -Z install-upgrade
+  - cargo install diesel_cli \
+      --no-default-features --features postgres -Z install-upgrade
+  - curl https://cli-assets.heroku.com/install-ubuntu.sh | sh
 before_script:
-  - diesel setup
-  - diesel migration run
-  - psql -q -d "$DATABASE_URL" < githubuser-backup.pg
+  - heroku container:login
+  - heroku container:pull --app=rfcbot-rs web
 script:
-  - export GITHUB_ACCESS_TOKEN="$GITHUB_ACCESS_TOKEN"
-  - cargo build
-  - cargo test
+  - docker-compose up -d
+  - ./setup-db.sh
+  - docker-compose exec -e RUST_BACKTRACE=1 web cargo test --release --locked
+  - heroku container:push --app=rfcbot-rs web
 before_deploy:
-  - DATABASE_URL=$(heroku config:get DATABASE_URL -a rfcbot-rs) diesel migration run
+  - DATABASE_URL=$(heroku config:get DATABASE_URL --app=rfcbot-rs) \
+    diesel migration run
 deploy:
-  provider: heroku
-  skip_cleanup: true
-  api_key:
-    secure: "HgoF2n6pnzUhZ4oBNRo3gSoxj/o9x7QW0fKaj9sEYDNkTgak9IX3ha0antoYKB7dMw7IvB8oqVAHqldlGlG/kxUDKN8kaYA4O7CZgKP0auykTkmH61FP7MKV0hV0vyFfJLSraClVw/DL5tjYybs/rSBWFAvwttIB7QlcFv5sLIuwe5nHzftFfxba0H1+0oynO55FlmRzFBWydlFVNTsGVRddFHPgG3f2V9YYIjT18MKvn+BcV7WUq6QweB/3RjwTDYzws9mcWt6i3ju1D4nDTDVbtzeLs7Yt+NhnvrDeB+2FWSrV03LCjnnzv2zCUaROU522Vns0ZC/+2b9V3YbcCBJRA8QLBdo12JUCUzrdk8DOqIYKwlW6WbI3DcgRGz9Li7Dw2466+lsPidBfcdxnziTvc+r/2r6dKv3q7nwDpoZEyxnnTumPf50PJZs/lDu99Vo5C2NIdN2O5sqDHd8AJTLtWrY3FdN5MGKqTm0R9rVnObvUkTKbZJrDn39O5MU3mnHINUT+6ZCnNgra7rNn7Ai3tA1RKPB7kIZo41Td8j56iSLANXziCh0MikPfQv4x1scl3c1h5bR8ZqxVqH4IODjDJrJv43+hsbE9xGsmrC4OaqImLUpl/8zi6a4zZ8Na1AiFKVcdLZ9xt40/2yg7ysn53SCpQ5vty/j36clNwAE="
+  provider: script
+  script: heroku container:release --app=rfcbot-rs
 before_cache:
   # don't cache the cargo registry
   - rm -rf "$HOME/.cargo/registry"
