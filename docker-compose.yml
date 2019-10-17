@@ -1,0 +1,33 @@
+version: '3.4'
+services:
+  web:
+    build:
+      context: .
+      target: builder
+    command: cargo run --release --locked
+    depends_on:
+      - db
+    ports:
+      - "9003:9003"
+    environment:
+      - DATABASE_POOL_SIZE=5
+      - DATABASE_URL=postgres://postgres:ughfineokifitsfordebugging@db:5432/rfcbot
+      - GITHUB_ACCESS_TOKEN=
+      - GITHUB_SCRAPE_INTERVAL=6000
+      - GITHUB_USER_AGENT=rfcbot-rs
+      - GITHUB_WEBHOOK_SECRETS=none
+      - POST_COMMENTS=false
+      - ROCKET_ENV=dev
+      - ROCKET_PORT=9003
+      - RUST_BACKTRACE=1
+      - RUST_LOG=error,rfcbot=debug
+  db:
+    image: "postgres:9"
+    restart: always
+    ports:
+      - "54320:5432"
+    environment:
+      - POSTGRES_DB=rfcbot
+      - POSTGRES_PASSWORD=ughfineokifitsfordebugging
+    volumes:
+      - ./target/data:/var/lib/postgresql/data
