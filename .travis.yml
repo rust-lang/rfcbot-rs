@@ -28,8 +28,8 @@ script: |
 
   # run our tests, if they fail print the logs from the target container
   docker-compose exec -e RUST_BACKTRACE=1 web \
-    cargo test --release --locked || \
-    $(docker-compose logs web && false)
+    cargo test --release --locked
+  docker-compose logs web
 before_deploy:
   - DATABASE_URL=$(heroku config:get DATABASE_URL --app=rfcbot-rs) \
     diesel migration run
