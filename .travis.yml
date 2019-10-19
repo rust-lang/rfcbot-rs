@@ -18,11 +18,18 @@ install:
 before_script:
   - heroku container:login
   - heroku container:pull --app=rfcbot-rs web
-script:
-  - docker-compose up -d
-  - ./setup-db.sh
-  - docker-compose exec -e RUST_BACKTRACE=1 web cargo test --release --locked
-  - heroku container:push --app=rfcbot-rs web
+script: |
+  # first build the container and upload intermediate stages for later retries
+  heroku container:push --app=rfcbot-rs web
+
+  # spin up our integration test environment
+  docker-compose up -d
+  ./setup-db.sh
+
+  # run our tests, if they fail print the logs from the target container
+  docker-compose exec -e RUST_BACKTRACE=1 web \
+    cargo test --release --locked || \
+    $(docker-compose logs web && false)
 before_deploy:
   - DATABASE_URL=$(heroku config:get DATABASE_URL --app=rfcbot-rs) \
     diesel migration run
