@@ -15,11 +15,18 @@ pub fn serve() {
                     routes![api::all_fcps, api::member_fcps, api::github_webhook],
                 )
                 .mount("/", routes![html::all_fcps, html::member_fcps])
+                .register(catchers![not_found])
                 .launch();
         });
 
         ok_or!(result, why => error!("Rocket failed to ignite: {:?}", why));
     }
+}
+
+#[catch(404)]
+fn not_found(req: &rocket::Request<'_>) -> String {
+    info!("No matching routes for {} {}", req.method(), req.uri());
+    format!("`{}` is not a valid path.", req.uri())
 }
 
 mod html {
