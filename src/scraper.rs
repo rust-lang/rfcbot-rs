@@ -6,14 +6,19 @@ use crate::config::{CONFIG, GH_ORGS};
 use crate::github;
 
 pub fn start_scraping() -> Option<JoinHandle<()>> {
-    Some(crate::utils::spawn_thread(
-        "GitHub scraper",
-        CONFIG.github_interval_mins?,
-        || {
-            scrape_github(github::most_recent_update()?);
-            Ok(())
-        },
-    ))
+    if CONFIG.github_access_token.is_empty() {
+        info!("no github token specified, skipping scraping.");
+        None
+    } else {
+        Some(crate::utils::spawn_thread(
+            "GitHub scraper",
+            CONFIG.github_interval_mins?,
+            || {
+                scrape_github(github::most_recent_update()?);
+                Ok(())
+            },
+        ))
+    }
 }
 
 pub fn scrape_github(since: DateTime<Utc>) {
