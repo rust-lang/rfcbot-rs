@@ -25,7 +25,7 @@ cache:
     - "$HOME/.cargo"
 before_deploy:
   - docker-compose exec -e DATABASE_URL=$(heroku config:get DATABASE_URL --app=rfcbot-rs) web \
-    diesel migration run
+    sh -c "diesel migration run"
 deploy:
   provider: script
   script: heroku container:release --app=rfcbot-rs
