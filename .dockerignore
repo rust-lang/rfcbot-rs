@@ -1,5 +1,7 @@
 *
 !src
 !Cargo.*
+!githubuser-backup.pg
 !rfcbot.toml
 !rust-toolchain
+!setup-db.sh
