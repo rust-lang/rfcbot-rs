@@ -5,7 +5,9 @@ FROM clux/muslrust:stable as builder
 
 # postgres client is used to gate test server start, diesel_cli runs test migrations and init
 RUN apt-get update && apt-get install -y libpq-dev openssl pkg-config postgresql-client
-RUN cargo install diesel_cli --no-default-features --features postgres
+RUN rustup target add --toolchain stable x86_64-unknown-linux-gnu
+RUN cargo +stable install --target x86_64-unknown-linux-gnu \
+    diesel_cli --no-default-features --features postgres
 
 WORKDIR /rfcbot
 RUN USER=root cargo init --vcs none
