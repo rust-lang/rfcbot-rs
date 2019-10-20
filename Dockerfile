@@ -8,6 +8,7 @@ RUN apt-get update && apt-get install -y libpq-dev openssl pkg-config postgresql
 RUN rustup target add --toolchain stable x86_64-unknown-linux-gnu
 RUN cargo +stable install --target x86_64-unknown-linux-gnu \
     diesel_cli --no-default-features --features postgres
+ENV PATH="${PATH}:${HOME}/.cargo/bin"
 
 WORKDIR /rfcbot
 RUN USER=root cargo init --vcs none
