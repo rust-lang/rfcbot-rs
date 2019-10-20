@@ -28,4 +28,4 @@ before_deploy: |
     diesel migration run
 deploy:
   provider: script
-  script: heroku container:release --app=rfcbot-rs
+  script: heroku container:release --app=rfcbot-rs web
