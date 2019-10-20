@@ -16,7 +16,7 @@ COPY rust-toolchain ./
 RUN rustc --version && rustup target add x86_64-unknown-linux-musl
 
 COPY Cargo.toml Cargo.lock ./
-RUN cargo build --release
+RUN cargo build --release --locked
 
 COPY . ./
 # cargo apparently uses mtime and docker doesn't modify it, needed to rebuild:
