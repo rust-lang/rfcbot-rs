@@ -2,7 +2,7 @@
 
 set -xe
 
-export DATABASE_URL="postgres://postgres:ughfineokifitsfordebugging@localhost:54320/rfcbot"
+DATABASE_URL="${DATABASE_URL:-postgres://postgres:ughfineokifitsfordebugging@localhost:54320/rfcbot}"
 
 until psql -d "$DATABASE_URL" -c '\q'; do
   >&2 echo "Postgres is unavailable - sleeping"
@@ -14,3 +14,5 @@ done
 diesel database setup
 diesel migration run
 psql -q -d "$DATABASE_URL" --file ./githubuser-backup.pg
+
+exec "$@"
