@@ -31,15 +31,15 @@ script: |
     cargo test --release --locked
 after_failure:
   docker-compose logs web
-before_deploy:
-  - DATABASE_URL=$(heroku config:get DATABASE_URL --app=rfcbot-rs) \
-    diesel migration run
-deploy:
-  provider: script
-  script: heroku container:release --app=rfcbot-rs
 before_cache:
   # don't cache the cargo registry
   - rm -rf "$HOME/.cargo/registry"
 cache:
   directories:
     - "$HOME/.cargo"
+before_deploy:
+  - DATABASE_URL=$(heroku config:get DATABASE_URL --app=rfcbot-rs) \
+    diesel migration run
+deploy:
+  provider: script
+  script: heroku container:release --app=rfcbot-rs
