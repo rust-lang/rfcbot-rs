@@ -12,15 +12,9 @@ before_script:
   - heroku container:login
   - heroku container:pull --app=rfcbot-rs web
 script: |
-  # first build the container and upload intermediate stages for later retries
   heroku container:push --app=rfcbot-rs web
-
-  # spin up our integration test environment
   docker-compose up -d
-
-  # run our tests, if they fail print the logs from the target container
-  docker-compose exec -e RUST_BACKTRACE=1 web \
-    cargo test --release --locked
+  docker-compose exec web cargo test --release --locked
 after_failure:
   docker-compose logs web
 before_cache:
