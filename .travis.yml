@@ -1,19 +1,12 @@
 dist: bionic
 notifications:
   email: false
-addons:
-  apt:
-    packages:
-    - libpq-dev
-    - pkg-config
 services:
   - docker
 language: rust
 before_install:
   - cargo fmt --all -- --check
 install:
-  - cargo install diesel_cli \
-      --no-default-features --features postgres -Z install-upgrade
   - curl https://cli-assets.heroku.com/install-ubuntu.sh | sh
 before_script:
   - heroku container:login
@@ -24,7 +17,6 @@ script: |
 
   # spin up our integration test environment
   docker-compose up -d
-  ./setup-db.sh
 
   # run our tests, if they fail print the logs from the target container
   docker-compose exec -e RUST_BACKTRACE=1 web \

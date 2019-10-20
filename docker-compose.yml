@@ -4,7 +4,7 @@ services:
     build:
       context: .
       target: builder
-    command: cargo run --release --locked
+    command: ./setup-db.sh && cargo run --release --locked
     depends_on:
       - db
     ports:
