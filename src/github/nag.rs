@@ -493,7 +493,15 @@ fn evaluate_ffcps() -> DashResult<()> {
         let label_res = issue.add_label(Label::FFCP);
         issue.remove_label(Label::FCP);
         let added_label = match label_res {
-            Ok(_) => true,
+            Ok(_) => {
+                if let Err(why) = issue.add_label(Label::ToAnnounce) {
+                    warn!(
+                        "Unable to add to-announce label to {}#{}: {:?}",
+                        &issue.repository, issue.number, why
+                    );
+                }
+                true
+            }
             Err(why) => {
                 warn!(
                     "Unable to add Finished-FCP label to {}#{}: {:?}",
