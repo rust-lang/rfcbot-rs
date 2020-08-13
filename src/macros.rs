@@ -12,7 +12,7 @@ macro_rules! ok_or {
 
 macro_rules! ok_or_continue {
     ($test: expr, $why: ident => $on_err: expr) => {
-        ok_or!($test, $why => { $on_err; continue; })
+        ok_or!($test, $why => { $on_err; continue; });
     };
 }
 
