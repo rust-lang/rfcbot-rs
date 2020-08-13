@@ -5,6 +5,7 @@ services:
   - docker
 language: rust
 before_install:
+  - rustup component add rustfmt
   - cargo fmt --all -- --check
 install:
   - curl https://cli-assets.heroku.com/install-ubuntu.sh | sh
