@@ -1253,13 +1253,13 @@ impl<'a> RfcBotComment<'a> {
 
                 match disposition {
                     FcpDisposition::Merge => {
-                        msg.push_str("\n\nThe RFC will be merged soon.");
+                        msg.push_str("\n\nThis will be merged soon.");
                     }
                     FcpDisposition::Close if can_ffcp_close(issue) => {
-                        msg.push_str("\n\nThe RFC is now closed.");
+                        msg.push_str("\n\nThis is now closed.");
                     }
                     FcpDisposition::Postpone if can_ffcp_postpone(issue) => {
-                        msg.push_str("\n\nThe RFC is now postponed.");
+                        msg.push_str("\n\nThis is now postponed.");
                     }
                     _ => {}
                 }
