@@ -14,7 +14,7 @@ rfcbot accepts commands in GitHub comments. All commands take the form:
 @rfcbot COMMAND [PARAMS]
 ```
 
-The bot expects one command per comment, and the command must start on its own line, but otherwise the bot doesn't care if there's other text in the comment. This is valid:
+The bot expects one command per line, and the command must start on its own line, but otherwise the bot doesn't care if there's other text in the comment. This is valid:
 
 ```
 TEXT
@@ -29,13 +29,6 @@ But this is not:
 ```
 TEXT @rfcbot fcp merge
 TEXT
-```
-
-Only the first of these commands will be registered:
-
-```
-@rfcbot concern FOO
-@rfcbot concern BAR
 ```
 
 Examples are in each section.

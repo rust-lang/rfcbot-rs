@@ -291,6 +291,8 @@ mod test {
         let text = r#"
 someothertext
 @rfcbot: resolved CONCERN_NAME
+texttexttext
+@rfcbot: resolved SECOND_CONCERN
 somemoretext
 
 somemoretext
@@ -304,6 +306,7 @@ foobar
             parse_commands(text).collect::<Vec<_>>(),
             vec![
                 RfcBotCommand::ResolveConcern("CONCERN_NAME"),
+                RfcBotCommand::ResolveConcern("SECOND_CONCERN"),
                 RfcBotCommand::FcpCancel,
                 RfcBotCommand::NewConcern("foobar"),
             ]
