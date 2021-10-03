@@ -3,10 +3,6 @@
 #![feature(proc_macro_hygiene, decl_macro)]
 #![recursion_limit = "256"]
 
-// BUG https://github.com/sgrif/pq-sys/issues/25
-#[allow(unused_extern_crates)]
-extern crate openssl;
-
 #[macro_use]
 extern crate diesel;
 #[macro_use]
