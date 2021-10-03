@@ -48,7 +48,6 @@ impl MilestoneFromJson {
 #[derive(Debug, Deserialize)]
 pub struct LabelFromJson {
     name: String,
-    color: String,
 }
 
 pub type PullRequestUrls = BTreeMap<String, String>;

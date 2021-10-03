@@ -23,8 +23,6 @@ lazy_static! {
 
 #[derive(Debug, Deserialize)]
 pub struct RfcbotConfig {
-    #[serde(default)]
-    include_rust_team: bool,
     fcp_behaviors: BTreeMap<String, FcpBehavior>,
     teams: RfcbotTeams,
     #[serde(skip)]
@@ -33,7 +31,9 @@ pub struct RfcbotConfig {
 
 impl RfcbotConfig {
     /// Retrive an iterator over all the team labels.
-    pub fn team_labels(&self) -> impl Iterator<Item = &TeamLabel> { self.teams().map(|(k, _)| k) }
+    pub fn team_labels(&self) -> impl Iterator<Item = &TeamLabel> {
+        self.teams().map(|(k, _)| k)
+    }
 
     /// Retrive an iterator over all the (team label, team) pairs.
     pub fn teams(&self) -> impl Iterator<Item = (&TeamLabel, &Team)> {
@@ -94,13 +94,14 @@ enum RfcbotTeams {
 
 #[derive(Debug, Deserialize)]
 pub struct Team {
-    name: String,
     ping: String,
     members: Vec<String>,
 }
 
 impl Team {
-    pub fn ping(&self) -> &str { &self.ping }
+    pub fn ping(&self) -> &str {
+        &self.ping
+    }
 
     pub fn member_logins(&self) -> impl Iterator<Item = &str> {
         self.members.iter().map(std::string::String::as_str)

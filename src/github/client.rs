@@ -25,8 +25,6 @@ const PER_PAGE: u32 = 100;
 #[derive(Debug)]
 pub struct Client {
     client: reqwest::Client,
-    rate_limit: u32,
-    rate_limit_timeout: DateTime<Utc>,
 }
 
 impl Client {
@@ -49,8 +47,6 @@ impl Client {
                 .default_headers(headers)
                 .build()
                 .unwrap(),
-            rate_limit: u32::MAX,
-            rate_limit_timeout: Utc::now(),
         }
     }
 
