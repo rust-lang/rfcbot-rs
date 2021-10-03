@@ -686,7 +686,9 @@ where
 }
 
 /// Return a list of all known team members.
-fn all_team_members() -> DashResult<Vec<GitHubUser>> { specific_subteam_members(|_| true) }
+fn all_team_members() -> DashResult<Vec<GitHubUser>> {
+    specific_subteam_members(|_| true)
+}
 
 /// Check if an issue comment is written by a member of one of the subteams
 /// labelled on the issue.
@@ -812,7 +814,7 @@ fn process_poll(
         },
     )?;
 
-    let teams_str = teams.iter().cloned().intersperse(",").collect::<String>();
+    let teams_str = Itertools::intersperse(teams.iter().cloned(), ",").collect::<String>();
     let new_poll = NewPoll {
         fk_issue: issue.id,
         fk_initiator: author.id,
@@ -1154,7 +1156,7 @@ impl<'a> RfcBotComment<'a> {
                 let mut msg = String::from("Team member @");
                 msg.push_str(&initiator.login);
                 msg.push_str(" has asked teams: ");
-                msg.extend(teams.iter().cloned().intersperse(", "));
+                msg.extend(Itertools::intersperse(teams.iter().cloned(), ", "));
                 msg.push_str(", for consensus on: \n > ");
                 msg.push_str(question);
                 msg.push_str("\n\n");
