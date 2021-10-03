@@ -1,10 +1,7 @@
 use std::io::Read;
 
-use crypto::hmac::Hmac;
-use crypto::mac::Mac;
-use crypto::mac::MacResult;
-use crypto::sha1::Sha1;
 use hex::FromHex;
+use openssl::{hash::MessageDigest, memcmp, pkey::PKey, sign::Signer};
 use rocket::data::{self, Data, FromDataSimple};
 use rocket::http::Status;
 use rocket::outcome::Outcome::*;
@@ -27,7 +24,7 @@ impl FromDataSimple for Event {
         let headers = request.headers();
 
         // see [this document](https://developer.github.com/webhooks/securing/) for more information
-        let signature = match headers.get_one("X-Hub-Signature") {
+        let signature = match headers.get_one("X-Hub-Signature-256") {
             Some(s) => s,
             None => return Failure((Status::BadRequest, "missing signature header")),
         };
@@ -51,7 +48,7 @@ impl FromDataSimple for Event {
         }
 
         for secret in &CONFIG.github_webhook_secrets {
-            if authenticate(secret, &body, signature) {
+            if authenticate(secret, &body, signature).is_ok() {
                 // once we know it's from github, we'll parse it
 
                 let payload = match parse_event(event_name, &body) {
@@ -97,16 +94,19 @@ impl FromDataSimple for Event {
     }
 }
 
-fn authenticate(secret: &str, payload: &str, signature: &str) -> bool {
+fn authenticate(secret: &str, payload: &str, signature: &str) -> Result<(), ()> {
     // https://developer.github.com/webhooks/securing/#validating-payloads-from-github
-    let sans_prefix = signature[5..].as_bytes();
-    if let Ok(sigbytes) = Vec::from_hex(sans_prefix) {
-        let mut mac = Hmac::new(Sha1::new(), secret.as_bytes());
-        mac.input(payload.as_bytes());
-        // constant time comparison
-        mac.result() == MacResult::new(&sigbytes)
+    let signature = signature.get("sha256=".len()..).ok_or(())?.as_bytes();
+    let signature = Vec::from_hex(signature).map_err(|_| ())?;
+    let key = PKey::hmac(secret.as_bytes()).map_err(|_| ())?;
+    let mut signer = Signer::new(MessageDigest::sha256(), &key).map_err(|_| ())?;
+    signer.update(payload.as_bytes()).map_err(|_| ())?;
+    let hmac = signer.sign_to_vec().map_err(|_| ())?;
+    // constant time comparison
+    if memcmp::eq(&hmac, &signature) {
+        Ok(())
     } else {
-        false
+        Err(())
     }
 }
 

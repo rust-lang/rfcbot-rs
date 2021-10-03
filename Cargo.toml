@@ -16,7 +16,7 @@ maplit = "1.0.1"
 reqwest = "0.9.12"
 rocket = "0.4.0"
 rocket_contrib = { version = "0.4.0", features = ["json", "handlebars_templates"] }
-rust-crypto = "0.2.36"
+openssl = "0.10"
 serde = "1.0.59"
 serde_derive = "1.0.59"
 serde_json = "1.0"
