@@ -6,7 +6,8 @@ use std::time::Duration;
 use std::u32;
 
 use chrono::{DateTime, Utc};
-use reqwest::{self, header::HeaderMap, Response, StatusCode};
+use reqwest::blocking::Response;
+use reqwest::{self, header::HeaderMap, StatusCode};
 use serde::de::DeserializeOwned;
 
 use crate::config::CONFIG;
@@ -24,7 +25,7 @@ const PER_PAGE: u32 = 100;
 
 #[derive(Debug)]
 pub struct Client {
-    client: reqwest::Client,
+    client: reqwest::blocking::Client,
 }
 
 impl Client {
@@ -43,7 +44,7 @@ impl Client {
         headers.insert("Accept", "application/vnd.github.v3".parse().unwrap());
         headers.insert("Connection", "close".parse().unwrap());
         Client {
-            client: reqwest::Client::builder()
+            client: reqwest::blocking::Client::builder()
                 .default_headers(headers)
                 .build()
                 .unwrap(),
@@ -99,15 +100,21 @@ impl Client {
 
     fn get_models<M: DeserializeOwned>(
         &self,
-        start_url: &str,
-        params: Option<&ParameterMap>,
+        url: &str,
+        mut params: Option<&ParameterMap>,
     ) -> DashResult<Vec<M>> {
-        let mut res = self.get(start_url, params)?;
-        let mut models: Vec<M> = res.json()?;
-        while let Some(url) = Self::next_page(res.headers()) {
-            sleep(Duration::from_millis(DELAY));
-            res = self.get(&url, None)?;
+        let mut models: Vec<M> = Vec::new();
+        let mut url = url.to_owned();
+        loop {
+            let res = self.get(&url, params.take())?;
+            let next_url = Self::next_page(res.headers());
             models.extend(res.json::<Vec<M>>()?);
+            if let Some(next_url) = next_url {
+                sleep(Duration::from_millis(DELAY));
+                url = next_url;
+            } else {
+                break;
+            }
         }
         Ok(models)
     }
@@ -146,7 +153,7 @@ impl Client {
     pub fn close_issue(&self, repo: &str, issue_num: i32) -> DashResult<()> {
         let url = format!("{}/repos/{}/issues/{}", BASE_URL, repo, issue_num);
         let payload = serde_json::to_string(&btreemap!("state" => "closed"))?;
-        let mut res = self.patch(&url, &payload)?;
+        let res = self.patch(&url, &payload)?;
 
         if StatusCode::OK != res.status() {
             throw!(DashError::Misc(Some(res.text()?)))
@@ -159,7 +166,7 @@ impl Client {
         let url = format!("{}/repos/{}/issues/{}/labels", BASE_URL, repo, issue_num);
         let payload = serde_json::to_string(&[label])?;
 
-        let mut res = self.post(&url, &payload)?;
+        let res = self.post(&url, &payload)?;
 
         if StatusCode::OK != res.status() {
             throw!(DashError::Misc(Some(res.text()?)))
@@ -173,7 +180,7 @@ impl Client {
             "{}/repos/{}/issues/{}/labels/{}",
             BASE_URL, repo, issue_num, label
         );
-        let mut res = self.delete(&url)?;
+        let res = self.delete(&url)?;
 
         if StatusCode::NO_CONTENT != res.status() {
             throw!(DashError::Misc(Some(res.text()?)))

@@ -66,7 +66,7 @@ impl RfcbotConfig {
             teams: TeamsMap,
         }
         if let RfcbotTeams::Remote { ref url } = &self.teams {
-            let de: ToDeserialize = ::reqwest::get(url)?.error_for_status()?.json()?;
+            let de: ToDeserialize = reqwest::blocking::get(url)?.error_for_status()?.json()?;
             self.cached_teams = de.teams;
         }
         Ok(())
