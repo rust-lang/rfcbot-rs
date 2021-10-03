@@ -7,7 +7,7 @@ edition = "2018"
 # Sorted by alphanumeric order
 [dependencies]
 dotenv = "0.15"
-env_logger = "0.7.0"
+env_logger = "0.9.0"
 hex = "0.4.0"
 itertools = "0.10.0"
 lazy_static = "1.2.0"
