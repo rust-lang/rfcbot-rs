@@ -686,9 +686,7 @@ where
 }
 
 /// Return a list of all known team members.
-fn all_team_members() -> DashResult<Vec<GitHubUser>> {
-    specific_subteam_members(|_| true)
-}
+fn all_team_members() -> DashResult<Vec<GitHubUser>> { specific_subteam_members(|_| true) }
 
 /// Check if an issue comment is written by a member of one of the subteams
 /// labelled on the issue.
