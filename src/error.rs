@@ -12,6 +12,7 @@ pub enum DashError {
     Reqwest(reqwest::Error),
     Io(io::Error),
     Serde(serde_json::error::Error),
+    SerdePath(serde_path_to_error::Error<serde_json::error::Error>),
     R2d2(diesel::r2d2::PoolError),
     DieselError(diesel::result::Error),
     Template(handlebars::RenderError),
@@ -19,25 +20,43 @@ pub enum DashError {
 }
 
 impl From<handlebars::RenderError> for DashError {
-    fn from(e: handlebars::RenderError) -> Self { DashError::Template(e) }
+    fn from(e: handlebars::RenderError) -> Self {
+        DashError::Template(e)
+    }
 }
 
 impl From<reqwest::Error> for DashError {
-    fn from(e: reqwest::Error) -> Self { DashError::Reqwest(e) }
+    fn from(e: reqwest::Error) -> Self {
+        DashError::Reqwest(e)
+    }
 }
 
 impl From<io::Error> for DashError {
-    fn from(e: io::Error) -> Self { DashError::Io(e) }
+    fn from(e: io::Error) -> Self {
+        DashError::Io(e)
+    }
 }
 
 impl From<serde_json::error::Error> for DashError {
-    fn from(e: serde_json::error::Error) -> Self { DashError::Serde(e) }
+    fn from(e: serde_json::error::Error) -> Self {
+        DashError::Serde(e)
+    }
+}
+
+impl From<serde_path_to_error::Error<serde_json::error::Error>> for DashError {
+    fn from(e: serde_path_to_error::Error<serde_json::error::Error>) -> Self {
+        DashError::SerdePath(e)
+    }
 }
 
 impl From<diesel::r2d2::PoolError> for DashError {
-    fn from(e: diesel::r2d2::PoolError) -> Self { DashError::R2d2(e) }
+    fn from(e: diesel::r2d2::PoolError) -> Self {
+        DashError::R2d2(e)
+    }
 }
 
 impl From<diesel::result::Error> for DashError {
-    fn from(e: diesel::result::Error) -> Self { DashError::DieselError(e) }
+    fn from(e: diesel::result::Error) -> Self {
+        DashError::DieselError(e)
+    }
 }

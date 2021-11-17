@@ -110,11 +110,19 @@ fn authenticate(secret: &str, payload: &str, signature: &str) -> Result<(), ()> 
     }
 }
 
+macro_rules! from_json {
+    ($b:expr) => {{
+        let body = $b;
+        let jd = &mut serde_json::Deserializer::from_str(&body);
+        serde_path_to_error::deserialize(jd)
+    }};
+}
+
 fn parse_event(event_name: &str, body: &str) -> DashResult<Payload> {
     match event_name {
-        "issue_comment" => Ok(Payload::IssueComment(serde_json::from_str(body)?)),
-        "issues" => Ok(Payload::Issues(serde_json::from_str(body)?)),
-        "pull_request" => Ok(Payload::PullRequest(serde_json::from_str(body)?)),
+        "issue_comment" => Ok(Payload::IssueComment(from_json!(body)?)),
+        "issues" => Ok(Payload::Issues(from_json!(body)?)),
+        "pull_request" => Ok(Payload::PullRequest(from_json!(body)?)),
 
         "commit_comment"
         | "create"
