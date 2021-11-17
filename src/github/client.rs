@@ -120,7 +120,7 @@ impl Client {
     }
 
     pub fn fetch_pull_request(&self, pr_info: &PullRequestUrls) -> DashResult<PullRequestFromJson> {
-        if let Some(url) = pr_info.get("url") {
+        if let Some(url) = &pr_info.url {
             Ok(self.get(url, None)?.json()?)
         } else {
             throw!(DashError::Misc(None))

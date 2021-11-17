@@ -1,6 +1,5 @@
 // Copyright 2016 Adam Perry. Dual-licensed MIT and Apache 2.0 (see LICENSE files for details).
 
-use std::collections::BTreeMap;
 use std::i32;
 
 use chrono::{DateTime, Utc};
@@ -50,7 +49,10 @@ pub struct LabelFromJson {
     name: String,
 }
 
-pub type PullRequestUrls = BTreeMap<String, String>;
+#[derive(Debug, Deserialize)]
+pub struct PullRequestUrls {
+    pub url: Option<String>,
+}
 
 #[derive(Debug, Deserialize)]
 pub struct IssueFromJson {
