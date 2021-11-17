@@ -54,7 +54,14 @@ impl FromDataSimple for Event {
                 let payload = match parse_event(event_name, &body) {
                     Ok(p) => p,
                     Err(DashError::Serde(why)) => {
-                        info!("failed to parse webhook payload: {:?}", why);
+                        error!("failed to parse webhook payload: {:?}", why);
+                        return Failure((
+                            Status::BadRequest,
+                            "failed to deserialize request payload",
+                        ));
+                    }
+                    Err(DashError::SerdePath(why)) => {
+                        error!("failed to parse webhook payload: {:?}", why);
                         return Failure((
                             Status::BadRequest,
                             "failed to deserialize request payload",
