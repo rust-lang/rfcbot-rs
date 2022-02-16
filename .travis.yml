@@ -8,7 +8,7 @@ before_install:
   - rustup component add rustfmt
   - cargo fmt --all -- --check
 install:
-  - curl https://cli-assets.heroku.com/install-ubuntu.sh | sh
+  - sh install-ubuntu.sh
 before_script: |
   if [ "$TRAVIS_PULL_REQUEST" = "false" ]; then
     heroku container:login
