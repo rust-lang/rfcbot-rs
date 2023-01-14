@@ -1202,6 +1202,10 @@ impl<'a> RfcBotComment<'a> {
                 msg.push_str("If you spot a major issue that hasn't been raised ");
                 msg.push_str("at any point in this process, please speak up!\n");
 
+                if issue.labels.iter().any(|l| l == "T-lang") {
+                    msg.push_str("\ncc @rust-lang/lang-advisors: FCP proposed for lang, please feel free to register concerns.");
+                }
+
                 msg.push_str("\nSee [this document](");
                 msg.push_str("https://github.com/rust-lang/rfcbot-rs/blob/master/README.md");
                 msg.push_str(") for info about what commands tagged team members can give me.");
