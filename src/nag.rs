@@ -1,7 +1,8 @@
 use diesel::prelude::*;
 
 use crate::domain::github::{GitHubUser, Issue, IssueComment};
-use crate::domain::rfcbot::{FcpProposal, FcpReviewRequest};
+use crate::domain::rfcbot::{FcpConcern, FcpProposal, FcpReviewRequest};
+use crate::domain::schema::fcp_concern;
 use crate::error::DashResult;
 use crate::DB_POOL;
 
@@ -9,6 +10,8 @@ use crate::DB_POOL;
 pub struct FcpWithInfo {
     pub fcp: FcpProposal,
     pub reviews: Vec<(GitHubUser, bool)>,
+    // (Concern name, comment registering it, and user leaving it)
+    pub concerns: Vec<(String, IssueComment, GitHubUser)>,
     pub issue: Issue,
     pub status_comment: IssueComment,
 }
@@ -31,6 +34,26 @@ pub fn all_fcps() -> DashResult<Vec<FcpWithInfo>> {
             .filter(fcp_review_request::fk_proposal.eq(fcp.id))
             .load::<FcpReviewRequest>(conn)?;
 
+        let raw_concerns = fcp_concern::table
+            .filter(fcp_concern::fk_proposal.eq(fcp.id))
+            .load::<FcpConcern>(conn)?;
+
+        let mut concerns = Vec::new();
+
+        for concern in raw_concerns {
+            // Skip resolved concerns.
+            if concern.fk_resolved_comment.is_some() {
+                continue;
+            }
+            let user = githubuser::table
+                .filter(githubuser::id.eq(concern.fk_initiator))
+                .first(conn)?;
+            let comment = issuecomment::table
+                .filter(issuecomment::id.eq(concern.fk_initiating_comment))
+                .first::<IssueComment>(conn)?;
+            concerns.push((concern.name, comment, user));
+        }
+
         let mut reviews_with_users = Vec::new();
 
         for review in reviews {
@@ -51,6 +74,7 @@ pub fn all_fcps() -> DashResult<Vec<FcpWithInfo>> {
         let fcp_with_info = FcpWithInfo {
             fcp,
             reviews: reviews_with_users,
+            concerns,
             issue,
             status_comment,
         };
