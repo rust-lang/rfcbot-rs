@@ -14,7 +14,15 @@
         {{#each fcp.pendingReviewers as |r| }}
         <a href="/fcp/{{r}}">{{ r }}</a>&nbsp;
         {{else}}
-        pending concerns
+        no pending checkboxes
+        {{/each}}
+        </li></ul>
+
+        <ul><li>
+        {{#each fcp.pendingConcerns as |r| }}
+        <a href="https://github.com/{{ fcp.issue.repository }}/issues/{{ fcp.issue.number }}#issuecomment-{{ r.[1].id }}">{{ r.[0] }} (by {{ r.[2].login }})</a>&nbsp;
+        {{else}}
+        no pending concerns
         {{/each}}
         </li></ul>
     </li>

@@ -45,6 +45,7 @@ mod html {
             let nag::FcpWithInfo {
                 fcp,
                 reviews,
+                mut concerns,
                 issue,
                 status_comment,
             } = fcp;
@@ -57,11 +58,14 @@ mod html {
 
             pending_reviewers.sort();
 
+            concerns.sort_by_key(|c| c.0.clone());
+
             let record = json!({
                 "disposition": fcp.disposition,
                 "issue": issue,
                 "statusComment": status_comment,
                 "pendingReviewers": pending_reviewers,
+                "pendingConcerns": concerns,
             });
 
             for label in issue.labels.iter().filter(|l| l.starts_with("T-")).cloned() {
