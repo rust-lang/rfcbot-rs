@@ -689,8 +689,7 @@ where
 /// Return a list of all known team members.
 fn all_team_members() -> DashResult<Vec<GitHubUser>> { specific_subteam_members(|_| true) }
 
-/// Check if an issue comment is written by a member of one of the subteams
-/// labelled on the issue.
+/// Get all of the teams that will be involved in the FCP.
 fn involved_teams(issue: &Issue) -> DashResult<Vec<String>> {
     let setup = SETUP.read().unwrap();
     let teams = setup.teams();
