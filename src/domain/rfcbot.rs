@@ -41,6 +41,8 @@ pub struct NewFcpProposal<'a> {
     pub fk_bot_tracking_comment: i32,
     pub fcp_start: Option<NaiveDateTime>,
     pub fcp_closed: bool,
+    // `None` here is for proposals started before team support
+    pub teams: Option<&'a [String]>,
 }
 
 #[derive(Clone, Debug, Eq, Insertable, Ord, PartialEq, PartialOrd, Serialize)]
@@ -76,6 +78,8 @@ pub struct FcpProposal {
     pub fk_bot_tracking_comment: i32,
     pub fcp_start: Option<NaiveDateTime>,
     pub fcp_closed: bool,
+    // `None` here is for proposals started before team support
+    pub teams: Option<Vec<String>>,
 }
 
 #[derive(Clone, Debug, Eq, Insertable, Ord, PartialEq, PartialOrd, Serialize)]

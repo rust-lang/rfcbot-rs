@@ -56,6 +56,7 @@ pub fn update_nags(comment: &IssueComment) -> DashResult<()> {
         .find(comment.fk_user)
         .first::<GitHubUser>(conn)?;
 
+    let issue_teams = involved_teams(&issue)?;
     let subteam_members = subteam_members(&issue)?;
     let all_team_members = all_team_members()?;
 
@@ -84,7 +85,7 @@ pub fn update_nags(comment: &IssueComment) -> DashResult<()> {
         }
 
         debug!("processing rfcbot command: {:?}", &command);
-        let process = command.process(&author, &issue, comment, &subteam_members);
+        let process = command.process(&author, &issue, comment, &issue_teams, &subteam_members);
         ok_or!(process, why => {
             error!("Unable to process command for comment id {}: {:?}",
                 comment.id, why);
@@ -690,6 +691,20 @@ fn all_team_members() -> DashResult<Vec<GitHubUser>> { specific_subteam_members(
 
 /// Check if an issue comment is written by a member of one of the subteams
 /// labelled on the issue.
+fn involved_teams(issue: &Issue) -> DashResult<Vec<String>> {
+    let setup = SETUP.read().unwrap();
+    let teams = setup.teams();
+
+    let involved = teams
+        .filter(|&(label, _)| issue.labels.contains(&label.0))
+        .map(|(label, _)| label.0.clone())
+        .collect::<Vec<_>>();
+
+    Ok(involved)
+}
+
+/// Check if an issue comment is written by a member of one of the subteams
+/// labelled on the issue.
 fn subteam_members(issue: &Issue) -> DashResult<Vec<GitHubUser>> {
     // retrieve all of the teams tagged on this issue
     specific_subteam_members(|label| issue.labels.contains(&label))
@@ -758,12 +773,13 @@ impl<'a> RfcBotCommand<'a> {
         author: &GitHubUser,
         issue: &Issue,
         comment: &IssueComment,
+        issue_teams: &[String],
         team_members: &[GitHubUser],
     ) -> DashResult<()> {
         use self::RfcBotCommand::*;
         match self {
             StartPoll { teams, question } => process_poll(author, issue, comment, question, teams),
-            FcpPropose(disp) => process_fcp_propose(author, issue, comment, team_members, disp),
+            FcpPropose(disp) => process_fcp_propose(author, issue, comment, issue_teams, team_members, disp),
             FcpCancel => process_fcp_cancel(author, issue),
             Reviewed => process_reviewed(author, issue),
             NewConcern(concern_name) => process_new_concern(author, issue, comment, concern_name),
@@ -873,6 +889,7 @@ fn process_fcp_propose(
     author: &GitHubUser,
     issue: &Issue,
     comment: &IssueComment,
+    issue_teams: &[String],
     team_members: &[GitHubUser],
     disp: FcpDisposition,
 ) -> DashResult<()> {
@@ -896,6 +913,7 @@ fn process_fcp_propose(
             disposition: disp.repr(),
             fcp_start: None,
             fcp_closed: false,
+            teams: Some(issue_teams),
         };
         let proposal = diesel::insert_into(fcp_proposal)
             .values(&proposal)
