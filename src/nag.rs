@@ -102,7 +102,7 @@ pub fn individual_nags(username: &str) -> DashResult<(GitHubUser, Vec<Individual
 
     let review_requests = fcp_review_request::table
         .inner_join(fcp_proposal::table)
-        .filter(fcp_proposal::fcp_start.is_null())
+        .filter(fcp_proposal::fcp_closed.eq(false))
         .filter(fcp_review_request::fk_reviewer.eq(user.id))
         .filter(fcp_review_request::reviewed.eq(false))
         .load::<(FcpReviewRequest, FcpProposal)>(conn)?;
