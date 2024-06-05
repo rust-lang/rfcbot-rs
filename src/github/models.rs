@@ -104,7 +104,7 @@ impl IssueFromJson {
 
 #[derive(Debug, Deserialize)]
 pub struct CommentFromJson {
-    pub id: i32,
+    pub id: u32,
     pub html_url: String,
     pub body: String,
     pub user: GitHubUser,
@@ -141,7 +141,7 @@ impl CommentFromJson {
             .first::<i32>(&*conn)?;
 
         Ok(IssueComment {
-            id: self.id,
+            id: self.id as i32,
             fk_issue: issue_id,
             fk_user: self.user.id,
             body: self.body.replace(0x00 as char, ""),

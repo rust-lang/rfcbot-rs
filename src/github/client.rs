@@ -208,7 +208,7 @@ impl Client {
     ) -> DashResult<CommentFromJson> {
         let url = format!(
             "{}/repos/{}/issues/comments/{}",
-            BASE_URL, repo, comment_num
+            BASE_URL, repo, comment_num as u32
         );
         let payload = serde_json::to_string(&btreemap!("body" => text))?;
         Ok(self.patch(&url, &payload)?.error_for_status()?.json()?)
