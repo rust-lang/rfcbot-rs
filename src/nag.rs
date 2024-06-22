@@ -90,6 +90,8 @@ pub struct IndividualFcp {
     issue: Issue,
     proposal: FcpProposal,
     review_request: FcpReviewRequest,
+    reviews_given: i32,
+    reviews_requested: i32,
 }
 
 pub fn individual_nags(username: &str) -> DashResult<(GitHubUser, Vec<IndividualFcp>)> {
@@ -113,10 +115,18 @@ pub fn individual_nags(username: &str) -> DashResult<(GitHubUser, Vec<Individual
             .filter(issue::id.eq(proposal.fk_issue))
             .first::<Issue>(conn)?;
 
+        let reviews = fcp_review_request::table
+            .filter(fcp_review_request::fk_proposal.eq(proposal.id))
+            .load::<FcpReviewRequest>(conn)?;
+        let reviews_given = reviews.iter().filter(|r| r.reviewed).count() as i32;
+        let reviews_requested = reviews.len() as i32;
+
         fcps.push(IndividualFcp {
             issue,
             proposal,
             review_request: rr,
+            reviews_given,
+            reviews_requested,
         });
     }
 
