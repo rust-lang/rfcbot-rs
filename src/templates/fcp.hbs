@@ -20,7 +20,7 @@
 
         <ul><li>
         {{#each fcp.pendingConcerns as |r| }}
-        <a href="https://github.com/{{ fcp.issue.repository }}/issues/{{ fcp.issue.number }}#issuecomment-{{ r.[1].id }}">{{ r.[0] }} (by {{ r.[2].login }})</a>&nbsp;
+        <a href="https://github.com/{{ fcp.issue.repository }}/issues/{{ fcp.issue.number }}#issuecomment-{{ r.commentId }}">{{ r.name }} (by {{ r.login }})</a>&nbsp;
         {{else}}
         no pending concerns
         {{/each}}

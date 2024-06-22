@@ -63,9 +63,17 @@ mod html {
             let record = json!({
                 "disposition": fcp.disposition,
                 "issue": issue,
-                "statusComment": status_comment,
+                "statusComment": {
+                    "id": status_comment.id as u32
+                },
                 "pendingReviewers": pending_reviewers,
-                "pendingConcerns": concerns,
+                "pendingConcerns": concerns.into_iter().map(|c| {
+                    json!({
+                        "name": c.0.clone(),
+                        "commentId": c.1.id as u32,
+                        "login": c.2.login.clone(),
+                    })
+                }).collect::<Vec<_>>(),
             });
 
             for label in issue.labels.iter().filter(|l| l.starts_with("T-")).cloned() {
