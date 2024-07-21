@@ -23,7 +23,9 @@ pub struct Poll {
     pub id: i32,
     pub fk_issue: i32,
     pub fk_initiator: i32,
+    #[serde(serialize_with = "super::unsigned")]
     pub fk_initiating_comment: i32,
+    #[serde(serialize_with = "super::unsigned")]
     pub fk_bot_tracking_comment: i32,
     pub poll_question: String,
     pub poll_created_at: NaiveDateTime,
@@ -71,8 +73,10 @@ pub struct FcpProposal {
     pub id: i32,
     pub fk_issue: i32,
     pub fk_initiator: i32,
+    #[serde(serialize_with = "super::unsigned")]
     pub fk_initiating_comment: i32,
     pub disposition: String,
+    #[serde(serialize_with = "super::unsigned")]
     pub fk_bot_tracking_comment: i32,
     pub fcp_start: Option<NaiveDateTime>,
     pub fcp_closed: bool,

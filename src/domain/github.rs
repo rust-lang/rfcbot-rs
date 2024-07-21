@@ -153,6 +153,7 @@ pub struct Issue {
 #[table_name = "issuecomment"]
 #[changeset_options(treat_none_as_null = "true")]
 pub struct IssueComment {
+    #[serde(serialize_with = "super::unsigned")]
     pub id: i32,
     pub fk_issue: i32,
     pub fk_user: i32,
