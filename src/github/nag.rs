@@ -395,7 +395,7 @@ fn evaluate_pendings() -> DashResult<()> {
                         proposal.id, why));
         }
 
-        let majority_complete = num_outstanding_reviews < num_complete_reviews;
+        let majority_complete = num_outstanding_reviews <= 2 * num_complete_reviews;
 
         if num_active_concerns == 0 && majority_complete && num_outstanding_reviews < 3 {
             // TODO only record the fcp as started if we know that we successfully commented
@@ -1197,9 +1197,9 @@ impl<'a> RfcBotComment<'a> {
                     }
                 }
 
-                msg.push_str("\nOnce a majority of reviewers approve (and at most 2 approvals are outstanding), ");
-                msg.push_str("this will enter its final comment period. ");
-                msg.push_str("If you spot a major issue that hasn't been raised ");
+                msg.push_str("\nOnce two thirds of reviewers approve (and at most 2 ");
+                msg.push_str("approvals are outstanding), this will enter its final comment ");
+                msg.push_str("period. If you spot a major issue that hasn't been raised ");
                 msg.push_str("at any point in this process, please speak up!\n");
 
                 if issue.labels.iter().any(|l| l == "T-lang") {
