@@ -7,7 +7,9 @@ use super::schema::*;
 pub struct NewPoll<'a> {
     pub fk_issue: i32,
     pub fk_initiator: i32,
+    //#[serde(serialize_with = "super::unsigned")]
     pub fk_initiating_comment: i32,
+    //#[serde(serialize_with = "super::unsigned")]
     pub fk_bot_tracking_comment: i32,
     pub poll_question: &'a str,
     pub poll_created_at: NaiveDateTime,
@@ -38,8 +40,10 @@ pub struct Poll {
 pub struct NewFcpProposal<'a> {
     pub fk_issue: i32,
     pub fk_initiator: i32,
+    //#[serde(serialize_with = "super::unsigned")]
     pub fk_initiating_comment: i32,
     pub disposition: &'a str,
+    //#[serde(serialize_with = "super::unsigned")]
     pub fk_bot_tracking_comment: i32,
     pub fcp_start: Option<NaiveDateTime>,
     pub fcp_closed: bool,
