@@ -124,7 +124,7 @@ pub fn individual_nags(username: &str) -> DashResult<(GitHubUser, Vec<Individual
 
         let unresolved_concerns = fcp_concern::table
             .filter(fcp_concern::fk_proposal.eq(proposal.id))
-            .filter(fcp_concern::fk_resolved_comment.is_not_null())
+            .filter(fcp_concern::fk_resolved_comment.is_null())
             .count()
             .get_result::<i64>(conn)? as i32;
 
