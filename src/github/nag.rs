@@ -1287,7 +1287,7 @@ impl<'a> RfcBotComment<'a> {
                 "issues"
             },
             number = issue.number,
-            id = comment_id,
+            id = comment_id as u32,
         );
         msg.push_str(&url);
     }
