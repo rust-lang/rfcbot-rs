@@ -130,6 +130,10 @@ To indicate that your concern has been resolved, use `@rfcbot resolved NAME_OF_C
 
 Note that only one concern per comment is allowed.
 
+#### Final comment period
+
+Once the threshold of approvals has been met and there is no remaining concerns, the final comment period starts. It ends after 10 days. At that point, the proposal is considered accepted.
+
 ### Feedback Requests
 
 To request feedback from a user not on the tagged team(s), use `@rfcbot f? @username`. This will create an entry in the database which will be marked as resolved once that user has commented on the issue/PR. Note that these feedback requests will not block start/end of an FCP. If you need to block FCP on that user's feedback, you may want to create a new concern that you can resolve.
