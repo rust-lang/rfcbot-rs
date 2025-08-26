@@ -105,10 +105,10 @@ fn match_team_candidate<'a>(
 }
 
 /// Parses all subcommands under the fcp command.
-/// If `fcp_context` is set to false, `@rfcbot <subcommand>`
-/// was passed and not `@rfcbot fcp <subcommand>`.
+/// If `fcp_context` is set to false, `@rust-rfcbot <subcommand>`
+/// was passed and not `@rust-rfcbot fcp <subcommand>`.
 ///
-/// @rfcbot accepts roughly the following grammar:
+/// @rust-rfcbot accepts roughly the following grammar:
 ///
 /// merge ::= "merge" | "merged" | "merging" | "merges" ;
 /// close ::= "close" | "closed" | "closing" | "closes" ;
@@ -144,7 +144,7 @@ fn match_team_candidate<'a>(
 ///              | subcommand
 ///              ;
 ///
-/// grammar ::= "@rfcbot" ":"? invocation ;
+/// grammar ::= "@rust-rfcbot" ":"? invocation ;
 fn parse_fcp_subcommand<'a>(
     setup: &'a RfcbotConfig,
     command: &'a str,
@@ -290,14 +290,14 @@ mod test {
     fn multiple_commands() {
         let text = r#"
 someothertext
-@rfcbot: resolved CONCERN_NAME
+@rust-rfcbot: resolved CONCERN_NAME
 somemoretext
 
 somemoretext
 
-@rfcbot: fcp cancel
+@rust-rfcbot: fcp cancel
 foobar
-@rfcbot concern foobar
+@rust-rfcbot concern foobar
 "#;
 
         assert_eq!(
@@ -314,14 +314,14 @@ foobar
     fn accept_leading_whitespace() {
         let text = r#"
 someothertext
-       @rfcbot: resolved CONCERN_NAME
+       @rust-rfcbot: resolved CONCERN_NAME
 somemoretext
 
 somemoretext
 
-   @rfcbot: fcp cancel
+   @rust-rfcbot: fcp cancel
 foobar
- @rfcbot concern foobar
+ @rust-rfcbot concern foobar
 "#;
 
         assert_eq!(
@@ -338,14 +338,14 @@ foobar
     fn fix_issue_225() {
         let text = r#"
 someothertext
-    @rfcbot : resolved CONCERN_NAME
+    @rust-rfcbot : resolved CONCERN_NAME
 somemoretext
 
 somemoretext
 
-@rfcbot : fcp cancel
+@rust-rfcbot : fcp cancel
 foobar
-@rfcbot : concern foobar
+@rust-rfcbot : concern foobar
 "#;
 
         assert_eq!(
@@ -395,8 +395,8 @@ somemoretext"
                 let expected = $expected;
 
                 $({
-                    let body = concat!("@rfcbot: ", $cmd);
-                    let body_no_colon = concat!("@rfcbot ", $cmd);
+                    let body = concat!("@rust-rfcbot: ", $cmd);
+                    let body_no_colon = concat!("@rust-rfcbot ", $cmd);
 
                     let with_colon = ensure_take_singleton(parse_commands(body));
                     let without_colon = ensure_take_singleton(parse_commands(body_no_colon));
@@ -634,14 +634,14 @@ somemoretext"
     #[test]
     fn success_resolve_mid_body() {
         let body = "someothertext
-@rfcbot: resolved CONCERN_NAME
+@rust-rfcbot: resolved CONCERN_NAME
 somemoretext
 
 somemoretext";
         let body_no_colon = "someothertext
 somemoretext
 
-@rfcbot resolved CONCERN_NAME
+@rust-rfcbot resolved CONCERN_NAME
 
 somemoretext";
 

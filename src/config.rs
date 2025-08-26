@@ -30,7 +30,7 @@
 use std::collections::BTreeMap;
 use std::env;
 
-pub const RFC_BOT_MENTION: &str = "@rfcbot";
+pub const RFC_BOT_MENTION: &str = "@rust-rfcbot";
 pub const GH_ORGS: [&str; 3] = ["rust-lang", "rust-lang-nursery", "rust-lang-deprecated"];
 
 lazy_static! {
