@@ -1,5 +1,13 @@
 # rfcbot
 
+> [!NOTE]
+> The infra team lost access to the old rfcbot account, i.e.
+> [rfcbot](https://github.com/rfcbot).
+>
+> The new account used by the bot is [rust-rfcbot](https://github.com/rust-rfcbot).
+>
+> You still need to ping the old account, i.e. `@rfcbot`.
+
 [rfcbot](https://github.com/rfcbot) manages asynchronous decision making on Rust issues and PRs. Status of Final Comment Periods can be viewed on [the relevant dashboard page](http://rfcbot.rs).
 
 It listens for commands on all repositories owned by the [rust-lang](https://github.com/rust-lang), [rust-lang-nursery](https://github.com/rust-lang-nursery), and [rust-lang-deprecated](https://github.com/rust-lang-deprecated) organizations.
