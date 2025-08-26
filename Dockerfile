@@ -1,12 +1,12 @@
 ###############################################################################
 # builder image
 
-FROM clux/muslrust:stable as builder
+FROM clux/muslrust:1.88.0-nightly-2025-04-30 as builder
 
 # postgres client is used to gate test server start, diesel_cli runs test migrations and init
-RUN apt-get update && apt-get install -y libpq-dev openssl pkg-config postgresql-client
-RUN rustup target add --toolchain stable x86_64-unknown-linux-gnu
-RUN cargo +stable install --target x86_64-unknown-linux-gnu \
+RUN apt-get update && apt-get install -y libpq-dev openssl pkg-config postgresql-client libssl-dev
+RUN rustup target add --toolchain nightly x86_64-unknown-linux-gnu
+RUN cargo +nightly install --target x86_64-unknown-linux-gnu \
     diesel_cli --no-default-features --features postgres
 ENV PATH="${PATH}:${HOME}/.cargo/bin"
 
