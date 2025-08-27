@@ -36,6 +36,7 @@ pub struct GitHubSyncPartial {
 )]
 #[table_name = "githubuser"]
 pub struct GitHubUser {
+    #[serde(serialize_with = "super::unsigned")]
     pub id: i32,
     pub login: String,
 }
@@ -156,6 +157,7 @@ pub struct IssueComment {
     #[serde(serialize_with = "super::unsigned")]
     pub id: i32,
     pub fk_issue: i32,
+    #[serde(serialize_with = "super::unsigned")]
     pub fk_user: i32,
     pub body: String,
     pub created_at: NaiveDateTime,
