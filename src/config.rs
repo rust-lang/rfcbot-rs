@@ -9,10 +9,12 @@
 //!
 //! * `DATABASE_URL`: postgres database URL
 //! * `DATABASE_POOL_SIZE`: number of connections to maintain in the pool
-//! * `GITHUB_ACCESS_TOKEN`: your access token from GitHub. See
+//! * `GITHUB_ACCESS_TOKEN`: your access token from GitHub. We use a classic token. See
 //!   [this page](https://help.github.com/articles/creating-an-access-token-for-command-line-use/)
-//!   for more information. You shouldn't need to check any of the boxes for granting scopes when
-//!   creating it.
+//!   for more information. You should check the following boxes when selecting scopes:
+//!   * `public_repo`;
+//!   * `read:user`;
+//!   * `write:discussion`.
 //! * `GITHUB_USER_AGENT`: the UA string to send to GitHub (they request that you send your GitHub
 //!   username or the app name you registered for the client ID)
 //! * `GITHUB_WEBHOOK_SECRETS`: a comma-delimited string of the secrets used for any ingestion
