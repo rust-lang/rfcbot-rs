@@ -6,9 +6,9 @@
 >
 > The new account used by the bot is [rust-rfcbot](https://github.com/rust-rfcbot).
 >
-> You still need to ping the old account, i.e. `@rfcbot`.
+> You can mention either `@rfcbot` or `@rust-rfcbot`.
 
-[rfcbot](https://github.com/rfcbot) manages asynchronous decision making on Rust issues and PRs. Status of Final Comment Periods can be viewed on [the relevant dashboard page](http://rfcbot.rs).
+[rust-rfcbot](https://github.com/rust-rfcbot) manages asynchronous decision making on Rust issues and PRs. Status of Final Comment Periods can be viewed on [the relevant dashboard page](http://rfcbot.rs).
 
 It listens for commands on all repositories owned by the [rust-lang](https://github.com/rust-lang), [rust-lang-nursery](https://github.com/rust-lang-nursery), and [rust-lang-deprecated](https://github.com/rust-lang-deprecated) organizations.
 
@@ -16,10 +16,11 @@ While its intended usage is for RFCs, you can use its tracking on any issue or p
 
 ## Usage
 
-rfcbot accepts commands in GitHub comments. All commands take the form:
+rfcbot accepts commands in GitHub comments. All commands take one of the following forms:
 
 ```
 @rfcbot COMMAND [PARAMS]
+@rust-rfcbot COMMAND [PARAMS]
 ```
 
 Each command must start on its own line, but otherwise the bot doesn't care if there's other text in the comment. This is valid:
