@@ -1,7 +1,7 @@
 use std::collections::BTreeSet;
 use std::fmt;
 
-use crate::config::RFC_BOT_MENTION;
+use crate::config::RFC_BOT_MENTIONS;
 use crate::error::{DashError, DashResult};
 use crate::teams::{RfcbotConfig, TeamLabel};
 
@@ -218,8 +218,12 @@ fn from_invocation_line<'a>(
     setup: &'a RfcbotConfig,
     command: &'a str,
 ) -> DashResult<RfcBotCommand<'a>> {
-    let mut tokens = command
-        .trim_start_matches(RFC_BOT_MENTION)
+    // Strip bot mention prefix
+    let mention_stripped = RFC_BOT_MENTIONS
+        .iter()
+        .fold(command, |acc, mention| acc.trim_start_matches(mention));
+
+    let mut tokens = mention_stripped
         .trim()
         .trim_start_matches(':')
         .trim()
@@ -271,7 +275,7 @@ impl<'a> RfcBotCommand<'a> {
         command
             .lines()
             .map(str::trim)
-            .filter(|&l| l.starts_with(RFC_BOT_MENTION))
+            .filter(|&l| RFC_BOT_MENTIONS.iter().any(|m| l.starts_with(m)))
             .map(move |l| from_invocation_line(setup, l))
             .filter_map(Result::ok)
     }
@@ -658,4 +662,11 @@ somemoretext";
         some_text!("@bob"),
         RfcBotCommand::FeedbackRequest("bob")
     );
+
+    #[test]
+    fn accepts_rust_rfcbot_alias() {
+        let body = "@rust-rfcbot: fcp cancel";
+        let with_alias = ensure_take_singleton(parse_commands(body));
+        assert_eq!(with_alias, RfcBotCommand::FcpCancel);
+    }
 }
