@@ -77,6 +77,23 @@ impl FcpDisposition {
     }
 }
 
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum FcpDispositionData<'a> {
+    Merge(BTreeSet<&'a str>),
+    Close,
+    Postpone,
+}
+
+impl FcpDispositionData<'_> {
+    pub fn disp(&self) -> FcpDisposition {
+        match self {
+            FcpDispositionData::Merge(..) => FcpDisposition::Merge,
+            FcpDispositionData::Close => FcpDisposition::Close,
+            FcpDispositionData::Postpone => FcpDisposition::Postpone,
+        }
+    }
+}
+
 /// Parses the text of a subcommand.
 fn parse_command_text<'a>(command: &'a str, subcommand: &'a str) -> &'a str {
     let name_start = command.find(subcommand).unwrap() + subcommand.len();
@@ -154,17 +171,27 @@ fn parse_fcp_subcommand<'a>(
     Ok(match subcommand {
         // Parse a FCP merge command:
         "merge" | "merged" | "merging" | "merges" => {
-            RfcBotCommand::FcpPropose(FcpDisposition::Merge)
+            debug!("Parsed command as FcpPropose(Merge(..))");
+
+            let team_text = parse_command_text(command, subcommand);
+            let mut teams = BTreeSet::new();
+            for team_candidate in team_text.split(",") {
+                if let Some(team) = match_team_candidate(setup, team_candidate) {
+                    teams.insert(&*team.0);
+                }
+            }
+
+            RfcBotCommand::FcpPropose(FcpDispositionData::Merge(teams))
         }
 
         // Parse a FCP close command:
         "close" | "closed" | "closing" | "closes" => {
-            RfcBotCommand::FcpPropose(FcpDisposition::Close)
+            RfcBotCommand::FcpPropose(FcpDispositionData::Close)
         }
 
         // Parse a FCP postpone command:
         "postpone" | "postponed" | "postponing" | "postpones" => {
-            RfcBotCommand::FcpPropose(FcpDisposition::Postpone)
+            RfcBotCommand::FcpPropose(FcpDispositionData::Postpone)
         }
 
         // Parse a FCP cancel command:
@@ -250,7 +277,7 @@ fn from_invocation_line<'a>(
 
 #[derive(Debug, Eq, PartialEq)]
 pub enum RfcBotCommand<'a> {
-    FcpPropose(FcpDisposition),
+    FcpPropose(FcpDispositionData<'a>),
     FcpCancel,
     Reviewed,
     NewConcern(&'a str),
