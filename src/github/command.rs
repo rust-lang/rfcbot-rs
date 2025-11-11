@@ -143,13 +143,16 @@ fn match_team_candidate<'a>(
 ///
 /// team_label ::= "T-lang" | .. ;
 /// team_label_simple ::= "lang" | .. ;
+/// team_label_any ::= team_label | team_label_simple ;
 /// team_ping ::= "@"? "rust-lang/lang" | ..;
 /// team_target ::= team_label | team_label_simple | team_ping ;
+/// team_list ::= team_label_any (',' team_label_any)*
 ///
 /// line_remainder ::= .+$ ;
 /// ws_separated ::= ... ;
 ///
-/// subcommand ::= merge | close | postpone | cancel | review
+/// subcommand ::= merge team_list
+///              | close | postpone | cancel | review
 ///              | concern line_remainder
 ///              | resolve line_remainder
 ///              | poll [team_target]* line_remainder
@@ -469,7 +472,27 @@ somemoretext"
             "pr merges"
         ],
         justification!(),
-        RfcBotCommand::FcpPropose(FcpDisposition::Merge)
+        RfcBotCommand::FcpPropose(FcpDispositionData::Merge(BTreeSet::new()))
+    );
+
+    test_from_str!(
+        success_fcp_merge_teams,
+        [
+            "merge compiler,lang",
+            "merged compiler,lang",
+            "merging compiler,lang",
+            "merges compiler,lang",
+            "fcp merge compiler,lang",
+            "fcp merged compiler,lang",
+            "fcp merging compiler,lang",
+            "fcp merges compiler,lang",
+            "pr merge compiler,lang",
+            "pr merged compiler,lang",
+            "pr merging compiler,lang",
+            "pr merges compiler,lang"
+        ],
+        justification!(),
+        RfcBotCommand::FcpPropose(FcpDispositionData::Merge(["compiler", "lang"].iter().copied().collect()))
     );
 
     test_from_str!(
@@ -489,7 +512,7 @@ somemoretext"
             "pr closes"
         ],
         justification!(),
-        RfcBotCommand::FcpPropose(FcpDisposition::Close)
+        RfcBotCommand::FcpPropose(FcpDispositionData::Close)
     );
 
     test_from_str!(
@@ -509,7 +532,7 @@ somemoretext"
             "pr postpones"
         ],
         justification!(),
-        RfcBotCommand::FcpPropose(FcpDisposition::Postpone)
+        RfcBotCommand::FcpPropose(FcpDispositionData::Postpone)
     );
 
     test_from_str!(

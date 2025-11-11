@@ -27,7 +27,7 @@ Each command must start on its own line, but otherwise the bot doesn't care if t
 ```
 TEXT
 TEXT
-@rfcbot fcp merge
+@rfcbot fcp merge compiler
 TEXT TEXT
 TEXT
 ```
@@ -35,7 +35,7 @@ TEXT
 But this is not:
 
 ```
-TEXT @rfcbot fcp merge
+TEXT @rfcbot fcp merge compiler
 TEXT
 ```
 
@@ -69,13 +69,16 @@ poll ::= "ask" | "asked" | "asking" | "asks" |
 
 team_label ::= "T-lang" | .. ;
 team_label_simple ::= "lang" | .. ;
+team_label_any ::= team_label | team_label_simple ;
 team_ping ::= "@"? "rust-lang/lang" | ..;
 team_target ::= team_label | team_label_simple | team_ping ;
+team_list ::= team_label_any (',' team_label_any)*
 
 line_remainder ::= .+$ ;
 ws_separated ::= ... ;
 
-subcommand ::= merge | close | postpone | cancel | review
+subcommand ::= merge team_list
+             | close | postpone | cancel | review
              | concern line_remainder
              | resolve line_remainder
              | poll [team_target]* line_remainder
@@ -94,7 +97,7 @@ Multiple occurrences of `grammar` are allowed in each comment you make on GitHub
 This means that the following is OK:
 
 ```
-@rfcbot merge
+@rfcbot merge compiler,lang
 
 Some stuff you want to say...
 
@@ -105,18 +108,11 @@ Explain the concern...
 
 ### Final Comment Period
 
-Before proposing a final comment period on an issue/PR/RFC, please double check to make sure that the correct team label(s) has been applied to the issue. As of 9/17/16, rfcbot recognizes these labels:
-
-* Core: `T-core`
-* Language: `T-lang`
-* Libraries: `T-libs`
-* Compiler: `T-compiler`
-* Tools: `T-tools`
-* Documentation: `T-doc`
+Before proposing a final comment period on an issue/PR/RFC, please double check to make sure that the correct team label(s) has been applied to the issue. Rfcbot recognizes the teams from the [teams API](https://team-api.infra.rust-lang.org/v1/rfcbot.json).
 
 #### Proposing FCP
 
-To propose an FCP, use `@rfcbot fcp DISPOSITION` where disposition is one of `[merge|close|postpone]`. You can also use `@rfcbot pr DISPOSITION`, which will be used in the future to improve the quality of status comments from the bot.
+To propose an FCP, use `@rfcbot fcp merge [team(,team)*]`. You can close or postpone a proposed FCP using `@rfcbot fcp [close|postpone]`. You can also use `pr` instead of `fcp`, which will be used in the future to improve the quality of status comments from the bot.
 
 If the proposer is on one of the tagged subteams, rfcbot will create a tracking comment with a checklist of review requests. Once all review requests have been satisfied and any concerns have been resolved, it will post a comment to that effect. One week after the "FCP start" comment, it will post another follow-up comment saying that one week has passed.
 
