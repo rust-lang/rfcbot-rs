@@ -79,7 +79,7 @@ impl FcpDisposition {
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum FcpDispositionData<'a> {
-    Merge(BTreeSet<&'a str>),
+    Merge(Option<BTreeSet<&'a str>>),
     Close,
     Postpone,
 }
@@ -180,14 +180,17 @@ fn parse_fcp_subcommand<'a>(
 
             let mut teams = BTreeSet::new();
             for team_candidate in team_text.split(",") {
-                if let Some(team) = match_team_candidate(setup, team_candidate) {
-                    teams.insert(&*team.0);
-                }
+                let Some(team) = match_team_candidate(setup, team_candidate) else {
+                    return Err(DashError::CommentableError(format!("Provided team `{}` is invalid", team_candidate)));
+                };
+                teams.insert(&*team.0);
             }
 
-            if teams.is_empty() {
-                return Err(DashError::CommentableError("No valid teams were provided to proposed FCP.".to_string()));
-            }
+            let teams = if teams.is_empty() {
+                None
+            } else {
+                Some(teams)
+            };
 
             RfcBotCommand::FcpPropose(FcpDispositionData::Merge(teams))
         }
@@ -476,7 +479,7 @@ somemoretext"
             "pr merges"
         ],
         justification!(),
-        RfcBotCommand::FcpPropose(FcpDispositionData::Merge(BTreeSet::new()))
+        RfcBotCommand::FcpPropose(FcpDispositionData::Merge(None))
     );
 
     test_from_str!(
@@ -496,7 +499,7 @@ somemoretext"
             "pr merges compiler,lang"
         ],
         justification!(),
-        RfcBotCommand::FcpPropose(FcpDispositionData::Merge(["compiler", "lang"].iter().copied().collect()))
+        RfcBotCommand::FcpPropose(FcpDispositionData::Merge(Some(["compiler", "lang"].iter().copied().collect())))
     );
 
     test_from_str!(
