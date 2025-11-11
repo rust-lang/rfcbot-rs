@@ -96,7 +96,14 @@ pub fn update_nags(comment: &IssueComment) -> DashResult<()> {
         // For `fcp merge`, if specific teams were passed, then be sure to use
         // only those members.
         let team_members = match &command {
-            RfcBotCommand::FcpPropose(FcpDispositionData::Merge(teams)) => {
+            RfcBotCommand::FcpPropose(FcpDispositionData::Merge(None)) => {
+                let issue_teams = all_teams_for_issue(&issue);
+                if issue_teams.len() > 1 {
+                    return Err(DashError::CommentableError("Must specify teams for FCP, as there are multiple labeled.".to_string()));
+                }
+                subteam_members.clone()
+            }
+            RfcBotCommand::FcpPropose(FcpDispositionData::Merge(Some(teams))) => {
                 specific_subteam_members(|label| {
                     teams.iter().any(|team| {
                         label.strip_prefix("T-").unwrap_or(label)
@@ -717,6 +724,17 @@ fn all_team_members() -> DashResult<Vec<GitHubUser>> { specific_subteam_members(
 fn subteam_members(issue: &Issue) -> DashResult<Vec<GitHubUser>> {
     // retrieve all of the teams tagged on this issue
     specific_subteam_members(|label| issue.labels.contains(&label))
+}
+
+/// Check if an issue comment is written by a member of one of the subteams
+/// satisfying the given predicate.
+fn all_teams_for_issue(issue: &Issue) -> BTreeSet<String> {
+    let setup = SETUP.read().unwrap();
+    let teams = setup.teams();
+    teams
+        .filter(|&(label, _)| issue.labels.contains(&label.0))
+        .map(|t| t.0.0.clone())
+        .collect::<BTreeSet<_>>()
 }
 
 fn cancel_fcp(author: &GitHubUser, issue: &Issue, existing: &FcpProposal) -> DashResult<()> {
