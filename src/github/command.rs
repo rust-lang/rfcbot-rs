@@ -178,15 +178,15 @@ fn parse_fcp_subcommand<'a>(
 
             let team_text = parse_command_text(command, subcommand);
 
-            if team_text.is_empty() {
-                return Err(DashError::CommentableError("No teams were provided to proposed FCP.".to_string()));
-            }
-
             let mut teams = BTreeSet::new();
             for team_candidate in team_text.split(",") {
                 if let Some(team) = match_team_candidate(setup, team_candidate) {
                     teams.insert(&*team.0);
                 }
+            }
+
+            if teams.is_empty() {
+                return Err(DashError::CommentableError("No valid teams were provided to proposed FCP.".to_string()));
             }
 
             RfcBotCommand::FcpPropose(FcpDispositionData::Merge(teams))
