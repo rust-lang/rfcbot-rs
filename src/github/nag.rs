@@ -22,7 +22,7 @@ use crate::github::models::CommentFromJson;
 use crate::teams::SETUP;
 use crate::DB_POOL;
 
-use crate::github::command::{FcpDisposition, FcpDispositionData, Label, RfcBotCommand};
+use crate::github::command::{FcpDisposition, Label, RfcBotCommand};
 
 impl Issue {
     fn remove_label(&self, label: Label) {
@@ -83,22 +83,8 @@ pub fn update_nags(comment: &IssueComment) -> DashResult<()> {
             }
         }
 
-        // For `fcp merge`, if specific teams were passed, then be sure to use
-        // only those members.
-        let team_members = match &command {
-            RfcBotCommand::FcpPropose(FcpDispositionData::Merge(teams)) => {
-                specific_subteam_members(|label| {
-                    teams.iter().any(|team| {
-                        label.strip_prefix("T-").unwrap_or(label)
-                            == team.strip_prefix("T-").unwrap_or(team)
-                    })
-                })?
-            }
-            _ => subteam_members.clone(),
-        };
-
         debug!("processing rfcbot command: {:?}", &command);
-        let process = command.process(&author, &issue, comment, &team_members);
+        let process = command.process(&author, &issue, comment, &subteam_members);
         ok_or!(process, why => {
             error!("Unable to process command for comment id {}: {:?}",
                 comment.id, why);
@@ -888,7 +874,7 @@ fn process_fcp_propose(
     issue: &Issue,
     comment: &IssueComment,
     team_members: &[GitHubUser],
-    disp: FcpDispositionData<'_>,
+    disp: FcpDisposition,
 ) -> DashResult<()> {
     debug!("processing fcp proposal: {:?}", disp);
     use crate::domain::schema::fcp_proposal::dsl::*;
@@ -899,17 +885,15 @@ fn process_fcp_propose(
         info!("proposal is a new FCP, creating...");
 
         // leave github comment stating that FCP is proposed, ping reviewers
-        let gh_comment = post_insert_comment(
-            issue,
-            CommentType::FcpProposed(author, disp.disp(), &[], &[]),
-        )?;
+        let gh_comment =
+            post_insert_comment(issue, CommentType::FcpProposed(author, disp, &[], &[]))?;
 
         let proposal = NewFcpProposal {
             fk_issue: issue.id,
             fk_initiator: author.id,
             fk_initiating_comment: comment.id,
             fk_bot_tracking_comment: gh_comment.id,
-            disposition: disp.disp().repr(),
+            disposition: disp.repr(),
             fcp_start: None,
             fcp_closed: false,
         };
@@ -945,7 +929,7 @@ fn process_fcp_propose(
 
         let new_gh_comment = RfcBotComment::new(
             issue,
-            CommentType::FcpProposed(author, disp.disp(), &review_requests, &[]),
+            CommentType::FcpProposed(author, disp, &review_requests, &[]),
         );
         new_gh_comment.post(Some(gh_comment.id))?;
         debug!("github comment updated with reviewers");
