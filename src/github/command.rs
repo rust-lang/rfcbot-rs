@@ -177,6 +177,11 @@ fn parse_fcp_subcommand<'a>(
             debug!("Parsed command as FcpPropose(Merge(..))");
 
             let team_text = parse_command_text(command, subcommand);
+
+            if team_text.is_empty() {
+                return Err(DashError::CommentableError("No teams were provided to proposed FCP.".to_string()));
+            }
+
             let mut teams = BTreeSet::new();
             for team_candidate in team_text.split(",") {
                 if let Some(team) = match_team_candidate(setup, team_candidate) {
@@ -296,14 +301,13 @@ impl<'a> RfcBotCommand<'a> {
     pub fn from_str_all(
         setup: &'a RfcbotConfig,
         command: &'a str,
-    ) -> impl Iterator<Item = RfcBotCommand<'a>> {
+    ) -> impl Iterator<Item = DashResult<RfcBotCommand<'a>>> {
         // Get the tokens for each command line (starts with a bot mention)
         command
             .lines()
             .map(str::trim)
             .filter(|&l| l.starts_with(RFC_BOT_MENTION))
             .map(move |l| from_invocation_line(setup, l))
-            .filter_map(Result::ok)
     }
 }
 
@@ -313,7 +317,7 @@ mod test {
     use crate::teams::test::TEST_SETUP;
 
     fn parse_commands(body: &str) -> impl Iterator<Item = RfcBotCommand<'_>> {
-        RfcBotCommand::from_str_all(&TEST_SETUP, body)
+        RfcBotCommand::from_str_all(&TEST_SETUP, body).map(|c| c.expect("No errors expected in tests."))
     }
 
     #[test]

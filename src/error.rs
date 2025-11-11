@@ -17,6 +17,7 @@ pub enum DashError {
     DieselError(diesel::result::Error),
     Template(handlebars::RenderError),
     Misc(Option<String>),
+    CommentableError(String),
 }
 
 impl From<handlebars::RenderError> for DashError {

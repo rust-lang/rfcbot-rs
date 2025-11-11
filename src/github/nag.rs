@@ -63,6 +63,16 @@ pub fn update_nags(comment: &IssueComment) -> DashResult<()> {
     let mut any = false;
     let teams = SETUP.read().unwrap();
     for command in RfcBotCommand::from_str_all(&teams, &comment.body) {
+        let command = match command {
+            Err(DashError::CommentableError(ref message)) => {
+                let comment = RfcBotComment::new(&issue, CommentType::Error { message });
+                comment.post(None)?;
+                continue;
+            }
+            Err(_) => continue,
+            Ok(command) => command,
+        };
+
         any = true;
 
         if let RfcBotCommand::StartPoll { .. } = command {
@@ -1106,7 +1116,7 @@ fn process_feedback_request(author: &GitHubUser, issue: &Issue, username: &str) 
     Ok(())
 }
 
-struct RfcBotComment<'a> {
+pub(crate) struct RfcBotComment<'a> {
     issue: &'a Issue,
     body: String,
     comment_type: CommentType<'a>,
@@ -1138,6 +1148,9 @@ enum CommentType<'a> {
         question: &'a str,
         teams: BTreeSet<&'a str>,
     },
+    Error {
+        message: &'a str,
+    }
 }
 
 impl<'a> RfcBotComment<'a> {
@@ -1288,6 +1301,12 @@ impl<'a> RfcBotComment<'a> {
                     Self::couldnt_add_label(&mut msg, author, Label::FFCP);
                 }
 
+                msg
+            }
+
+            CommentType::Error { message } => {
+                let mut msg = String::from("Error encounted:\n");
+                msg.push_str(message);
                 msg
             }
         }
