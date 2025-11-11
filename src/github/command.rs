@@ -151,7 +151,7 @@ fn match_team_candidate<'a>(
 /// line_remainder ::= .+$ ;
 /// ws_separated ::= ... ;
 ///
-/// subcommand ::= merge team_list
+/// subcommand ::= merge [team_list]
 ///              | close | postpone | cancel | review
 ///              | concern line_remainder
 ///              | resolve line_remainder
