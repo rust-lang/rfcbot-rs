@@ -1304,7 +1304,7 @@ impl<'a> RfcBotComment<'a> {
 
                 match disposition {
                     FcpDisposition::Merge => {
-                        msg.push_str("\n\nThis will be merged soon.");
+                        // No message in this case
                     }
                     FcpDisposition::Close if can_ffcp_close(issue) => {
                         msg.push_str("\n\nThis is now closed.");
