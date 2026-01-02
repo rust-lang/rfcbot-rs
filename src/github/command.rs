@@ -121,6 +121,28 @@ fn match_team_candidate<'a>(
         .map(|(label, _)| label)
 }
 
+fn validate_team_list<'a>(
+    setup: &'a RfcbotConfig,
+    team_text: &'a str,
+) -> DashResult<Option<BTreeSet<&'a str>>> {
+    let mut teams = BTreeSet::new();
+    for team_candidate in team_text.split(",") {
+        let Some(team) = match_team_candidate(setup, team_candidate) else {
+            return Err(DashError::CommentableError(format!(
+                "Provided team `{}` is invalid",
+                team_candidate
+            )));
+        };
+        teams.insert(&*team.0);
+    }
+
+    if teams.is_empty() {
+        Ok(None)
+    } else {
+        Ok(Some(teams))
+    }
+}
+
 /// Parses all subcommands under the fcp command.
 /// If `fcp_context` is set to false, `@rfcbot <subcommand>`
 /// was passed and not `@rfcbot fcp <subcommand>`.
@@ -178,18 +200,14 @@ fn parse_fcp_subcommand<'a>(
 
             let team_text = parse_command_text(command, subcommand);
 
-            let mut teams = BTreeSet::new();
-            for team_candidate in team_text.split(",") {
-                let Some(team) = match_team_candidate(setup, team_candidate) else {
-                    return Err(DashError::CommentableError(format!("Provided team `{}` is invalid", team_candidate)));
-                };
-                teams.insert(&*team.0);
-            }
-
-            let teams = if teams.is_empty() {
+            let teams = if team_text.is_empty() {
+                // No explicit team list was specified, i.e. bare `@rfcbot fcp merge`.
                 None
             } else {
-                Some(teams)
+                // Something was specified in team list position, i.e. `@rfcbot fcp merge [...]`.
+                // We're not sure if this listing is well-formed, or if all of the listed teams
+                // actually exists.
+                validate_team_list(setup, team_text)?
             };
 
             RfcBotCommand::FcpPropose(FcpDispositionData::Merge(teams))
