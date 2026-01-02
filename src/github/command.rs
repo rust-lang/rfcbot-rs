@@ -482,6 +482,30 @@ somemoretext"
         RfcBotCommand::FcpPropose(FcpDispositionData::Merge(None))
     );
 
+    // See <https://github.com/rust-lang/rfcbot-rs/issues/343>.
+    //
+    // `@rfcbot fcp merge` used to provide an unhelpful error message "Provided team `` is invalid"
+    // when no explicit team list is specified.
+    test_from_str!(
+        success_fcp_merge_no_explicit_team_list,
+        [
+            "merge ",
+            "merged ",
+            "merging ",
+            "merges ",
+            "fcp merge ",
+            "fcp merged ",
+            "fcp merging ",
+            "fcp merges ",
+            "pr merge ",
+            "pr merged ",
+            "pr merging ",
+            "pr merges "
+        ],
+        justification!(),
+        RfcBotCommand::FcpPropose(FcpDispositionData::Merge(None))
+    );
+
     test_from_str!(
         success_fcp_merge_teams,
         [
