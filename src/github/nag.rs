@@ -1323,7 +1323,7 @@ impl<'a> RfcBotComment<'a> {
             }
 
             CommentType::Error { message } => {
-                let mut msg = String::from("Error encounted:\n");
+                let mut msg = String::from("Error encountered:\n");
                 msg.push_str(message);
                 msg
             }
