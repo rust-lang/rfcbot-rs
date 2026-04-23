@@ -1,6 +1,7 @@
 // Copyright 2016 Adam Perry. Dual-licensed MIT and Apache 2.0 (see LICENSE files for details).
 
 use std::i32;
+use std::convert::TryInto;
 
 use chrono::{DateTime, Utc};
 
@@ -104,7 +105,7 @@ impl IssueFromJson {
 
 #[derive(Debug, Deserialize)]
 pub struct CommentFromJson {
-    pub id: u32,
+    pub id: u64,
     pub html_url: String,
     pub body: String,
     pub user: GitHubUser,
@@ -141,7 +142,7 @@ impl CommentFromJson {
             .first::<i32>(&*conn)?;
 
         Ok(IssueComment {
-            id: self.id as i32,
+            id: self.id.try_into().expect("id fits into i64"),
             fk_issue: issue_id,
             fk_user: self.user.id,
             body: self.body.replace(0x00 as char, ""),

@@ -7,10 +7,8 @@ use super::schema::*;
 pub struct NewPoll<'a> {
     pub fk_issue: i32,
     pub fk_initiator: i32,
-    //#[serde(serialize_with = "super::unsigned")]
-    pub fk_initiating_comment: i32,
-    //#[serde(serialize_with = "super::unsigned")]
-    pub fk_bot_tracking_comment: i32,
+    pub fk_initiating_comment: i64,
+    pub fk_bot_tracking_comment: i64,
     pub poll_question: &'a str,
     pub poll_created_at: NaiveDateTime,
     pub poll_closed: bool,
@@ -25,10 +23,8 @@ pub struct Poll {
     pub id: i32,
     pub fk_issue: i32,
     pub fk_initiator: i32,
-    #[serde(serialize_with = "super::unsigned")]
-    pub fk_initiating_comment: i32,
-    #[serde(serialize_with = "super::unsigned")]
-    pub fk_bot_tracking_comment: i32,
+    pub fk_initiating_comment: i64,
+    pub fk_bot_tracking_comment: i64,
     pub poll_question: String,
     pub poll_created_at: NaiveDateTime,
     pub poll_closed: bool,
@@ -40,11 +36,9 @@ pub struct Poll {
 pub struct NewFcpProposal<'a> {
     pub fk_issue: i32,
     pub fk_initiator: i32,
-    //#[serde(serialize_with = "super::unsigned")]
-    pub fk_initiating_comment: i32,
+    pub fk_initiating_comment: i64,
     pub disposition: &'a str,
-    //#[serde(serialize_with = "super::unsigned")]
-    pub fk_bot_tracking_comment: i32,
+    pub fk_bot_tracking_comment: i64,
     pub fcp_start: Option<NaiveDateTime>,
     pub fcp_closed: bool,
 }
@@ -77,11 +71,9 @@ pub struct FcpProposal {
     pub id: i32,
     pub fk_issue: i32,
     pub fk_initiator: i32,
-    #[serde(serialize_with = "super::unsigned")]
-    pub fk_initiating_comment: i32,
+    pub fk_initiating_comment: i64,
     pub disposition: String,
-    #[serde(serialize_with = "super::unsigned")]
-    pub fk_bot_tracking_comment: i32,
+    pub fk_bot_tracking_comment: i64,
     pub fcp_start: Option<NaiveDateTime>,
     pub fcp_closed: bool,
 }
@@ -110,9 +102,9 @@ pub struct FcpReviewRequest {
 pub struct NewFcpConcern<'a> {
     pub fk_proposal: i32,
     pub fk_initiator: i32,
-    pub fk_resolved_comment: Option<i32>,
+    pub fk_resolved_comment: Option<i64>,
     pub name: &'a str,
-    pub fk_initiating_comment: i32,
+    pub fk_initiating_comment: i64,
 }
 
 #[derive(AsChangeset, Clone, Debug, Deserialize, Eq, Ord, PartialEq, PartialOrd, Queryable)]
@@ -121,9 +113,9 @@ pub struct FcpConcern {
     pub id: i32,
     pub fk_proposal: i32,
     pub fk_initiator: i32,
-    pub fk_resolved_comment: Option<i32>,
+    pub fk_resolved_comment: Option<i64>,
     pub name: String,
-    pub fk_initiating_comment: i32,
+    pub fk_initiating_comment: i64,
 }
 
 #[derive(Clone, Debug, Eq, Insertable, Ord, PartialEq, PartialOrd)]
@@ -132,7 +124,7 @@ pub struct NewFeedbackRequest {
     pub fk_initiator: i32,
     pub fk_requested: i32,
     pub fk_issue: i32,
-    pub fk_feedback_comment: Option<i32>,
+    pub fk_feedback_comment: Option<i64>,
 }
 
 #[derive(AsChangeset, Clone, Debug, Deserialize, Eq, Ord, PartialEq, PartialOrd, Queryable)]
@@ -142,5 +134,5 @@ pub struct FeedbackRequest {
     pub fk_initiator: i32,
     pub fk_requested: i32,
     pub fk_issue: i32,
-    pub fk_feedback_comment: Option<i32>,
+    pub fk_feedback_comment: Option<i64>,
 }

@@ -1,6 +1,7 @@
 // Copyright 2016 Adam Perry. Dual-licensed MIT and Apache 2.0 (see LICENSE files for details).
 
 use std::collections::BTreeMap;
+use std::convert::TryFrom;
 use std::thread::sleep;
 use std::time::Duration;
 use std::u32;
@@ -203,12 +204,14 @@ impl Client {
     pub fn edit_comment(
         &self,
         repo: &str,
-        comment_num: i32,
+        comment_num: i64,
         text: &str,
     ) -> DashResult<CommentFromJson> {
         let url = format!(
             "{}/repos/{}/issues/comments/{}",
-            BASE_URL, repo, comment_num as u32
+            BASE_URL,
+            repo,
+            u64::try_from(comment_num).unwrap()
         );
         let payload = serde_json::to_string(&btreemap!("body" => text))?;
         Ok(self.patch(&url, &payload)?.error_for_status()?.json()?)

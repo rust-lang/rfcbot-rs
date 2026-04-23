@@ -1,4 +1,5 @@
 use std::collections::BTreeSet;
+use std::convert::TryFrom;
 use std::sync::Mutex;
 
 use chrono::{Duration, Utc};
@@ -99,7 +100,9 @@ pub fn update_nags(comment: &IssueComment) -> DashResult<()> {
             RfcBotCommand::FcpPropose(FcpDispositionData::Merge(None)) => {
                 let issue_teams = all_teams_for_issue(&issue);
                 if issue_teams.len() > 1 {
-                    return Err(DashError::CommentableError("Must specify teams for FCP, as there are multiple labeled.".to_string()));
+                    return Err(DashError::CommentableError(
+                        "Must specify teams for FCP, as there are multiple labeled.".to_string(),
+                    ));
                 }
                 subteam_members.clone()
             }
@@ -733,7 +736,7 @@ fn all_teams_for_issue(issue: &Issue) -> BTreeSet<String> {
     let teams = setup.teams();
     teams
         .filter(|&(label, _)| issue.labels.contains(&label.0))
-        .map(|t| t.0.0.clone())
+        .map(|t| t.0 .0.clone())
         .collect::<BTreeSet<_>>()
 }
 
@@ -1151,12 +1154,12 @@ enum CommentType<'a> {
     FcpProposalCancelled(&'a GitHubUser),
     FcpAllReviewedNoConcerns {
         author: &'a GitHubUser,
-        status_comment_id: i32,
+        status_comment_id: i64,
         added_label: bool,
     },
     FcpWeekPassed {
         author: &'a GitHubUser,
-        status_comment_id: i32,
+        status_comment_id: i64,
         added_label: bool,
         disposition: FcpDisposition,
     },
@@ -1168,7 +1171,7 @@ enum CommentType<'a> {
     },
     Error {
         message: &'a str,
-    }
+    },
 }
 
 impl<'a> RfcBotComment<'a> {
@@ -1330,7 +1333,7 @@ impl<'a> RfcBotComment<'a> {
         }
     }
 
-    fn add_comment_url(issue: &Issue, msg: &mut String, comment_id: i32) {
+    fn add_comment_url(issue: &Issue, msg: &mut String, comment_id: i64) {
         let url = format!(
             "https://github.com/{repo}/{typ}/{number}#issuecomment-{id}",
             repo = issue.repository,
@@ -1340,7 +1343,7 @@ impl<'a> RfcBotComment<'a> {
                 "issues"
             },
             number = issue.number,
-            id = comment_id as u32,
+            id = u64::try_from(comment_id).unwrap(),
         );
         msg.push_str(&url);
     }
@@ -1352,7 +1355,7 @@ impl<'a> RfcBotComment<'a> {
         }
     }
 
-    fn post(&self, existing_comment: Option<i32>) -> DashResult<CommentFromJson> {
+    fn post(&self, existing_comment: Option<i64>) -> DashResult<CommentFromJson> {
         use crate::config::CONFIG;
 
         if CONFIG.post_comments {
