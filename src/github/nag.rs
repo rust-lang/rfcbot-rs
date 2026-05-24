@@ -76,9 +76,12 @@ pub fn update_nags(comment: &IssueComment) -> DashResult<()> {
 
         any = true;
 
-        if let RfcBotCommand::StartPoll { .. } = command {
-            // Accept poll requests from any known user.
+        if let RfcBotCommand::StartPoll { .. }
+        | RfcBotCommand::FcpPropose(FcpDispositionData::Merge(Some(_))) = command
+        {
+            // Accept poll requests and "fcp merge team" from any known user.
             if all_team_members.iter().find(|&u| u == &author).is_none() {
+                // FIXME: post an error message in the issue.
                 info!("poll requester ({}) is not a known user", author.login);
                 return Ok(());
             }
@@ -86,6 +89,7 @@ pub fn update_nags(comment: &IssueComment) -> DashResult<()> {
             // Don't accept most bot commands from non-subteam members.
             // Early return because we'll just get here again...
             if subteam_members.iter().find(|&u| u == &author).is_none() {
+                // FIXME: post an error message in the issue.
                 info!(
                     "command author ({}) doesn't appear in any relevant subteams",
                     author.login
