@@ -179,7 +179,7 @@ fn parse_fcp_subcommand<'a>(
             let team_text = parse_command_text(command, subcommand);
 
             let mut teams = BTreeSet::new();
-            for team_candidate in team_text.split(",") {
+            for team_candidate in team_text.split(",").filter(|s| !s.is_empty()) {
                 let Some(team) = match_team_candidate(setup, team_candidate) else {
                     return Err(DashError::CommentableError(format!("Provided team `{}` is invalid", team_candidate)));
                 };
