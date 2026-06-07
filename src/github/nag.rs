@@ -1205,7 +1205,7 @@ impl<'a> RfcBotComment<'a> {
                 question,
                 ref teams,
             } => {
-                let mut msg = String::from("Team member @");
+                let mut msg = String::from("@");
                 msg.push_str(&initiator.login);
                 msg.push_str(" has asked teams: ");
                 msg.extend(Itertools::intersperse(teams.iter().cloned(), ", "));
@@ -1220,7 +1220,7 @@ impl<'a> RfcBotComment<'a> {
             }
 
             CommentType::FcpProposed(initiator, disposition, reviewers, concerns) => {
-                let mut msg = String::from("Team member @");
+                let mut msg = String::from("@");
                 msg.push_str(&initiator.login);
                 msg.push_str(" has proposed to ");
                 msg.push_str(disposition.repr());
