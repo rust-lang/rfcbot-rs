@@ -1356,6 +1356,7 @@ impl<'a> RfcBotComment<'a> {
         if let CommentType::FcpProposed(_, disposition, ..) = self.comment_type {
             let _ = self.issue.add_label(Label::PFCP);
             let _ = self.issue.add_label(disposition.label());
+            let _ = self.issue.remove_label(Label::NeedsFCP);
         }
     }
 

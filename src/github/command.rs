@@ -16,6 +16,7 @@ pub enum Label {
     DispositionMerge,
     DispositionClose,
     DispositionPostpone,
+    NeedsFCP
 }
 
 impl Label {
@@ -31,6 +32,7 @@ impl Label {
             DispositionMerge => "disposition-merge",
             DispositionClose => "disposition-close",
             DispositionPostpone => "disposition-postpone",
+            NeedsFCP => "needs-fcp"
         }
     }
 }
