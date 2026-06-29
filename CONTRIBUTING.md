@@ -56,4 +56,4 @@ up-to-date listing of the actions.
 This project is distributed under the terms of both the MIT license and the Apache License 
 (Version 2.0). See LICENSE-MIT and LICENSE-APACHE for details.
 
-[conduct]: https://www.rust-lang.org/conduct.html
+[conduct]: https://rust-lang.org/policies/code-of-conduct
