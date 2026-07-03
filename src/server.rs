@@ -137,6 +137,16 @@ mod api {
     pub fn github_webhook(event: Event) -> DashResult<()> {
         let conn = &*DB_POOL.get()?;
 
+        match &event.payload {
+            Payload::Unsupported => {}
+            _ => {
+                info!(
+                    "Received valid webhook ({} id {})",
+                    event.event_name, event.delivery_id
+                );
+            }
+        }
+
         match event.payload {
             Payload::Issues(issue_event) => {
                 handle_issue(conn, issue_event.issue, &issue_event.repository.full_name)?;

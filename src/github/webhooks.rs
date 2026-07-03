@@ -82,11 +82,6 @@ impl FromDataSimple for Event {
                     payload,
                 };
 
-                info!(
-                    "Received valid webhook ({} id {})",
-                    full_event.event_name, full_event.delivery_id
-                );
-
                 return Success(full_event);
             }
         }
@@ -131,40 +126,7 @@ fn parse_event(event_name: &str, body: &str) -> DashResult<Payload> {
         "issues" => Ok(Payload::Issues(from_json!(body)?)),
         "pull_request" => Ok(Payload::PullRequest(from_json!(body)?)),
 
-        "commit_comment"
-        | "create"
-        | "delete"
-        | "deployment"
-        | "deployment_status"
-        | "fork"
-        | "gollum"
-        | "label"
-        | "member"
-        | "membership"
-        | "milestone"
-        | "organization"
-        | "page_build"
-        | "public"
-        | "pull_request_review_comment"
-        | "pull_request_review"
-        | "push"
-        | "repository"
-        | "release"
-        | "status"
-        | "team"
-        | "team_add"
-        | "watch" => {
-            info!("Received {} event, ignoring...", event_name);
-            Ok(Payload::Unsupported)
-        }
-
-        _ => {
-            warn!(
-                "Received unrecognized event {}, check GitHub's API to see what's updated.",
-                event_name
-            );
-            Ok(Payload::Unsupported)
-        }
+        _ => Ok(Payload::Unsupported),
     }
 }
 
