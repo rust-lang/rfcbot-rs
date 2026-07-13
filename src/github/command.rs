@@ -7,7 +7,9 @@ use crate::teams::{RfcbotConfig, TeamLabel};
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]
 pub enum Label {
+    /// Finished FCP
     FFCP,
+    /// Proposed FCP
     PFCP,
     FCP,
     Postponed,
@@ -16,7 +18,9 @@ pub enum Label {
     DispositionMerge,
     DispositionClose,
     DispositionPostpone,
-    NeedsFCP
+    NeedsFCP,
+    WaitingOnFCP,
+    WaitingOnReview,
 }
 
 impl Label {
@@ -32,7 +36,9 @@ impl Label {
             DispositionMerge => "disposition-merge",
             DispositionClose => "disposition-close",
             DispositionPostpone => "disposition-postpone",
-            NeedsFCP => "needs-fcp"
+            NeedsFCP => "needs-fcp",
+            WaitingOnFCP => "S-waiting-on-fcp",
+            WaitingOnReview => "S-waiting-on-review",
         }
     }
 }
