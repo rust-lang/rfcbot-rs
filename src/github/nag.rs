@@ -530,6 +530,8 @@ fn evaluate_ffcps() -> DashResult<()> {
         // Add FFCP label and remove FCP label.
         let label_res = issue.add_label(Label::FFCP);
         issue.remove_label(Label::FCP);
+        issue.remove_label(Label::WaitingOnFCP);
+        let _ = issue.add_label(Label::WaitingOnReview); // fine to ignore errors, not all repos have the label
         let added_label = match label_res {
             Ok(_) => {
                 if let Err(why) = issue.add_label(Label::ToAnnounce) {
