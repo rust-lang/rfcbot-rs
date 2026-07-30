@@ -170,7 +170,7 @@ impl Team {
                 .first::<GitHubUser>(conn)
                 .is_err()
             {
-                crate::github::handle_user(&conn, &gh.get_user(member_login)?)?;
+                crate::github::handle_user(conn, &gh.get_user(member_login)?)?;
                 sleep(RATE_LIMIT_DEPLAY);
                 info!("loaded into the database user {}", member_login);
             }

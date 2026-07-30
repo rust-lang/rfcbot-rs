@@ -69,9 +69,9 @@ mod html {
                 "pendingReviewers": pending_reviewers,
                 "pendingConcerns": concerns.into_iter().map(|c| {
                     json!({
-                        "name": c.0.clone(),
+                        "name": c.0,
                         "commentId": c.1.id as u32,
-                        "login": c.2.login.clone(),
+                        "login": c.2.login,
                     })
                 }).collect::<Vec<_>>(),
             });

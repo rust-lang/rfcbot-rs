@@ -80,7 +80,7 @@ pub fn update_nags(comment: &IssueComment) -> DashResult<()> {
         | RfcBotCommand::FcpPropose(FcpDispositionData::Merge(Some(_))) = command
         {
             // Accept poll requests and "fcp merge team" from any known user.
-            if all_team_members.iter().find(|&u| u == &author).is_none() {
+            if !all_team_members.iter().any(|u| u == &author) {
                 // FIXME: post an error message in the issue.
                 info!("poll requester ({}) is not a known user", author.login);
                 return Ok(());
@@ -88,7 +88,7 @@ pub fn update_nags(comment: &IssueComment) -> DashResult<()> {
         } else {
             // Don't accept most bot commands from non-subteam members.
             // Early return because we'll just get here again...
-            if subteam_members.iter().find(|&u| u == &author).is_none() {
+            if !subteam_members.iter().any(|u| u == &author) {
                 // FIXME: post an error message in the issue.
                 info!(
                     "command author ({}) doesn't appear in any relevant subteams",
@@ -401,11 +401,11 @@ fn evaluate_pendings() -> DashResult<()> {
             why => error!("Unable to retrieve concerns for proposal {}: {:?}",
                     proposal.id, why));
 
-        let num_outstanding_reviews = reviews.iter().filter(|&&(_, ref r)| !r.reviewed).count();
+        let num_outstanding_reviews = reviews.iter().filter(|&(_, r)| !r.reviewed).count();
         let num_complete_reviews = reviews.len() - num_outstanding_reviews;
         let num_active_concerns = concerns
             .iter()
-            .filter(|&&(_, ref c)| c.fk_resolved_comment.is_none())
+            .filter(|&(_, c)| c.fk_resolved_comment.is_none())
             .count();
 
         // update existing status comment with reviews & concerns
@@ -732,7 +732,7 @@ fn all_team_members() -> DashResult<Vec<GitHubUser>> { specific_subteam_members(
 /// labelled on the issue.
 fn subteam_members(issue: &Issue) -> DashResult<Vec<GitHubUser>> {
     // retrieve all of the teams tagged on this issue
-    specific_subteam_members(|label| issue.labels.contains(&label))
+    specific_subteam_members(|label| issue.labels.contains(label))
 }
 
 /// Check if an issue comment is written by a member of one of the subteams
@@ -872,7 +872,7 @@ fn process_poll(
         poll_question: question,
         poll_created_at: Utc::now().naive_utc(),
         poll_closed: false,
-        poll_teams: &*teams_str,
+        poll_teams: &teams_str,
     };
     let new_poll = diesel::insert_into(poll)
         .values(&new_poll)
@@ -910,7 +910,7 @@ fn process_poll(
             initiator: author,
             teams,
             question,
-            respondents: &*response_requests,
+            respondents: &response_requests,
         },
     );
     new_gh_comment.post(Some(gh_comment.id))?;
@@ -1191,7 +1191,7 @@ impl<'a> RfcBotComment<'a> {
         }
     }
 
-    fn couldnt_add_label<'b>(msg: &mut String, author: &'b GitHubUser, label: Label) {
+    fn couldnt_add_label(msg: &mut String, author: &GitHubUser, label: Label) {
         msg.push_str("\n\n*psst @");
         msg.push_str(&author.login);
         msg.push_str(", I wasn't able to add the `");
@@ -1237,13 +1237,13 @@ impl<'a> RfcBotComment<'a> {
                     msg.push_str("\nConcerns:\n\n");
                 }
 
-                for &(_, ref concern) in concerns {
+                for (_, concern) in concerns {
                     if let Some(resolved_comment_id) = concern.fk_resolved_comment {
                         msg.push_str("* ~~");
                         msg.push_str(&concern.name);
                         msg.push_str("~~ resolved by ");
                         Self::add_comment_url(issue, &mut msg, resolved_comment_id);
-                        msg.push_str("\n");
+                        msg.push('\n');
                     } else {
                         msg.push_str("* ");
                         msg.push_str(&concern.name);
@@ -1358,7 +1358,7 @@ impl<'a> RfcBotComment<'a> {
         if let CommentType::FcpProposed(_, disposition, ..) = self.comment_type {
             let _ = self.issue.add_label(Label::PFCP);
             let _ = self.issue.add_label(disposition.label());
-            let _ = self.issue.remove_label(Label::NeedsFCP);
+            self.issue.remove_label(Label::NeedsFCP);
         }
     }
 
