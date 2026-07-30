@@ -14,7 +14,13 @@ const UPDATE_CONFIG_EVERY_MIN: u64 = 5;
 // Public API
 //==============================================================================
 
-type TeamsMap = BTreeMap<TeamLabel, Team>;
+#[derive(Debug, Deserialize, Default)]
+struct TeamsMap {
+    #[serde(default, rename = "T-all")]
+    pub all_members: Vec<String>,
+    #[serde(flatten)]
+    pub teams: BTreeMap<TeamLabel, Team>,
+}
 
 lazy_static! {
     pub static ref SETUP: Arc<RwLock<RfcbotConfig>> =
@@ -33,11 +39,19 @@ impl RfcbotConfig {
     /// Retrive an iterator over all the team labels.
     pub fn team_labels(&self) -> impl Iterator<Item = &TeamLabel> { self.teams().map(|(k, _)| k) }
 
+    /// Retrieve an iterator over the members of T-all, listed separately.
+    pub fn all_members(&self) -> impl Iterator<Item = &str> {
+        match &self.teams {
+            RfcbotTeams::Local(teams) => teams.all_members.iter(),
+            RfcbotTeams::Remote { .. } => self.cached_teams.all_members.iter(),
+        }.map(|s| &**s)
+    }
+
     /// Retrive an iterator over all the (team label, team) pairs.
     pub fn teams(&self) -> impl Iterator<Item = (&TeamLabel, &Team)> {
         match &self.teams {
-            RfcbotTeams::Local(teams) => teams.iter(),
-            RfcbotTeams::Remote { .. } => self.cached_teams.iter(),
+            RfcbotTeams::Local(teams) => teams.teams.iter(),
+            RfcbotTeams::Remote { .. } => self.cached_teams.teams.iter(),
         }
     }
 
@@ -59,13 +73,19 @@ impl RfcbotConfig {
 
     // Update the list of teams from external sources, if needed
     fn update(&mut self) -> Result<(), DashError> {
+        // note: doesn't have serde(flatten)
         #[derive(Deserialize)]
         struct ToDeserialize {
-            teams: TeamsMap,
+            #[serde(default)]
+            all_members: Vec<String>,
+            teams: BTreeMap<TeamLabel, Team>,
         }
         if let RfcbotTeams::Remote { ref url } = &self.teams {
             let de: ToDeserialize = reqwest::blocking::get(url)?.error_for_status()?.json()?;
-            self.cached_teams = de.teams;
+            self.cached_teams = TeamsMap {
+                all_members: de.all_members,
+                teams: de.teams,
+            };
         }
         Ok(())
     }

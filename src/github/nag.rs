@@ -712,16 +712,20 @@ fn resolve_logins_to_users(member_logins: &[String]) -> DashResult<Vec<GitHubUse
 /// satisfying the given predicate.
 fn specific_subteam_members<F>(included: F) -> DashResult<Vec<GitHubUser>>
 where
-    F: Fn(&String) -> bool,
+    F: Fn(&str) -> bool,
 {
     let setup = SETUP.read().unwrap();
     let teams = setup.teams();
-    let members = teams
+    let mut members = teams
         .filter(|&(label, _)| included(&label.0))
         .flat_map(|(_, team)| team.member_logins().map(std::string::ToString::to_string))
-        .collect::<BTreeSet<_>>()
-        .into_iter() // diesel won't work with btreeset, and dedup has weird lifetime errors
-        .collect::<Vec<_>>();
+        .collect::<BTreeSet<_>>();
+    if included("T-all") {
+        members.extend(setup.all_members().map(std::string::ToString::to_string));
+    }
+
+    // diesel won't work with btreeset, and dedup has weird lifetime errors
+    let members = members.into_iter().collect::<Vec<_>>();
     resolve_logins_to_users(&members)
 }
 
@@ -732,7 +736,7 @@ fn all_team_members() -> DashResult<Vec<GitHubUser>> { specific_subteam_members(
 /// labelled on the issue.
 fn subteam_members(issue: &Issue) -> DashResult<Vec<GitHubUser>> {
     // retrieve all of the teams tagged on this issue
-    specific_subteam_members(|label| issue.labels.contains(label))
+    specific_subteam_members(|label| issue.labels.iter().any(|l| l == label))
 }
 
 /// Check if an issue comment is written by a member of one of the subteams
@@ -848,7 +852,7 @@ fn process_poll(
     } else {
         teams
     };
-    let members = specific_subteam_members(|l| teams.contains(&**l))?;
+    let members = specific_subteam_members(|l| teams.contains(l))?;
 
     info!("adding a new poll to issue.");
 
