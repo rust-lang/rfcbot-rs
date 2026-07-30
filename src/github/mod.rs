@@ -248,7 +248,7 @@ mod tests {
             login: user.login + "_new",
         };
         handle_user(&conn, &new_user).expect("Unable to handle user!");
-        assert_eq!(query.load::<GitHubUser>(&conn), Ok(vec![new_user.clone()]));
+        assert_eq!(query.load::<GitHubUser>(&conn), Ok(vec![new_user]));
 
         // Clean up after ourselves
         diesel::delete(githubuser::table.filter(githubuser::id.eq(user.id)))

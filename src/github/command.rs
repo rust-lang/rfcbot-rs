@@ -187,7 +187,7 @@ fn parse_fcp_subcommand<'a>(
             let team_text = parse_command_text(command, subcommand);
 
             let mut teams = BTreeSet::new();
-            for team_candidate in team_text.split(",").filter(|s| !s.is_empty()) {
+            for team_candidate in team_text.split(',').filter(|s| !s.is_empty()) {
                 let Some(team) = match_team_candidate(setup, team_candidate) else {
                     return Err(DashError::CommentableError(format!(
                         "Provided team `{}` is invalid",
@@ -271,7 +271,6 @@ fn from_invocation_line<'a>(
     let mut tokens = mention_stripped
         .trim()
         .trim_start_matches(':')
-        .trim()
         .split_whitespace();
     let invocation = tokens.next().ok_or(DashError::Misc(None))?;
     match invocation {

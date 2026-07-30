@@ -85,8 +85,7 @@ impl IssueFromJson {
             is_pull_request: self.pull_request.is_some(),
             title: self.title.replace(0x00 as char, ""),
             body: self
-                .body
-                .unwrap_or_else(String::new)
+                .body.unwrap_or_default()
                 .replace(0x00 as char, ""),
             locked: self.locked,
             closed_at: self.closed_at.map(|t| t.naive_utc()),

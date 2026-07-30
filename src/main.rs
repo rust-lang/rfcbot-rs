@@ -74,7 +74,7 @@ fn main() {
 
     // FIXME(anp) need to handle panics in both the listeners and crash the server
     let _ = scraper::start_scraping();
-    let _server_handle = server::serve();
+    server::serve();
 
     // block
     //server_handle.join().expect("problem running server!").expect("problem while running server");
