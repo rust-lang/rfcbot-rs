@@ -189,16 +189,15 @@ fn parse_fcp_subcommand<'a>(
             let mut teams = BTreeSet::new();
             for team_candidate in team_text.split(",").filter(|s| !s.is_empty()) {
                 let Some(team) = match_team_candidate(setup, team_candidate) else {
-                    return Err(DashError::CommentableError(format!("Provided team `{}` is invalid", team_candidate)));
+                    return Err(DashError::CommentableError(format!(
+                        "Provided team `{}` is invalid",
+                        team_candidate
+                    )));
                 };
                 teams.insert(&*team.0);
             }
 
-            let teams = if teams.is_empty() {
-                None
-            } else {
-                Some(teams)
-            };
+            let teams = if teams.is_empty() { None } else { Some(teams) };
 
             RfcBotCommand::FcpPropose(FcpDispositionData::Merge(teams))
         }
@@ -332,7 +331,8 @@ mod test {
     use crate::teams::test::TEST_SETUP;
 
     fn parse_commands(body: &str) -> impl Iterator<Item = RfcBotCommand<'_>> {
-        RfcBotCommand::from_str_all(&TEST_SETUP, body).map(|c| c.expect("No errors expected in tests."))
+        RfcBotCommand::from_str_all(&TEST_SETUP, body)
+            .map(|c| c.expect("No errors expected in tests."))
     }
 
     #[test]
@@ -511,7 +511,9 @@ somemoretext"
             "pr merges compiler,lang"
         ],
         justification!(),
-        RfcBotCommand::FcpPropose(FcpDispositionData::Merge(Some(["compiler", "lang"].iter().copied().collect())))
+        RfcBotCommand::FcpPropose(FcpDispositionData::Merge(Some(
+            ["compiler", "lang"].iter().copied().collect()
+        )))
     );
 
     test_from_str!(

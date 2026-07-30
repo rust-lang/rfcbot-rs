@@ -1,7 +1,7 @@
 // Copyright 2016 Adam Perry. Dual-licensed MIT and Apache 2.0 (see LICENSE files for details).
 
-use std::i32;
 use std::convert::TryInto;
+use std::i32;
 
 use chrono::{DateTime, Utc};
 
