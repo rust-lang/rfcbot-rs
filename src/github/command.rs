@@ -496,22 +496,22 @@ somemoretext"
     test_from_str!(
         success_fcp_merge_teams,
         [
-            "merge compiler,lang",
-            "merged compiler,lang",
-            "merging compiler,lang",
-            "merges compiler,lang",
-            "fcp merge compiler,lang",
-            "fcp merged compiler,lang",
-            "fcp merging compiler,lang",
-            "fcp merges compiler,lang",
-            "pr merge compiler,lang",
-            "pr merged compiler,lang",
-            "pr merging compiler,lang",
-            "pr merges compiler,lang"
+            "merge T-avengers,justice-league",
+            "merged T-avengers,justice-league",
+            "merging T-avengers,justice-league",
+            "merges T-avengers,justice-league",
+            "fcp merge T-avengers,justice-league",
+            "fcp merged T-avengers,justice-league",
+            "fcp merging T-avengers,justice-league",
+            "fcp merges T-avengers,justice-league",
+            "pr merge T-avengers,justice-league",
+            "pr merged T-avengers,justice-league",
+            "pr merging T-avengers,justice-league",
+            "pr merges T-avengers,justice-league"
         ],
         justification!(),
         RfcBotCommand::FcpPropose(FcpDispositionData::Merge(Some(
-            ["compiler", "lang"].iter().copied().collect()
+            ["T-avengers", "justice-league"].iter().copied().collect()
         )))
     );
 
