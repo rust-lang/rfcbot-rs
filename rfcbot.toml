@@ -1,5 +1,3 @@
-[fcp_behaviors]
-
 [fcp_behaviors."rust-lang/rfcs"]
 close = true
 postpone = true
@@ -7,6 +5,3 @@ postpone = true
 [fcp_behaviors."rust-lang/rust"]
 close = false
 postpone = false
-
-[teams]
-url = "https://team-api.infra.rust-lang.org/v1/rfcbot.json"

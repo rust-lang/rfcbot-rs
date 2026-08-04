@@ -16,9 +16,7 @@ const UPDATE_CONFIG_EVERY_MIN: u64 = 5;
 
 #[derive(Debug, Deserialize, Default)]
 struct TeamsMap {
-    #[serde(default, rename = "T-all")]
     pub all_members: Vec<String>,
-    #[serde(flatten)]
     pub teams: BTreeMap<TeamLabel, Team>,
 }
 
@@ -27,12 +25,13 @@ lazy_static! {
         Arc::new(RwLock::new(read_rfcbot_cfg_validated()));
 }
 
+const TEAMS_URL: &str = "https://team-api.infra.rust-lang.org/v1/rfcbot.json";
+
 #[derive(Debug, Deserialize)]
 pub struct RfcbotConfig {
     fcp_behaviors: BTreeMap<String, FcpBehavior>,
-    teams: RfcbotTeams,
-    #[serde(skip)]
-    cached_teams: TeamsMap,
+    #[serde(default)]
+    teams: TeamsMap,
 }
 
 impl RfcbotConfig {
@@ -41,19 +40,11 @@ impl RfcbotConfig {
 
     /// Retrieve an iterator over the members of T-all, listed separately.
     pub fn all_members(&self) -> impl Iterator<Item = &str> {
-        match &self.teams {
-            RfcbotTeams::Local(teams) => teams.all_members.iter(),
-            RfcbotTeams::Remote { .. } => self.cached_teams.all_members.iter(),
-        }.map(|s| &**s)
+        self.teams.all_members.iter().map(|s| &**s)
     }
 
     /// Retrive an iterator over all the (team label, team) pairs.
-    pub fn teams(&self) -> impl Iterator<Item = (&TeamLabel, &Team)> {
-        match &self.teams {
-            RfcbotTeams::Local(teams) => teams.teams.iter(),
-            RfcbotTeams::Remote { .. } => self.cached_teams.teams.iter(),
-        }
-    }
+    pub fn teams(&self) -> impl Iterator<Item = (&TeamLabel, &Team)> { self.teams.teams.iter() }
 
     /// Are we allowed to auto-close issues after F-FCP in this repo?
     pub fn should_ffcp_auto_close(&self, repo: &str) -> bool {
@@ -73,20 +64,9 @@ impl RfcbotConfig {
 
     // Update the list of teams from external sources, if needed
     fn update(&mut self) -> Result<(), DashError> {
-        // note: doesn't have serde(flatten)
-        #[derive(Deserialize)]
-        struct ToDeserialize {
-            #[serde(default)]
-            all_members: Vec<String>,
-            teams: BTreeMap<TeamLabel, Team>,
-        }
-        if let RfcbotTeams::Remote { ref url } = &self.teams {
-            let de: ToDeserialize = reqwest::blocking::get(url)?.error_for_status()?.json()?;
-            self.cached_teams = TeamsMap {
-                all_members: de.all_members,
-                teams: de.teams,
-            };
-        }
+        self.teams = reqwest::blocking::get(TEAMS_URL)?
+            .error_for_status()?
+            .json()?;
         Ok(())
     }
 }
@@ -97,17 +77,6 @@ pub struct FcpBehavior {
     close: bool,
     #[serde(default)]
     postpone: bool,
-}
-
-// This enum definition mixes both struct-style and tuple-style variants: this is intentionally
-// done to get the wanted deserialization behavior from serde. Since this is an untagged enum from
-// serde's point of view it will deserialize a RfcbotTeams::Remote when it encounters a key named
-// url with a string in it, otherwise the normal team map.
-#[derive(Debug, Deserialize)]
-#[serde(untagged)]
-enum RfcbotTeams {
-    Local(TeamsMap),
-    Remote { url: String },
 }
 
 #[derive(Debug, Deserialize)]
@@ -211,8 +180,6 @@ pub mod test {
     lazy_static! {
         pub static ref TEST_SETUP: RfcbotConfig = read_rfcbot_cfg_from(
             r#"
-[fcp_behaviors]
-
 [fcp_behaviors."rust-lang/alpha"]
 close = true
 postpone = true
@@ -226,8 +193,21 @@ postpone = false
 [fcp_behaviors."wibble/epsilon"]
 
 [teams]
+all_members = [
+  "hulk",
+  "thor",
+  "thevision",
+  "blackwidow",
+  "spiderman",
+  "captainamerica",
+  "superman",
+  "wonderwoman",
+  "aquaman",
+  "batman",
+  "theflash",
+]
 
-[teams.T-avengers]
+[teams.teams.T-avengers]
 name = "The Avengers"
 ping = "marvel/avengers"
 members = [
@@ -239,7 +219,7 @@ members = [
   "captainamerica",
 ]
 
-[teams.justice-league]
+[teams.teams.justice-league]
 name = "Justice League of America"
 ping = "dc-comics/justice-league"
 members = [
@@ -247,7 +227,7 @@ members = [
   "wonderwoman",
   "aquaman",
   "batman",
-  "theflash"
+  "theflash",
 ]
 "#
         );
