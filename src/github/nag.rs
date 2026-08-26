@@ -111,6 +111,14 @@ pub fn update_nags(comment: &IssueComment) -> DashResult<()> {
                 subteam_members.clone()
             }
             RfcBotCommand::FcpPropose(FcpDispositionData::Merge(Some(teams))) => {
+                // Try adding the team labels. (For instance, rfcbot.rs relies on the labels
+                // to find FCPs for given teams.)
+                for team in teams {
+                    // Normalize the `T-` away if it is present.
+                    let team = team.strip_prefix("T-").unwrap_or(team);
+                    let _ = GH.add_label(&issue.repository, issue.number, &format!("T-{}", team));
+                }
+                // Find the people in these teams.
                 specific_subteam_members(|label| {
                     teams.iter().any(|team| {
                         label.strip_prefix("T-").unwrap_or(label)
