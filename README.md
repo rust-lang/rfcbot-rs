@@ -79,7 +79,10 @@ line_remainder ::= .+$ ;
 ws_separated ::= ... ;
 
 subcommand ::= merge [team_list]
-             | close | postpone | cancel | review
+             | close [team_list]
+             | postpone [team_list]
+             | cancel
+             | review
              | concern line_remainder
              | resolve line_remainder
              | poll [team_target]* line_remainder

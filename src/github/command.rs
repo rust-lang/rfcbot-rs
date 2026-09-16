@@ -88,16 +88,16 @@ impl FcpDisposition {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum FcpDispositionData<'a> {
     Merge(Option<BTreeSet<&'a str>>),
-    Close,
-    Postpone,
+    Close(Option<BTreeSet<&'a str>>),
+    Postpone(Option<BTreeSet<&'a str>>),
 }
 
 impl FcpDispositionData<'_> {
     pub fn disp(&self) -> FcpDisposition {
         match self {
             FcpDispositionData::Merge(..) => FcpDisposition::Merge,
-            FcpDispositionData::Close => FcpDisposition::Close,
-            FcpDispositionData::Postpone => FcpDisposition::Postpone,
+            FcpDispositionData::Close(..) => FcpDisposition::Close,
+            FcpDispositionData::Postpone(..) => FcpDisposition::Postpone,
         }
     }
 }
@@ -127,6 +127,30 @@ fn match_team_candidate<'a>(
                 || team.ping() == strip_prefix(team_candidate, "@")
         })
         .map(|(label, _)| label)
+}
+
+fn get_teams<'a>(
+    parsed: &str,
+    command: &str,
+    subcommand: &str,
+    setup: &'a RfcbotConfig,
+) -> DashResult<Option<BTreeSet<&'a str>>> {
+    debug!("Parsed command as FcpPropose({parsed}(..))");
+
+    let team_text = parse_command_text(command, subcommand);
+
+    let mut teams = BTreeSet::new();
+    for team_candidate in team_text.split(',').filter(|s| !s.is_empty()) {
+        let Some(team) = match_team_candidate(setup, team_candidate) else {
+            return Err(DashError::CommentableError(format!(
+                "Provided team `{}` is invalid",
+                team_candidate
+            )));
+        };
+        teams.insert(&*team.0);
+    }
+
+    Ok(if teams.is_empty() { None } else { Some(teams) })
 }
 
 /// Parses all subcommands under the fcp command.
@@ -160,7 +184,10 @@ fn match_team_candidate<'a>(
 /// ws_separated ::= ... ;
 ///
 /// subcommand ::= merge [team_list]
-///              | close | postpone | cancel | review
+///              | close [team_list]
+///              | postpone [team_list]
+///              | cancel
+///              | review
 ///              | concern line_remainder
 ///              | resolve line_remainder
 ///              | poll [team_target]* line_remainder
@@ -181,36 +208,19 @@ fn parse_fcp_subcommand<'a>(
 ) -> DashResult<RfcBotCommand<'a>> {
     Ok(match subcommand {
         // Parse a FCP merge command:
-        "merge" | "merged" | "merging" | "merges" => {
-            debug!("Parsed command as FcpPropose(Merge(..))");
-
-            let team_text = parse_command_text(command, subcommand);
-
-            let mut teams = BTreeSet::new();
-            for team_candidate in team_text.split(',').filter(|s| !s.is_empty()) {
-                let Some(team) = match_team_candidate(setup, team_candidate) else {
-                    return Err(DashError::CommentableError(format!(
-                        "Provided team `{}` is invalid",
-                        team_candidate
-                    )));
-                };
-                teams.insert(&*team.0);
-            }
-
-            let teams = if teams.is_empty() { None } else { Some(teams) };
-
-            RfcBotCommand::FcpPropose(FcpDispositionData::Merge(teams))
-        }
+        "merge" | "merged" | "merging" | "merges" => RfcBotCommand::FcpPropose(
+            FcpDispositionData::Merge(get_teams("Merge", command, subcommand, setup)?),
+        ),
 
         // Parse a FCP close command:
-        "close" | "closed" | "closing" | "closes" => {
-            RfcBotCommand::FcpPropose(FcpDispositionData::Close)
-        }
+        "close" | "closed" | "closing" | "closes" => RfcBotCommand::FcpPropose(
+            FcpDispositionData::Close(get_teams("Close", command, subcommand, setup)?),
+        ),
 
         // Parse a FCP postpone command:
-        "postpone" | "postponed" | "postponing" | "postpones" => {
-            RfcBotCommand::FcpPropose(FcpDispositionData::Postpone)
-        }
+        "postpone" | "postponed" | "postponing" | "postpones" => RfcBotCommand::FcpPropose(
+            FcpDispositionData::Postpone(get_teams("Close", command, subcommand, setup)?),
+        ),
 
         // Parse a FCP cancel command:
         "cancel" | "canceled" | "canceling" | "cancels" => RfcBotCommand::FcpCancel,
@@ -532,7 +542,29 @@ somemoretext"
             "pr closes"
         ],
         justification!(),
-        RfcBotCommand::FcpPropose(FcpDispositionData::Close)
+        RfcBotCommand::FcpPropose(FcpDispositionData::Close(None))
+    );
+
+    test_from_str!(
+        success_fcp_close_teams,
+        [
+            "close T-avengers,justice-league",
+            "closed T-avengers,justice-league",
+            "closing T-avengers,justice-league",
+            "closes T-avengers,justice-league",
+            "fcp close T-avengers,justice-league",
+            "fcp closed T-avengers,justice-league",
+            "fcp closing T-avengers,justice-league",
+            "fcp closes T-avengers,justice-league",
+            "pr close T-avengers,justice-league",
+            "pr closed T-avengers,justice-league",
+            "pr closing T-avengers,justice-league",
+            "pr closes T-avengers,justice-league"
+        ],
+        justification!(),
+        RfcBotCommand::FcpPropose(FcpDispositionData::Close(Some(
+            ["T-avengers", "justice-league"].iter().copied().collect()
+        )))
     );
 
     test_from_str!(
@@ -552,7 +584,29 @@ somemoretext"
             "pr postpones"
         ],
         justification!(),
-        RfcBotCommand::FcpPropose(FcpDispositionData::Postpone)
+        RfcBotCommand::FcpPropose(FcpDispositionData::Postpone(None))
+    );
+
+    test_from_str!(
+        success_fcp_postpone_teams,
+        [
+            "postpone  T-avengers,justice-league",
+            "postponed  T-avengers,justice-league",
+            "postponing  T-avengers,justice-league",
+            "postpones  T-avengers,justice-league",
+            "fcp postpone  T-avengers,justice-league",
+            "fcp postponed  T-avengers,justice-league",
+            "fcp postponing  T-avengers,justice-league",
+            "fcp postpones  T-avengers,justice-league",
+            "pr postpone  T-avengers,justice-league",
+            "pr postponed  T-avengers,justice-league",
+            "pr postponing  T-avengers,justice-league",
+            "pr postpones  T-avengers,justice-league"
+        ],
+        justification!(),
+        RfcBotCommand::FcpPropose(FcpDispositionData::Postpone(Some(
+            ["T-avengers", "justice-league"].iter().copied().collect()
+        )))
     );
 
     test_from_str!(
