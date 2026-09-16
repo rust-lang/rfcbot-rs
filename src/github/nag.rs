@@ -1273,6 +1273,9 @@ impl<'a> RfcBotComment<'a> {
                 if issue.labels.iter().any(|l| l == "T-lang") {
                     msg.push_str("\ncc @rust-lang/lang-advisors: FCP proposed for lang, please feel free to register concerns.");
                 }
+                if issue.labels.iter().any(|l| l == "T-libs") {
+                    msg.push_str("\ncc @rust-lang/libs-ping: FCP proposed for libs, please feel free to register concerns.");
+                }
 
                 msg.push_str("\nSee [this document](");
                 msg.push_str("https://github.com/rust-lang/rfcbot-rs/blob/master/README.md");
