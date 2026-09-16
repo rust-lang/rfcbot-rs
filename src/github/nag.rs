@@ -77,7 +77,11 @@ pub fn update_nags(comment: &IssueComment) -> DashResult<()> {
         any = true;
 
         if let RfcBotCommand::StartPoll { .. }
-        | RfcBotCommand::FcpPropose(FcpDispositionData::Merge(Some(_))) = command
+        | RfcBotCommand::FcpPropose(
+            FcpDispositionData::Merge(Some(_))
+            | FcpDispositionData::Close(Some(_))
+            | FcpDispositionData::Postpone(Some(_)),
+        ) = command
         {
             // Accept poll requests and "fcp merge team" from any known user.
             if !all_team_members.iter().any(|u| u == &author) {
@@ -101,7 +105,11 @@ pub fn update_nags(comment: &IssueComment) -> DashResult<()> {
         // For `fcp merge`, if specific teams were passed, then be sure to use
         // only those members.
         let team_members = match &command {
-            RfcBotCommand::FcpPropose(FcpDispositionData::Merge(None)) => {
+            RfcBotCommand::FcpPropose(
+                FcpDispositionData::Merge(None)
+                | FcpDispositionData::Close(None)
+                | FcpDispositionData::Postpone(None),
+            ) => {
                 let issue_teams = all_teams_for_issue(&issue);
                 if issue_teams.len() > 1 {
                     return Err(DashError::CommentableError(
@@ -110,7 +118,11 @@ pub fn update_nags(comment: &IssueComment) -> DashResult<()> {
                 }
                 subteam_members.clone()
             }
-            RfcBotCommand::FcpPropose(FcpDispositionData::Merge(Some(teams))) => {
+            RfcBotCommand::FcpPropose(
+                FcpDispositionData::Merge(Some(teams))
+                | FcpDispositionData::Close(Some(teams))
+                | FcpDispositionData::Postpone(Some(teams)),
+            ) => {
                 // Try adding the team labels. (For instance, rfcbot.rs relies on the labels
                 // to find FCPs for given teams.)
                 for team in teams {
